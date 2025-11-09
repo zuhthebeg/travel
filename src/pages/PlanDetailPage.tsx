@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { plansAPI, schedulesAPI } from '../lib/api';
@@ -7,7 +7,9 @@ import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { ScheduleCard } from '../components/ScheduleCard';
 import { Loading, LoadingOverlay } from '../components/Loading';
+import { Map } from '../components/Map';
 import type { Schedule } from '../store/types';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 
 export function PlanDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -79,6 +81,22 @@ export function PlanDetailPage() {
     }
   };
 
+  const onDragEnd = (result: DropResult) => {
+    if (!result.destination) {
+      return;
+    }
+
+    const items = Array.from(schedules);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    setSchedules(items);
+  };
+
+  const schedulePlaces = useMemo(() => {
+    return schedules.map((s) => s.place).filter((p): p is string => !!p);
+  }, [schedules]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-base-200">
@@ -140,6 +158,10 @@ export function PlanDetailPage() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <Map places={schedulePlaces} />
+        </div>
+
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold">일정</h2>
           <Button variant="primary" onClick={() => setEditingSchedule({} as Schedule)}>
@@ -161,16 +183,32 @@ export function PlanDetailPage() {
             </Card.Body>
           </Card>
         ) : (
-          <div className="space-y-4">
-            {schedules.map((schedule) => (
-              <ScheduleCard
-                key={schedule.id}
-                schedule={schedule}
-                onEdit={setEditingSchedule}
-                onDelete={handleDeleteSchedule}
-              />
-            ))}
-          </div>
+          <DragDropContext onDragEnd={onDragEnd}>
+            <Droppable droppableId="schedules">
+              {(provided) => (
+                <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4">
+                  {schedules.map((schedule, index) => (
+                    <Draggable key={schedule.id} draggableId={schedule.id.toString()} index={index}>
+                      {(provided) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          {...provided.dragHandleProps}
+                        >
+                          <ScheduleCard
+                            schedule={schedule}
+                            onEdit={setEditingSchedule}
+                            onDelete={handleDeleteSchedule}
+                          />
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
         )}
 
         {/* 일정 추가/수정 폼 모달 */}
@@ -204,7 +242,6 @@ interface ScheduleFormModalProps {
 }
 
 function ScheduleFormModal({ modalRef, planId, schedule, onClose, onSave }: ScheduleFormModalProps) {
-  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     date: schedule?.date || formatDate(new Date()),
     time: schedule?.time || '',
@@ -214,17 +251,17 @@ function ScheduleFormModal({ modalRef, planId, schedule, onClose, onSave }: Sche
     plan_b: schedule?.plan_b || '',
     plan_c: schedule?.plan_c || '',
   });
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error' | null>(null);
+  const timeoutRef = useRef<number | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const handleSave = async () => {
     if (!formData.title || !formData.date) {
-      alert('제목과 날짜를 입력해주세요.');
       return;
     }
 
+    setSaveStatus('saving');
     try {
-      setIsLoading(true);
       const savedSchedule = schedule?.id
         ? await schedulesAPI.update(schedule.id, {
             date: formData.date,
@@ -247,12 +284,32 @@ function ScheduleFormModal({ modalRef, planId, schedule, onClose, onSave }: Sche
           });
 
       onSave(savedSchedule);
+      setSaveStatus('saved');
     } catch (error) {
       console.error('Failed to save schedule:', error);
-      alert('일정 저장에 실패했습니다.');
-    } finally {
-      setIsLoading(false);
+      setSaveStatus('error');
     }
+  };
+
+  useEffect(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    timeoutRef.current = window.setTimeout(() => {
+      handleSave();
+    }, 2000);
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [formData]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleSave();
+    onClose();
   };
 
   return (
@@ -359,16 +416,18 @@ function ScheduleFormModal({ modalRef, planId, schedule, onClose, onSave }: Sche
           </div>
 
           <div className="modal-action">
-            <Button type="submit" variant="primary" disabled={isLoading}>
-              {isLoading ? (
+            <div className="text-sm text-base-content/70">
+              {saveStatus === 'saving' && '저장 중...'}
+              {saveStatus === 'saved' && '저장됨'}
+              {saveStatus === 'error' && '저장 실패'}
+            </div>
+            <Button type="submit" variant="primary" disabled={isSaving}>
+              {isSaving ? (
                 <>
                   <span className="loading loading-spinner"></span>
                   저장 중...
                 </>
-              ) : schedule?.id ? '수정하기' : '추가하기'}
-            </Button>
-            <Button type="button" variant="ghost" onClick={onClose}>
-              취소
+              ) : '닫기'}
             </Button>
           </div>
         </form>

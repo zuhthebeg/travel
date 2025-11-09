@@ -9,13 +9,87 @@ import { LoadingOverlay } from '../components/Loading';
 export function CreatePlanPage() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     region: '',
     start_date: formatDate(new Date()),
     end_date: formatDate(new Date(Date.now() + 86400000)), // 내일
     is_public: false,
+    thumbnail: '',
   });
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('File upload failed');
+      }
+
+      const { url } = await response.json();
+      setFormData((prev) => ({ ...prev, thumbnail: url }));
+    } catch (error) {
+      console.error('Failed to upload file:', error);
+      alert('썸네일 업로드에 실패했습니다.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleGenerateDraft = async () => {
+    if (!formData.region || !formData.start_date || !formData.end_date) {
+      alert('AI 초안을 만들려면 지역과 날짜를 모두 입력해주세요.');
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const userId = getTempUserId();
+      const newPlan = await plansAPI.create({
+        user_id: userId,
+        title: formData.title || `${formData.region} 여행`,
+        region: formData.region,
+        start_date: formData.start_date,
+        end_date: formData.end_date,
+        is_public: formData.is_public,
+        thumbnail: formData.thumbnail || undefined,
+      });
+
+      const response = await fetch('/api/assistant/generate-draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          plan_id: newPlan.id,
+          destination: formData.region,
+          start_date: formData.start_date,
+          end_date: formData.end_date,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate draft');
+      }
+
+      navigate(`/plan/${newPlan.id}`);
+    } catch (error) {
+      console.error('Failed to generate draft:', error);
+      alert('AI 초안 생성에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,8 +99,8 @@ export function CreatePlanPage() {
       return;
     }
 
+    setIsLoading(true);
     try {
-      setIsLoading(true);
       const userId = getTempUserId();
       const newPlan = await plansAPI.create({
         user_id: userId,
@@ -35,9 +109,9 @@ export function CreatePlanPage() {
         start_date: formData.start_date,
         end_date: formData.end_date,
         is_public: formData.is_public,
+        thumbnail: formData.thumbnail || undefined,
       });
 
-      // 생성 성공 후 상세 페이지로 이동
       navigate(`/plan/${newPlan.id}`);
     } catch (error) {
       console.error('Failed to create plan:', error);
@@ -49,7 +123,7 @@ export function CreatePlanPage() {
 
   return (
     <div className="min-h-screen bg-base-200">
-      {isLoading && <LoadingOverlay />}
+      {(isLoading || isGenerating || isUploading) && <LoadingOverlay />}
 
       {/* Header */}
       <header className="bg-base-100 shadow-sm">
@@ -75,6 +149,22 @@ export function CreatePlanPage() {
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* 썸네일 */}
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">썸네일</span>
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="file-input file-input-bordered w-full"
+                />
+                {formData.thumbnail && (
+                  <img src={formData.thumbnail} alt="thumbnail preview" className="mt-4 w-full h-auto rounded-lg" />
+                )}
+              </div>
+
               {/* 제목 */}
               <div className="form-control w-full">
                 <label className="label">
@@ -93,7 +183,7 @@ export function CreatePlanPage() {
               {/* 지역 */}
               <div className="form-control w-full">
                 <label className="label">
-                  <span className="label-text">지역</span>
+                  <span className="label-text">지역 (AI 초안 생성에 필요)</span>
                 </label>
                 <input
                   type="text"
@@ -151,13 +241,21 @@ export function CreatePlanPage() {
               <Card.Actions className="justify-end pt-4">
                 <Button
                   type="button"
+                  variant="accent"
+                  onClick={handleGenerateDraft}
+                  disabled={!formData.region || !formData.start_date || !formData.end_date || isGenerating}
+                >
+                  {isGenerating ? 'AI 초안 생성 중...' : 'AI 초안 만들기'}
+                </Button>
+                <Button
+                  type="button"
                   variant="ghost"
                   onClick={() => navigate(-1)}
                 >
                   취소
                 </Button>
                 <Button type="submit" variant="primary">
-                  여행 만들기
+                  직접 만들기
                 </Button>
               </Card.Actions>
             </form>

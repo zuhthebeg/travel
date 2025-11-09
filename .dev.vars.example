@@ -5,4 +5,4 @@
 GEMINI_API_KEY=your-gemini-api-key-here
 
 # Google Maps API Key (Phase 5에서 필요)
-# GOOGLE_MAPS_API_KEY=your-maps-api-key-here
+VITE_GOOGLE_MAPS_API_KEY=your-maps-api-key-here
