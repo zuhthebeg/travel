@@ -1,0 +1,115 @@
+// Cloudflare Functions 타입 정의
+
+export interface Env {
+  DB: D1Database;
+  CACHE?: KVNamespace;
+  GEMINI_API_KEY?: string;
+}
+
+// 데이터베이스 모델 타입
+export interface User {
+  id: number;
+  username: string;
+  password: string;
+  created_at: string;
+}
+
+export interface Plan {
+  id: number;
+  user_id: number;
+  title: string;
+  region: string | null;
+  start_date: string;
+  end_date: string;
+  thumbnail: string | null;
+  is_public: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Schedule {
+  id: number;
+  plan_id: number;
+  date: string;
+  time: string | null;
+  title: string;
+  place: string | null;
+  memo: string | null;
+  plan_b: string | null;
+  plan_c: string | null;
+  order_index: number;
+  created_at: string;
+}
+
+export interface Recommendation {
+  id: number;
+  plan_id: number;
+  count: number;
+}
+
+export interface Conversation {
+  id: number;
+  plan_id: number;
+  user_id: number;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+}
+
+// API 요청/응답 타입
+export interface CreatePlanRequest {
+  user_id: number;
+  title: string;
+  region?: string;
+  start_date: string;
+  end_date: string;
+  thumbnail?: string;
+  is_public?: boolean;
+}
+
+export interface UpdatePlanRequest {
+  title?: string;
+  region?: string;
+  start_date?: string;
+  end_date?: string;
+  thumbnail?: string;
+  is_public?: boolean;
+}
+
+export interface CreateScheduleRequest {
+  plan_id: number;
+  date: string;
+  time?: string;
+  title: string;
+  place?: string;
+  memo?: string;
+  plan_b?: string;
+  plan_c?: string;
+  order_index?: number;
+}
+
+export interface UpdateScheduleRequest {
+  date?: string;
+  time?: string;
+  title?: string;
+  place?: string;
+  memo?: string;
+  plan_b?: string;
+  plan_c?: string;
+  order_index?: number;
+}
+
+// API 응답 헬퍼
+export function jsonResponse<T>(data: T, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+    },
+  });
+}
+
+export function errorResponse(message: string, status = 400): Response {
+  return jsonResponse({ error: message }, status);
+}

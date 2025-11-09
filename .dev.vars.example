@@ -1,0 +1,8 @@
+# 로컬 개발용 환경 변수 예제
+# .dev.vars 파일로 복사해서 사용하세요
+
+# Gemini API Key (Phase 4에서 필요)
+GEMINI_API_KEY=your-gemini-api-key-here
+
+# Google Maps API Key (Phase 5에서 필요)
+# GOOGLE_MAPS_API_KEY=your-maps-api-key-here
