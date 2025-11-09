@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wrangler d1 execute:*)",
+      "Bash(taskkill:*)",
+      "Bash(wrangler pages dev:*)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_snapshot",
+      "Bash(curl:*)",
+      "mcp__playwright__browser_handle_dialog",
+      "mcp__playwright__browser_select_option",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "mcp__playwright__browser_close",
+      "Bash(wrangler logout:*)",
+      "Bash(wrangler login:*)",
+      "Bash(wrangler pages deploy:*)",
+      "Bash(wrangler r2 bucket:*)",
+      "Bash(wrangler pages project:*)",
+      "Bash(cat:*)",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_evaluate",
+      "Bash(wrangler pages deployment tail:*)",
+      "Bash(timeout 5 bash:*)",
+      "mcp__playwright__browser_take_screenshot",
+      "Bash(gemini:*)",
+      "WebSearch",
+      "Bash(python -m json.tool:*)",
+      "Bash(nul)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
