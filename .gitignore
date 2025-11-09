@@ -35,3 +35,6 @@ wrangler.toml
 
 # D1 local database
 .mf/
+
+# Special Windows file
+nul
