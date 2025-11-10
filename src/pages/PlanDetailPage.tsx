@@ -85,15 +85,29 @@ export function PlanDetailPage() {
   };
 
   const onDragEnd = (result: DropResult) => {
-    if (!result.destination) {
+    const { source, destination } = result;
+
+    if (!destination) {
       return;
     }
 
-    const items = Array.from(schedules);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
+    if (source.droppableId === destination.droppableId) {
+      // Reordering within the same list
+      const items = Array.from(schedules);
+      const [reorderedItem] = items.splice(source.index, 1);
+      items.splice(destination.index, 0, reorderedItem);
+      setSchedules(items);
+    } else {
+      // Moving from one list to another
+      const sourceItems = Array.from(schedules.filter(s => s.date === source.droppableId));
+      const destItems = Array.from(schedules.filter(s => s.date === destination.droppableId));
+      const [movedItem] = sourceItems.splice(source.index, 1);
+      movedItem.date = destination.droppableId;
+      destItems.splice(destination.index, 0, movedItem);
 
-    setSchedules(items);
+      const newSchedules = schedules.filter(s => s.date !== source.droppableId && s.date !== destination.droppableId);
+      setSchedules([...newSchedules, ...sourceItems, ...destItems]);
+    }
   };
 
   const schedulePlaces = useMemo(() => {
@@ -189,21 +203,21 @@ export function PlanDetailPage() {
           </div>
         </div>
 
-        {schedules.length === 0 ? (
-          <Card>
-            <Card.Body className="text-center py-12" centered>
-              <p className="text-lg mb-4">
-                아직 일정이 없습니다
-              </p>
-              <Card.Actions>
-                <Button variant="primary" onClick={() => setEditingSchedule({} as Schedule)}>
-                  첫 번째 일정 추가하기
-                </Button>
-              </Card.Actions>
-            </Card.Body>
-          </Card>
-        ) : viewMode === 'vertical' ? (
-          <DragDropContext onDragEnd={onDragEnd}>
+        <DragDropContext onDragEnd={onDragEnd}>
+          {schedules.length === 0 ? (
+            <Card>
+              <Card.Body className="text-center py-12" centered>
+                <p className="text-lg mb-4">
+                  아직 일정이 없습니다
+                </p>
+                <Card.Actions>
+                  <Button variant="primary" onClick={() => setEditingSchedule({} as Schedule)}>
+                    첫 번째 일정 추가하기
+                  </Button>
+                </Card.Actions>
+              </Card.Body>
+            </Card>
+          ) : viewMode === 'vertical' ? (
             <Droppable droppableId="schedules">
               {(provided) => (
                 <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4">
@@ -228,28 +242,43 @@ export function PlanDetailPage() {
                 </div>
               )}
             </Droppable>
-          </DragDropContext>
-        ) : (
-          <div className="overflow-x-auto">
-            <div className="flex space-x-8 pb-4">
-              {Object.entries(groupedSchedules).map(([date, schedulesForDate]) => (
-                <div key={date} className="w-80 flex-shrink-0">
-                  <h3 className="text-lg font-bold mb-4">{formatDisplayDate(date)}</h3>
-                  <div className="space-y-4">
-                    {schedulesForDate.map((schedule) => (
-                      <ScheduleCard
-                        key={schedule.id}
-                        schedule={schedule}
-                        onEdit={setEditingSchedule}
-                        onDelete={handleDeleteSchedule}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
+          ) : (
+            <div className="overflow-x-auto">
+              <div className="flex space-x-8 pb-4">
+                {Object.entries(groupedSchedules).map(([date, schedulesForDate]) => (
+                  <Droppable droppableId={date} key={date}>
+                    {(provided) => (
+                      <div {...provided.droppableProps} ref={provided.innerRef} className="w-80 flex-shrink-0">
+                        <h3 className="text-lg font-bold mb-4">{formatDisplayDate(date)}</h3>
+                        <ul className="steps steps-vertical">
+                          {schedulesForDate.map((schedule, index) => (
+                            <Draggable key={schedule.id} draggableId={schedule.id.toString()} index={index}>
+                              {(provided) => (
+                                <li
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  className="step"
+                                >
+                                  <ScheduleCard
+                                    schedule={schedule}
+                                    onEdit={setEditingSchedule}
+                                    onDelete={handleDeleteSchedule}
+                                  />
+                                </li>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                        </ul>
+                      </div>
+                    )}
+                  </Droppable>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </DragDropContext>
 
         {/* 일정 추가/수정 폼 모달 */}
         <ScheduleFormModal
