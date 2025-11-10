@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { plansAPI, schedulesAPI } from '../lib/api';
-import { formatDateRange, getDaysDifference, formatDate } from '../lib/utils';
+import { formatDateRange, getDaysDifference, formatDate, formatDisplayDate } from '../lib/utils';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { ScheduleCard } from '../components/ScheduleCard';
@@ -10,6 +10,8 @@ import { Loading, LoadingOverlay } from '../components/Loading';
 import { Map } from '../components/Map';
 import type { Schedule } from '../store/types';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+
+type ViewMode = 'vertical' | 'horizontal';
 
 export function PlanDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +21,7 @@ export function PlanDetailPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('vertical');
   const modalRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -97,6 +100,17 @@ export function PlanDetailPage() {
     return schedules.map((s) => s.place).filter((p): p is string => !!p);
   }, [schedules]);
 
+  const groupedSchedules = useMemo(() => {
+    return schedules.reduce((acc, schedule) => {
+      const date = schedule.date;
+      if (!acc[date]) {
+        acc[date] = [];
+      }
+      acc[date].push(schedule);
+      return acc;
+    }, {} as Record<string, Schedule[]>);
+  }, [schedules]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-base-200">
@@ -164,9 +178,15 @@ export function PlanDetailPage() {
 
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold">일정</h2>
-          <Button variant="primary" onClick={() => setEditingSchedule({} as Schedule)}>
-            일정 추가
-          </Button>
+          <div className="flex items-center gap-4">
+            <div className="tabs tabs-boxed">
+              <a className={`tab ${viewMode === 'vertical' ? 'tab-active' : ''}`} onClick={() => setViewMode('vertical')}>목록</a>
+              <a className={`tab ${viewMode === 'horizontal' ? 'tab-active' : ''}`} onClick={() => setViewMode('horizontal')}>타임라인</a>
+            </div>
+            <Button variant="primary" onClick={() => setEditingSchedule({} as Schedule)}>
+              일정 추가
+            </Button>
+          </div>
         </div>
 
         {schedules.length === 0 ? (
@@ -182,7 +202,7 @@ export function PlanDetailPage() {
               </Card.Actions>
             </Card.Body>
           </Card>
-        ) : (
+        ) : viewMode === 'vertical' ? (
           <DragDropContext onDragEnd={onDragEnd}>
             <Droppable droppableId="schedules">
               {(provided) => (
@@ -209,6 +229,26 @@ export function PlanDetailPage() {
               )}
             </Droppable>
           </DragDropContext>
+        ) : (
+          <div className="overflow-x-auto">
+            <div className="flex space-x-8 pb-4">
+              {Object.entries(groupedSchedules).map(([date, schedulesForDate]) => (
+                <div key={date} className="w-80 flex-shrink-0">
+                  <h3 className="text-lg font-bold mb-4">{formatDisplayDate(date)}</h3>
+                  <div className="space-y-4">
+                    {schedulesForDate.map((schedule) => (
+                      <ScheduleCard
+                        key={schedule.id}
+                        schedule={schedule}
+                        onEdit={setEditingSchedule}
+                        onDelete={handleDeleteSchedule}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
         {/* 일정 추가/수정 폼 모달 */}
