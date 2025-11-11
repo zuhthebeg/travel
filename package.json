@@ -7,8 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "pages:dev": "wrangler pages dev --compatibility-date=2024-01-01 -- npm run dev",
-    "pages:deploy": "npm run build && wrangler pages deploy ./dist"
+    "pages:dev": "npm run build && wrangler pages dev ./dist",
+    "pages:deploy": "npm run build && wrangler pages deploy ./dist",
+    "test": "vitest"
   },
   "dependencies": {
     "@react-google-maps/api": "^2.20.7",
@@ -29,6 +30,7 @@
     "tailwindcss": "^3.4.16",
     "typescript": "~5.6.2",
     "vite": "^6.0.3",
+    "vitest": "^4.0.8",
     "wrangler": "^4.0.0"
   }
 }

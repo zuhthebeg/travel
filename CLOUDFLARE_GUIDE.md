@@ -1362,3 +1362,158 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 **작성일**: 2025-11-09
 **버전**: 1.0
 **다음 업데이트**: AI 챗봇 구현 후 Gemini API 연동 섹션 추가 예정
+
+---
+
+## GitHub Actions 자동 배포
+
+### 1. GitHub Secrets 설정
+
+GitHub 저장소에서 다음 Secrets를 설정해야 합니다:
+
+1. **CLOUDFLARE_API_TOKEN**: Cloudflare API 토큰
+   - Cloudflare Dashboard → My Profile → API Tokens
+   - "Edit Cloudflare Workers" 템플릿 사용하거나 커스텀 토큰 생성
+   - 필요한 권한: `Account.Cloudflare Pages` (Edit)
+
+2. **CLOUDFLARE_ACCOUNT_ID**: Cloudflare 계정 ID
+   - Cloudflare Dashboard → Workers & Pages → 우측 사이드바에서 확인
+   - 또는 URL에서: `https://dash.cloudflare.com/{ACCOUNT_ID}/...`
+
+**GitHub Secrets 추가 방법**:
+```
+GitHub 저장소 → Settings → Secrets and variables → Actions → New repository secret
+```
+
+---
+
+### 2. GitHub Actions Workflow 파일
+
+`.github/workflows/deploy.yml` 파일이 자동으로 main 브랜치에 푸시할 때 배포를 실행합니다.
+
+**workflow 파일 내용**:
+```yaml
+name: Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build project
+        run: npm run build
+      
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy ./dist --project-name=travel-mvp
+```
+
+---
+
+### 3. 환경 변수 바인딩 (중요!)
+
+로컬 개발 시 환경 변수를 바인딩으로 전달해야 합니다:
+
+```bash
+# 방법 1: --binding 플래그 사용
+wrangler pages dev ./dist --binding GEMINI_API_KEY=your-api-key
+
+# 방법 2: .dev.vars 파일 사용 (권장)
+# .dev.vars 파일 생성:
+echo "GEMINI_API_KEY=your-api-key" > .dev.vars
+
+# 개발 서버 실행 (자동으로 .dev.vars 로드)
+wrangler pages dev ./dist
+```
+
+**중요**: `.dev.vars` 파일은 `.gitignore`에 포함되어 있어야 합니다!
+
+---
+
+### 4. .gitignore 설정 (중요!)
+
+**주의**: `wrangler.toml`은 배포에 필요하므로 `.gitignore`에서 **제외**해야 합니다!
+
+```gitignore
+# Wrangler
+.wrangler/
+.dev.vars          # ✅ 민감한 환경 변수 포함 - 반드시 ignore
+
+# 주의: wrangler.toml은 ignore하지 말것!
+# wrangler.toml은 배포 설정에 필요합니다.
+
+# 환경 변수
+.env
+.env.local
+.env.production
+
+# D1 로컬 데이터베이스
+.mf/
+
+# Build cache
+tsconfig.tsbuildinfo
+
+# Test and sample files
+*.test.ts
+*.test.js
+sample_plan.txt
+```
+
+---
+
+### 5. 배포 워크플로우
+
+```bash
+# 1. 로컬에서 개발 및 테스트
+npm run dev
+
+# 2. 변경사항 커밋
+git add .
+git commit -m "feat: Add new feature"
+
+# 3. main 브랜치에 푸시
+git push origin main
+
+# 4. GitHub Actions가 자동으로 배포 실행
+# GitHub 저장소 → Actions 탭에서 진행 상황 확인
+
+# 5. 배포 완료 후 프로덕션 URL 확인
+# https://travel-mvp.pages.dev
+```
+
+---
+
+### 6. 프로덕션 환경 변수 설정
+
+GitHub Actions에서 사용하는 환경 변수는 Cloudflare Dashboard에서 설정해야 합니다:
+
+1. Cloudflare Dashboard → Workers & Pages → travel-mvp
+2. Settings → Environment Variables
+3. Production 환경에 변수 추가:
+   - `GEMINI_API_KEY`: your-production-api-key
+   - 기타 필요한 환경 변수들
+
+---
+
+**업데이트**: 2025-11-12
+**추가 내용**: GitHub Actions 자동 배포, 환경 변수 바인딩, .gitignore 수정사항

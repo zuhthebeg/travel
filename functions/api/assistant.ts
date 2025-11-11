@@ -1,9 +1,21 @@
+import { callGemini } from './assistant/_common';
+
 interface Env {
   GEMINI_API_KEY: string;
 }
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
-  const { message, history } = await context.request.json<{ message: string, history: any[] }>();
+  const { message, history, planId, planTitle, planRegion, planStartDate, planEndDate, schedules, systemPrompt: receivedSystemPrompt } = await context.request.json<{
+    message: string;
+    history: any[];
+    planId: number;
+    planTitle: string;
+    planRegion: string | null;
+    planStartDate: string;
+    planEndDate: string;
+    schedules: any[]; // Adjust type as needed
+    systemPrompt: string; // Receive the systemPrompt from frontend
+  }>();
 
   if (!message) {
     return new Response(JSON.stringify({ error: 'Message is required' }), {
@@ -19,11 +31,14 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     });
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-
-  const systemPrompt = `You are a friendly and helpful travel assistant. Your goal is to help users plan their trips.
+  // Use the received systemPrompt instead of constructing it here
+  const systemPromptToUse = receivedSystemPrompt || `You are a friendly and helpful travel assistant. Your goal is to help users plan their trips.
+  The current travel plan is for "${planTitle}" in "${planRegion}" from ${planStartDate} to ${planEndDate}.
+  The plan currently has the following schedules:
+  ${(schedules || []).map(s => `- ${s.date}: ${s.title} at ${s.place}`).join('\n')}
   You can provide information about destinations, suggest activities, and help with scheduling.
-  Keep your answers concise and helpful.`;
+  Keep your answers concise and helpful, always referring to the provided plan context.
+  All responses should be in Korean.`; // Fallback in case frontend doesn't send it
 
   const contents = [
     ...history,
@@ -36,32 +51,15 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   if (history.length === 0) {
     contents.unshift({
       role: 'user',
-      parts: [{ text: systemPrompt }],
+      parts: [{ text: systemPromptToUse }],
     });
   }
 
-
   try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents,
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 1000,
-        },
-      }),
+    const reply = await callGemini(apiKey, contents, {
+      temperature: 0.7,
+      maxOutputTokens: 1000,
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Gemini API error:', errorText);
-      throw new Error(`Gemini API request failed with status ${response.status}`);
-    }
-
-    const data = await response.json();
-    const reply = data.candidates[0].content.parts[0].text;
 
     return new Response(JSON.stringify({ reply }), {
       headers: { 'Content-Type': 'application/json' },

@@ -73,6 +73,14 @@ export async function onRequestPut(context: {
       updates.push('order_index = ?');
       values.push(body.order_index);
     }
+    if (body.rating !== undefined) {
+      updates.push('rating = ?');
+      values.push(body.rating);
+    }
+    if (body.review !== undefined) {
+      updates.push('review = ?');
+      values.push(body.review);
+    }
 
     if (updates.length === 0) {
       return errorResponse('No fields to update');

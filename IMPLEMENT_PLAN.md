@@ -55,7 +55,7 @@
 
      1. Gemini API 연동
        - API 키 설정 (환경 변수)
-       - /api/assistant 엔드포인트 구현
+       - /api/assistant 엔드포인트 구현 (gemini-2.5-flash 모델 사용)
        - 대화 컨텍스트 관리
      2. 자동 초안 생성
        - /api/assistant/generate-draft 엔드포인트
@@ -82,4 +82,8 @@ Todos
   [×] DaisyUI 설치 및 구성
   [×] 컴포넌트 DaisyUI로 리디자인
   [×] 시간 필드 UI 추가
+
+## 개발 가이드라인:
+
+- 프론트엔드 작업 후에는 반드시 `npm run build` 명령을 실행하여 최종 빌드 테스트를 완료해야 합니다. 모든 TypeScript 오류가 해결되고 프로젝트가 성공적으로 빌드되는지 확인하세요.
 

@@ -1,0 +1,23 @@
+name = "travel-mvp"
+compatibility_date = "2024-01-01"
+pages_build_output_dir = "./dist"
+
+# D1 데이터베이스 바인딩
+[[d1_databases]]
+binding = "DB"
+database_name = "travel-mvp-db"
+database_id = "72a33d6b-233f-4b5c-9be5-b0bcfb374c26"
+
+# KV 네임스페이스 (캐시 용도 - Phase 5에서 활성화)
+# [[kv_namespaces]]
+# binding = "CACHE"
+# id = "" # wrangler kv:namespace create 후 채워집니다
+
+# R2 버킷 (이미지 업로드 용도 - Phase 5에서 사용)
+# [[r2_buckets]]
+# binding = "IMAGES"
+# bucket_name = "travel-images"
+
+# 환경 변수 (로컬에서는 .dev.vars 파일에서 관리)
+[vars]
+ENVIRONMENT = "development"

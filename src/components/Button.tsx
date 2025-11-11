@@ -40,7 +40,7 @@ export function Button({
         'btn',
         variant && variantClasses[variant],
         size && sizeClasses[size],
-        { 'btn-outline': outline },
+        outline && 'btn-outline',
         className
       )}
       {...props}

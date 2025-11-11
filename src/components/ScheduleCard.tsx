@@ -5,11 +5,55 @@ interface ScheduleCardProps {
   schedule: Schedule;
   onEdit: (schedule: Schedule) => void;
   onDelete: (id: number) => void;
+  onView: (schedule: Schedule) => void;
 }
 
-export function ScheduleCard({ schedule, onEdit, onDelete }: ScheduleCardProps) {
+// Helper function to determine schedule status
+function getScheduleStatus(schedule: Schedule): 'upcoming' | 'current' | 'past' | 'normal' {
+  if (!schedule.time) return 'normal'; // No time set, can't determine status
+
+  const now = new Date();
+  const [year, month, day] = schedule.date.split('-').map(Number);
+  const [hours, minutes] = schedule.time.split(':').map(Number);
+  const scheduleDateTime = new Date(year, month - 1, day, hours, minutes);
+
+  const timeDiff = scheduleDateTime.getTime() - now.getTime();
+  const minutesDiff = Math.round(timeDiff / (1000 * 60));
+
+  // Past: schedule time has passed
+  if (minutesDiff < 0) return 'past';
+
+  // Current: within 30 minutes before schedule time
+  if (minutesDiff >= 0 && minutesDiff <= 30) return 'current';
+
+  // Upcoming: within 2 hours before schedule time
+  if (minutesDiff > 30 && minutesDiff <= 120) return 'upcoming';
+
+  return 'normal';
+}
+
+function getStatusStyles(status: string): string {
+  switch (status) {
+    case 'current':
+      return 'bg-warning/20 border-2 border-warning shadow-warning/50';
+    case 'upcoming':
+      return 'bg-info/20 border-2 border-info';
+    case 'past':
+      return 'bg-success/10 border-2 border-success/30';
+    default:
+      return 'bg-base-100';
+  }
+}
+
+export function ScheduleCard({ schedule, onView }: ScheduleCardProps) {
+  const status = getScheduleStatus(schedule);
+  const statusStyles = getStatusStyles(status);
+
   return (
-    <div className="card bg-base-100 shadow-xl hover:shadow-2xl transition-all">
+    <div
+      className={`card shadow-xl hover:shadow-2xl transition-all cursor-pointer ${statusStyles}`}
+      onClick={() => onView(schedule)}
+    >
       <div className="card-body">
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1">
@@ -21,29 +65,19 @@ export function ScheduleCard({ schedule, onEdit, onDelete }: ScheduleCardProps) 
                 {formatDisplayDate(schedule.date)}
               </div>
             </div>
-            <h3 className="card-title text-xl">{schedule.title}</h3>
+            <h3 className="card-title text-xl">
+              {(schedule.title as string) || ''}
+            </h3>
           </div>
-          <div className="flex gap-2">
-            <button className="btn btn-sm btn-outline" onClick={() => onEdit(schedule)}>
-              수정
-            </button>
-            <button
-              className="btn btn-sm btn-error"
-              onClick={() => {
-                if (confirm('이 일정을 삭제하시겠습니까?')) {
-                  onDelete(schedule.id);
-                }
-              }}
-            >
-              삭제
-            </button>
-          </div>
+          {/* 삭제 버튼 제거 - 상세보기에서만 삭제 가능 */}
         </div>
 
         {schedule.place && (
           <p className="text-sm text-base-content/80 mb-2 flex items-center gap-1">
             <span className="text-lg">📍</span>
-            <span className="font-medium">{schedule.place}</span>
+            <span className="font-medium">
+              {(schedule.place as string) || ''}
+            </span>
           </p>
         )}
 
@@ -51,6 +85,19 @@ export function ScheduleCard({ schedule, onEdit, onDelete }: ScheduleCardProps) 
           <p className="text-sm text-base-content/90 mb-3 whitespace-pre-wrap bg-base-200 p-3 rounded-lg">
             {schedule.memo}
           </p>
+        )}
+
+        {schedule.rating && schedule.rating > 0 && (
+          <div className="flex items-center gap-1 mb-2">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <span
+                key={star}
+                className={`text-lg ${star <= schedule.rating! ? 'text-warning' : 'text-base-300'}`}
+              >
+                ★
+              </span>
+            ))}
+          </div>
         )}
 
         {(schedule.plan_b || schedule.plan_c) && (

@@ -26,7 +26,6 @@ dist-ssr
 # Wrangler
 .wrangler/
 .dev.vars
-wrangler.toml
 
 # Environment variables
 .env
@@ -35,6 +34,14 @@ wrangler.toml
 
 # D1 local database
 .mf/
+
+# Build cache
+tsconfig.tsbuildinfo
+
+# Test and sample files
+*.test.ts
+*.test.js
+sample_plan.txt
 
 # Special Windows file
 nul

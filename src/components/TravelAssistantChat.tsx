@@ -1,0 +1,221 @@
+import { useState, useRef, useEffect } from 'react';
+import { Button } from './Button';
+import { Loading } from './Loading';
+import type { Schedule } from '../store/types';
+import useSpeechRecognition from '../hooks/useSpeechRecognition'; // Import the hook
+
+interface TravelAssistantChatProps {
+  planId: number;
+  planTitle: string;
+  planRegion: string | null;
+  planStartDate: string;
+  planEndDate: string;
+  schedules: Schedule[];
+}
+
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export function TravelAssistantChat({
+  planId,
+  planTitle,
+  planRegion,
+  planStartDate,
+  planEndDate,
+  schedules,
+}: TravelAssistantChatProps) {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const {
+    transcript,
+    isListening,
+    startListening,
+    stopListening,
+    browserSupportsSpeechRecognition,
+  } = useSpeechRecognition(); // Use the hook
+
+  useEffect(() => {
+    if (transcript) {
+      setInput(transcript); // Update input with transcribed text
+    }
+  }, [transcript]);
+
+  // Auto-focus input when component mounts
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(scrollToBottom, [messages]);
+
+  // TTS function
+  const speak = (text: string) => {
+    if ('speechSynthesis' in window) {
+      // Stop any ongoing speech
+      window.speechSynthesis.cancel();
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'ko-KR';
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  const stopSpeaking = () => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (input.trim() === '') return;
+
+    const userMessage: Message = { role: 'user', content: input };
+    setMessages((prevMessages) => [...prevMessages, userMessage]);
+    setInput('');
+    setIsLoading(true);
+
+    const systemPrompt = `You are a friendly and helpful travel assistant. Your goal is to help users plan their trips.
+  The current travel plan is for "${planTitle}" in "${planRegion}" from ${planStartDate} to ${planEndDate}.
+  The plan currently has the following schedules:
+  ${(schedules || []).map(s => `- ${s.date}: ${s.title} at ${s.place}`).join('\n')}
+  You can provide information about destinations, suggest activities, and help with scheduling.
+
+  IMPORTANT: Keep your answers VERY concise and brief (1-2 sentences maximum). Use simple, natural Korean that sounds good when spoken aloud.
+  Avoid long explanations, lists, or formatting. Focus on the most essential information only.
+  All responses should be in Korean.`;
+
+    try {
+      const response = await fetch('/api/assistant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: userMessage.content,
+          history: messages.map(msg => ({ role: msg.role, parts: [{ text: msg.content }] })),
+          planId,
+          planTitle,
+          planRegion,
+          planStartDate,
+          planEndDate,
+          schedules,
+          systemPrompt, // Pass the systemPrompt to the backend
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get response from assistant');
+      }
+
+      const data = await response.json();
+      const assistantMessage: Message = { role: 'assistant', content: data.reply || data.response || '응답을 받지 못했습니다.' };
+      setMessages((prevMessages) => [...prevMessages, assistantMessage]);
+
+      // Automatically speak the assistant's response
+      speak(assistantMessage.content);
+    } catch (error) {
+      console.error('Error sending message to assistant:', error);
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { role: 'assistant', content: '죄송합니다. 메시지를 처리하는 데 문제가 발생했습니다.' },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="card bg-base-100 shadow-xl h-full flex flex-col">
+      <div className="card-body flex-grow overflow-y-auto">
+        <h3 className="card-title">여행 비서 챗봇</h3>
+        <div className="flex flex-col space-y-4">
+          {messages.length === 0 && (
+            <div className="chat chat-start">
+              <div className="chat-bubble chat-bubble-info">
+                안녕하세요! 무엇을 도와드릴까요? 일정에 대해 궁금한 점을 물어보세요.
+              </div>
+            </div>
+          )}
+          {messages.map((msg, index) => (
+            <div key={index} className={`chat ${msg.role === 'user' ? 'chat-end' : 'chat-start'}`}>
+              <div className={`chat-bubble ${msg.role === 'user' ? 'chat-bubble-primary' : 'chat-bubble-secondary'}`}>
+                {msg.content}
+                {msg.role === 'assistant' && (
+                  <button
+                    onClick={() => speak(msg.content)}
+                    className="btn btn-xs btn-ghost mt-2"
+                    disabled={isSpeaking}
+                  >
+                    🔊 다시 듣기
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+          {isLoading && (
+            <div className="chat chat-start">
+              <div className="chat-bubble chat-bubble-secondary">
+                <Loading />
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
+      <div className="card-actions justify-end p-4 border-t border-base-200 flex items-center gap-2">
+        {browserSupportsSpeechRecognition && (
+          <Button
+            onClick={isListening ? stopListening : startListening}
+            disabled={isLoading}
+            variant={isListening ? 'secondary' : 'ghost'}
+            className="btn-circle"
+            title="음성 입력"
+          >
+            {isListening ? <Loading /> : <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 0-6-6v-1.5m6 7.5v3m-3-3h6m-10.875-9.75a6 6 0 0 1 6-6h.75m-12.75 6h.75m-3 0a6 6 0 0 0 6 6h.75" /></svg>}
+          </Button>
+        )}
+        {isSpeaking && (
+          <Button
+            onClick={stopSpeaking}
+            variant="error"
+            className="btn-circle"
+            title="음성 중지"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z" />
+            </svg>
+          </Button>
+        )}
+        <input
+          ref={inputRef}
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+          placeholder="메시지를 입력하세요..."
+          className="input input-bordered w-full"
+          disabled={isLoading || isListening} // Disable input while listening
+        />
+        <Button onClick={handleSendMessage} disabled={isLoading || isListening} variant="primary">
+          전송
+        </Button>
+      </div>
+    </div>
+  );
+}

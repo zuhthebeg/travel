@@ -30,7 +30,12 @@
       "Bash(gemini:*)",
       "WebSearch",
       "Bash(python -m json.tool:*)",
-      "Bash(nul)"
+      "Bash(nul)",
+      "Bash(npm run build:*)",
+      "Bash(timeout 10 bash:*)",
+      "Bash(wrangler pages secret put:*)",
+      "Bash(echo:*)",
+      "Bash(.github/workflows/deploy.yml)"
     ],
     "deny": [],
     "ask": []

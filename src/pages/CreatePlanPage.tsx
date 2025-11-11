@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { plansAPI } from '../lib/api';
-import { getTempUserId, formatDate } from '../lib/utils';
+import { plansAPI, schedulesAPI } from '../lib/api';
+import { formatDate } from '../lib/utils';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Loading, LoadingOverlay } from '../components/Loading';
+import useSpeechRecognition from '../hooks/useSpeechRecognition'; // Import the hook
+import useBrowserNotifications from '../hooks/useBrowserNotifications'; // Import the new hook
 
 interface Message {
   role: 'user' | 'assistant';
@@ -21,7 +23,7 @@ export function CreatePlanPage() {
     region: '',
     start_date: formatDate(new Date()),
     end_date: formatDate(new Date(Date.now() + 86400000)), // 내일
-    is_public: false,
+    is_public: true, // 기본값 true로 변경
     thumbnail: '',
   });
   const [pastedPlan, setPastedPlan] = useState('');
@@ -29,32 +31,24 @@ export function CreatePlanPage() {
   const [input, setInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const recognitionRef = useRef<any>(null);
+
+  const {
+    transcript,
+    isListening,
+    startListening,
+    stopListening,
+    browserSupportsSpeechRecognition,
+  } = useSpeechRecognition(); // Use the hook
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.lang = 'ko-KR';
-      recognitionRef.current.onresult = (event: any) => {
-        setInput(event.results[0][0].transcript);
-      };
-      recognitionRef.current.onerror = (event: any) => {
-        console.error('Speech recognition error', event.error);
-      };
+    if (transcript) {
+      setInput(transcript); // Update input with transcribed text
     }
-  }, []);
-
-  const startSTT = () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.start();
-    }
-  };
+  }, [transcript]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -84,6 +78,8 @@ export function CreatePlanPage() {
     }
   };
 
+  const { showNotification } = useBrowserNotifications(); // Use the notification hook
+
   const handleParsePlan = async () => {
     if (!pastedPlan) return;
 
@@ -101,24 +97,51 @@ export function CreatePlanPage() {
 
       const { title, region, start_date, end_date, schedules } = await response.json();
       
-      const userId = getTempUserId();
+      // 임시 user_id로 1 사용 (운영 DB에 id=1인 사용자가 없으면 생성 필요)
       const newPlan = await plansAPI.create({
-        user_id: userId,
+        user_id: 1,
         title: title || formData.title,
         region: region || formData.region,
         start_date: start_date || formData.start_date,
         end_date: end_date || formData.end_date,
-        is_public: formData.is_public,
+        is_public: true, // 기본 공개
         thumbnail: formData.thumbnail || undefined,
       });
 
-      // TODO: Save schedules
+      if (schedules && schedules.length > 0) {
+        // Process schedules asynchronously and show notification
+        let createdSchedulesCount = 0;
+        for (const schedule of schedules) {
+          try {
+            await schedulesAPI.create({
+              ...schedule,
+              plan_id: newPlan.id,
+            });
+            createdSchedulesCount++;
+          } catch (scheduleError) {
+            console.error('Failed to create individual schedule:', scheduleError);
+            // Optionally show a notification for failed individual schedules
+          }
+        }
+        showNotification('일정 생성 완료', {
+          body: `${createdSchedulesCount}개의 일정이 성공적으로 추가되었습니다.`,
+          onClick: () => navigate(`/plan/${newPlan.id}`),
+        });
+      } else {
+        showNotification('여행 계획 생성 완료', {
+          body: '일정 없이 여행 계획이 생성되었습니다.',
+          onClick: () => navigate(`/plan/${newPlan.id}`),
+        });
+      }
 
       navigate(`/plan/${newPlan.id}`);
 
     } catch (error) {
       console.error('Failed to parse plan:', error);
       alert('일정 파싱에 실패했습니다. 다시 시도해주세요.');
+      showNotification('일정 파싱 실패', {
+        body: '여행 계획 파싱 중 오류가 발생했습니다.',
+      });
     } finally {
       setIsGenerating(false);
     }
@@ -169,14 +192,14 @@ export function CreatePlanPage() {
 
     setIsLoading(true);
     try {
-      const userId = getTempUserId();
+      // 임시 user_id로 1 사용 (운영 DB에 id=1인 사용자가 없으면 생성 필요)
       const newPlan = await plansAPI.create({
-        user_id: userId,
+        user_id: 1,
         title: formData.title,
         region: formData.region || undefined,
         start_date: formData.start_date,
         end_date: formData.end_date,
-        is_public: formData.is_public,
+        is_public: true, // 기본 공개
         thumbnail: formData.thumbnail || undefined,
       });
 
@@ -218,7 +241,100 @@ export function CreatePlanPage() {
               </p>
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* ... form fields ... */}
+                {/* 썸네일 */}
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text">썸네일</span>
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="file-input file-input-bordered w-full"
+                  />
+                  {formData.thumbnail && (
+                    <img src={formData.thumbnail} alt="thumbnail preview" className="mt-4 w-full h-auto rounded-lg" />
+                  )}
+                </div>
+
+                {/* 제목 */}
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text">여행 제목 *</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    placeholder="예: 제주도 3박 4일"
+                    className="input input-bordered w-full"
+                    required
+                  />
+                </div>
+
+                {/* 지역 */}
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text">지역 (AI 초안 생성에 필요)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.region}
+                    onChange={(e) => setFormData({ ...formData, region: e.target.value })}
+                    placeholder="예: 제주도"
+                    className="input input-bordered w-full"
+                  />
+                </div>
+
+                {/* 날짜 */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="form-control w-full">
+                    <label className="label">
+                      <span className="label-text">시작일 *</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.start_date}
+                      onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                      className="input input-bordered w-full"
+                      required
+                    />
+                  </div>
+
+                  <div className="form-control w-full">
+                    <label className="label">
+                      <span className="label-text">종료일 *</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.end_date}
+                      onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                      min={formData.start_date}
+                      className="input input-bordered w-full"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* 공개 여부 */}
+                <div className="form-control">
+                  <label className="label cursor-pointer justify-start gap-4">
+                    <input
+                      type="checkbox"
+                      checked={formData.is_public}
+                      onChange={(e) => setFormData({ ...formData, is_public: e.target.checked })}
+                      className="checkbox checkbox-primary"
+                    />
+                    <span className="label-text">다른 사람들에게 공개하기</span>
+                  </label>
+                </div>
+
+                {/* 버튼 */}
+                <Card.Actions className="justify-end pt-4">
+                  <Button type="submit" variant="primary">
+                    직접 만들기
+                  </Button>
+                </Card.Actions>
               </form>
             </Card.Body>
           </Card>
@@ -257,9 +373,16 @@ export function CreatePlanPage() {
                 <Button onClick={handleSendMessage} disabled={isChatLoading}>
                   {isChatLoading ? <Loading /> : '전송'}
                 </Button>
-                <Button onClick={startSTT} disabled={isChatLoading}>
-                  🎤
-                </Button>
+                {browserSupportsSpeechRecognition && (
+                  <Button
+                    onClick={isListening ? stopListening : startListening}
+                    disabled={isChatLoading}
+                    variant={isListening ? 'secondary' : 'ghost'}
+                    className="btn-circle"
+                  >
+                    {isListening ? <Loading /> : <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 0-6-6v-1.5m6 7.5v3m-3-3h6m-10.875-9.75a6 6 0 0 1 6-6h.75m-12.75 6h.75m-3 0a6 6 0 0 0 6 6h.75" /></svg>}
+                  </Button>
+                )}
               </div>
             </Card.Body>
           </Card>

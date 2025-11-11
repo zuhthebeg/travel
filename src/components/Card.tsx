@@ -22,13 +22,11 @@ const Card = ({
 }: CardProps) => {
   return (
     <div
-      className={cn('card', 'bg-base-100', className, {
-        'card-bordered shadow-sm': bordered,
-        'image-full': imageFull,
-        'card-normal': normal,
-        'card-compact': compact,
-        'card-side': side,
-      })}
+      className={cn('card', 'bg-base-100', className, bordered && 'card-bordered shadow-sm',
+        imageFull && 'image-full',
+        normal && 'card-normal',
+        compact && 'card-compact',
+        side && 'card-side',)}
       {...props}
     >
       {children}
@@ -44,9 +42,7 @@ interface CardBodyProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const CardBody = ({ children, className, centered, ...props }: CardBodyProps) => (
   <div
-    className={cn('card-body', className, {
-      'items-center text-center': centered,
-    })}
+    className={cn('card-body', className, centered && 'items-center text-center',)}
     {...props}
   >
     {children}

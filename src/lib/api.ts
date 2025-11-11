@@ -110,8 +110,8 @@ export const schedulesAPI = {
     plan_id: number;
     date: string;
     time?: string;
-    title: string;
-    place?: string;
+    title: string; // Simplified
+    place?: string | null; // Simplified
     memo?: string;
     plan_b?: string;
     plan_c?: string;
@@ -130,12 +130,14 @@ export const schedulesAPI = {
     data: {
       date?: string;
       time?: string;
-      title?: string;
-      place?: string;
+      title?: string; // Simplified
+      place?: string | null; // Simplified
       memo?: string;
       plan_b?: string;
       plan_c?: string;
       order_index?: number;
+      rating?: number;
+      review?: string;
     }
   ) => {
     const result = await apiRequest<{ schedule: Schedule }>(`/api/schedules/${id}`, {

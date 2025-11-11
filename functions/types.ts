@@ -32,12 +32,14 @@ export interface Schedule {
   plan_id: number;
   date: string;
   time: string | null;
-  title: string;
-  place: string | null;
+  title: string; // Simplified to single language
+  place: string | null; // Simplified to single language
   memo: string | null;
   plan_b: string | null;
   plan_c: string | null;
   order_index: number;
+  rating: number | null; // 1-5 stars, null if not rated yet
+  review: string | null; // Text review, null if not reviewed yet
   created_at: string;
 }
 
@@ -80,8 +82,8 @@ export interface CreateScheduleRequest {
   plan_id: number;
   date: string;
   time?: string;
-  title: string;
-  place?: string;
+  title: string; // Simplified to single language
+  place?: string | null; // Simplified to single language
   memo?: string;
   plan_b?: string;
   plan_c?: string;
@@ -91,12 +93,14 @@ export interface CreateScheduleRequest {
 export interface UpdateScheduleRequest {
   date?: string;
   time?: string;
-  title?: string;
-  place?: string;
+  title?: string; // Simplified to single language
+  place?: string | null; // Simplified to single language
   memo?: string;
   plan_b?: string;
   plan_c?: string;
   order_index?: number;
+  rating?: number;
+  review?: string;
 }
 
 // API 응답 헬퍼
