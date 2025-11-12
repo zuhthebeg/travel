@@ -4,6 +4,18 @@ interface Env {
   GEMINI_API_KEY: string;
 }
 
+// Handle CORS preflight requests
+export const onRequestOptions: PagesFunction = async () => {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
+};
+
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   const { text, planId, userLang, destLang, planTitle, planRegion, planStartDate, planEndDate } = await context.request.json<{
     text: string;
@@ -19,7 +31,10 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   if (!text || !planId || !userLang || !destLang || !planTitle || !planRegion || !planStartDate || !planEndDate) {
     return new Response(JSON.stringify({ error: 'Missing required parameters' }), {
       status: 400,
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      },
     });
   }
 
@@ -27,7 +42,10 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   if (!apiKey || apiKey === 'your-gemini-api-key-here') {
     return new Response(JSON.stringify({ error: 'AI Assistant is not configured.' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      },
     });
   }
 
@@ -44,14 +62,20 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     // Here you would typically save the schedule to your database
     // For now, we'll just return the parsed schedule
     return new Response(JSON.stringify({ ...schedule, plan_id: planId }), {
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      },
     });
 
   } catch (error) {
     console.error('Failed to create schedule from text:', error);
     return new Response(JSON.stringify({ error: 'Failed to create schedule from text' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      },
     });
   }
 };
