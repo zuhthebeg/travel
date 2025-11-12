@@ -34,6 +34,7 @@ export function TravelAssistantChat({
     const saved = localStorage.getItem('tts_enabled');
     return saved !== null ? saved === 'true' : true;
   });
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; city?: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -60,6 +61,32 @@ export function TravelAssistantChat({
       window.speechSynthesis.cancel();
       // Load voices
       window.speechSynthesis.getVoices();
+    }
+
+    // Get user location
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+
+          // Try to get city name using reverse geocoding (optional)
+          try {
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=ko`
+            );
+            const data = await response.json();
+            const city = data.address?.city || data.address?.town || data.address?.county || data.address?.state;
+
+            setUserLocation({ lat: latitude, lng: longitude, city });
+          } catch (error) {
+            console.error('Failed to get city name:', error);
+            setUserLocation({ lat: latitude, lng: longitude });
+          }
+        },
+        (error) => {
+          console.error('Failed to get user location:', error);
+        }
+      );
     }
   }, []);
 
@@ -113,11 +140,34 @@ export function TravelAssistantChat({
     setInput('');
     setIsLoading(true);
 
+    // Get current time and format it
+    const now = new Date();
+    const currentTime = now.toLocaleString('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      weekday: 'long',
+      timeZone: 'Asia/Seoul'
+    });
+
+    const locationInfo = userLocation?.city
+      ? `\n  Current user location: ${userLocation.city} (${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)})`
+      : userLocation
+      ? `\n  Current user location: (${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)})`
+      : '';
+
     const systemPrompt = `You are a friendly and helpful travel assistant. Your goal is to help users plan their trips.
+
+  Current time: ${currentTime}${locationInfo}
+
   The current travel plan is for "${planTitle}" in "${planRegion}" from ${planStartDate} to ${planEndDate}.
   The plan currently has the following schedules:
   ${(schedules || []).map(s => `- ${s.date}: ${s.title} at ${s.place}`).join('\n')}
+
   You can provide information about destinations, suggest activities, and help with scheduling.
+  Use the current time and user location to provide more relevant and contextual answers.
 
   IMPORTANT: Keep your answers VERY concise and brief (1-2 sentences maximum). Use simple, natural Korean that sounds good when spoken aloud.
   Avoid long explanations, lists, or formatting. Focus on the most essential information only.

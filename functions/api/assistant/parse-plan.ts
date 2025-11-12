@@ -5,7 +5,11 @@ interface Env {
 }
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
-  const { text } = await context.request.json<{ text: string }>();
+  const { text, currentTime, userLocation } = await context.request.json<{
+    text: string;
+    currentTime?: string;
+    userLocation?: { lat: number; lng: number; city?: string };
+  }>();
 
   if (!text) {
     return new Response(JSON.stringify({ error: 'Text is required' }), {
@@ -22,8 +26,19 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     });
   }
 
+  const contextInfo = `${currentTime ? `\n    Current time: ${currentTime}` : ''}${
+    userLocation?.city
+      ? `\n    User location: ${userLocation.city} (${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)})`
+      : userLocation
+      ? `\n    User location: (${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)})`
+      : ''
+  }`;
+
   const prompt = `
-    You are a travel plan parser. Parse the following text and extract the travel plan information.
+    You are a travel plan parser. Parse the following text and extract the travel plan information.${contextInfo}
+
+    Use the current time and user location to provide more accurate date parsing and regional context.
+
     The output should be a valid JSON object with the following format:
     {
       "title": "Travel Plan Title",

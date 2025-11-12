@@ -30,6 +30,7 @@ export function CreatePlanPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; city?: string } | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -49,6 +50,34 @@ export function CreatePlanPage() {
       setInput(transcript); // Update input with transcribed text
     }
   }, [transcript]);
+
+  // Get user location on mount
+  useEffect(() => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+
+          // Try to get city name using reverse geocoding
+          try {
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=ko`
+            );
+            const data = await response.json();
+            const city = data.address?.city || data.address?.town || data.address?.county || data.address?.state;
+
+            setUserLocation({ lat: latitude, lng: longitude, city });
+          } catch (error) {
+            console.error('Failed to get city name:', error);
+            setUserLocation({ lat: latitude, lng: longitude });
+          }
+        },
+        (error) => {
+          console.error('Failed to get user location:', error);
+        }
+      );
+    }
+  }, []);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -85,10 +114,26 @@ export function CreatePlanPage() {
 
     setIsGenerating(true);
     try {
+      // Get current time
+      const now = new Date();
+      const currentTime = now.toLocaleString('ko-KR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        weekday: 'long',
+        timeZone: 'Asia/Seoul'
+      });
+
       const response = await fetch('/api/assistant/parse-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: pastedPlan }),
+        body: JSON.stringify({
+          text: pastedPlan,
+          currentTime,
+          userLocation,
+        }),
       });
 
       if (!response.ok) {
