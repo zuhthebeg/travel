@@ -36,7 +36,8 @@
       "Bash(wrangler pages secret put:*)",
       "Bash(echo:*)",
       "Bash(.github/workflows/deploy.yml)",
-      "Bash(wrangler whoami:*)"
+      "Bash(wrangler whoami:*)",
+      "Bash(gh auth:*)"
     ],
     "deny": [],
     "ask": []
