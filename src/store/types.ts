@@ -33,3 +33,11 @@ export interface User {
   id: number;
   username: string;
 }
+
+export interface Comment {
+  id: number;
+  schedule_id: number;
+  author_name: string;
+  content: string;
+  created_at: string;
+}

@@ -9,7 +9,7 @@ import { ScheduleCard } from '../components/ScheduleCard';
 import { Loading } from '../components/Loading';
 // import { Map } from '../components/Map'; // 지도 기능 임시 비활성화
 import { TravelAssistantChat } from '../components/TravelAssistantChat'; // Import the new component
-import type { Schedule, Plan } from '../store/types';
+import type { Schedule, Plan, Comment } from '../store/types';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import useBrowserNotifications from '../hooks/useBrowserNotifications'; // Import the new hook
 
@@ -915,6 +915,95 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
   const [review, setReview] = useState<string>(schedule.review || '');
   const [isSaving, setIsSaving] = useState(false);
 
+  // Comments state
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [authorName, setAuthorName] = useState<string>('');
+  const [commentContent, setCommentContent] = useState<string>('');
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+
+  // Load comments when schedule changes
+  useEffect(() => {
+    loadComments();
+    // Load saved author name from localStorage
+    const savedName = localStorage.getItem('comment_author_name');
+    if (savedName) {
+      setAuthorName(savedName);
+    }
+  }, [schedule.id]);
+
+  const loadComments = async () => {
+    setIsLoadingComments(true);
+    try {
+      const response = await fetch(`/api/schedules/${schedule.id}/comments`);
+      if (response.ok) {
+        const data = await response.json();
+        setComments(data.comments || []);
+      }
+    } catch (error) {
+      console.error('Failed to load comments:', error);
+    } finally {
+      setIsLoadingComments(false);
+    }
+  };
+
+  const handleSubmitComment = async () => {
+    if (!commentContent.trim()) {
+      return;
+    }
+
+    setIsSubmittingComment(true);
+    try {
+      const response = await fetch(`/api/schedules/${schedule.id}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          author_name: authorName.trim() || '익명',
+          content: commentContent.trim(),
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setComments([data.comment, ...comments]);
+        setCommentContent('');
+
+        // Save author name to localStorage
+        if (authorName.trim()) {
+          localStorage.setItem('comment_author_name', authorName.trim());
+        }
+      } else {
+        alert('댓글 작성에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('Failed to submit comment:', error);
+      alert('댓글 작성에 실패했습니다.');
+    } finally {
+      setIsSubmittingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: number) => {
+    if (!confirm('이 댓글을 삭제하시겠습니까?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/comments/${commentId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setComments(comments.filter(c => c.id !== commentId));
+      } else {
+        alert('댓글 삭제에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('Failed to delete comment:', error);
+      alert('댓글 삭제에 실패했습니다.');
+    }
+  };
+
   // Check if schedule is in the past
   const isPast = useMemo(() => {
     if (!schedule.time) return false;
@@ -1050,6 +1139,79 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
               </div>
             </>
           )}
+
+          {/* Comments Section */}
+          <div className="divider">댓글</div>
+          <div className="space-y-4">
+            {/* Comment Form */}
+            <div className="bg-base-200 p-4 rounded-lg space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <input
+                  type="text"
+                  value={authorName}
+                  onChange={(e) => setAuthorName(e.target.value)}
+                  placeholder="이름 (선택, 비워두면 익명)"
+                  className="input input-bordered input-sm"
+                />
+              </div>
+              <textarea
+                value={commentContent}
+                onChange={(e) => setCommentContent(e.target.value)}
+                placeholder="댓글을 입력하세요..."
+                rows={2}
+                className="textarea textarea-bordered w-full"
+              />
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={handleSubmitComment}
+                  disabled={isSubmittingComment || !commentContent.trim()}
+                >
+                  {isSubmittingComment ? '작성 중...' : '댓글 작성'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Comments List */}
+            {isLoadingComments ? (
+              <div className="text-center py-4">
+                <Loading />
+              </div>
+            ) : comments.length === 0 ? (
+              <div className="text-center py-4 text-base-content/70">
+                아직 댓글이 없습니다. 첫 댓글을 작성해보세요!
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {comments.map((comment) => (
+                  <div key={comment.id} className="bg-base-200 p-4 rounded-lg">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm">{comment.author_name}</span>
+                        <span className="text-xs text-base-content/70">
+                          {new Date(comment.created_at).toLocaleString('ko-KR', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteComment(comment.id)}
+                        className="btn btn-ghost btn-xs text-error"
+                      >
+                        삭제
+                      </button>
+                    </div>
+                    <p className="text-sm whitespace-pre-wrap">{comment.content}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="modal-action">

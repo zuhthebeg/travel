@@ -58,6 +58,14 @@ export interface Conversation {
   created_at: string;
 }
 
+export interface Comment {
+  id: number;
+  schedule_id: number;
+  author_name: string;
+  content: string;
+  created_at: string;
+}
+
 // API 요청/응답 타입
 export interface CreatePlanRequest {
   user_id: number;
@@ -101,6 +109,12 @@ export interface UpdateScheduleRequest {
   order_index?: number;
   rating?: number;
   review?: string;
+}
+
+export interface CreateCommentRequest {
+  schedule_id: number;
+  author_name?: string; // Optional, defaults to '익명'
+  content: string;
 }
 
 // API 응답 헬퍼
