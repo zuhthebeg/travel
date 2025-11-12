@@ -58,8 +58,14 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   Keep your answers concise and helpful, always referring to the provided plan context.
   All responses should be in Korean.`; // Fallback in case frontend doesn't send it
 
+  // Convert history roles from "assistant" to "model" for Gemini API
+  const convertedHistory = history.map((msg: any) => ({
+    role: msg.role === 'assistant' ? 'model' : 'user',
+    parts: msg.parts,
+  }));
+
   const contents = [
-    ...history,
+    ...convertedHistory,
     {
       role: 'user',
       parts: [{ text: message }],
