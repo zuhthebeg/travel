@@ -9,6 +9,7 @@ import { ScheduleCard } from '../components/ScheduleCard';
 import { Loading } from '../components/Loading';
 // import { Map } from '../components/Map'; // 지도 기능 임시 비활성화
 import { TravelAssistantChat } from '../components/TravelAssistantChat'; // Import the new component
+import { TravelProgressBar } from '../components/TravelProgressBar';
 import type { Schedule, Plan, Comment } from '../store/types';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import useBrowserNotifications from '../hooks/useBrowserNotifications'; // Import the new hook
@@ -491,6 +492,14 @@ export function PlanDetailPage() {
             </div>
           )}
         </DragDropContext>
+
+        {/* Travel Progress Bar */}
+        {schedules.length > 0 && (
+          <TravelProgressBar
+            startDate={selectedPlan.start_date}
+            endDate={selectedPlan.end_date}
+          />
+        )}
 
         {/* 일정 상세보기 모달 */}
         {viewingSchedule && (
