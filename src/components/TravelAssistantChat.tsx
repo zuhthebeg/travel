@@ -164,10 +164,19 @@ export function TravelAssistantChat({
 
   The current travel plan is for "${planTitle}" in "${planRegion}" from ${planStartDate} to ${planEndDate}.
   The plan currently has the following schedules:
-  ${(schedules || []).map(s => `- ${s.date}: ${s.title} at ${s.place}`).join('\n')}
+  ${(schedules || []).map(s => {
+    let scheduleInfo = `- ${s.date}${s.time ? ` ${s.time}` : ''}: ${s.title}`;
+    if (s.place) scheduleInfo += ` at ${s.place}`;
+    if (s.memo) scheduleInfo += ` (메모: ${s.memo})`;
+    if (s.plan_b) scheduleInfo += ` [대안B: ${s.plan_b}]`;
+    if (s.plan_c) scheduleInfo += ` [대안C: ${s.plan_c}]`;
+    if (s.rating) scheduleInfo += ` [평점: ${s.rating}/5]`;
+    if (s.review) scheduleInfo += ` [리뷰: ${s.review}]`;
+    return scheduleInfo;
+  }).join('\n')}
 
   You can provide information about destinations, suggest activities, and help with scheduling.
-  Use the current time and user location to provide more relevant and contextual answers.
+  Use the current time, user location, and detailed schedule information (including time, memo, alternatives, ratings, reviews) to provide more relevant and contextual answers.
 
   IMPORTANT: Keep your answers VERY concise and brief (1-2 sentences maximum). Use simple, natural Korean that sounds good when spoken aloud.
   Avoid long explanations, lists, or formatting. Focus on the most essential information only.
