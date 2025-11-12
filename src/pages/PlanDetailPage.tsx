@@ -69,6 +69,7 @@ export function PlanDetailPage() {
   const viewModalRef = useRef<HTMLDialogElement>(null);
   const editModalRef = useRef<HTMLDialogElement>(null);
   const planEditModalRef = useRef<HTMLDialogElement>(null);
+  const chatbotModalRef = useRef<HTMLDialogElement>(null);
 
   const { requestPermission, showNotification } = useBrowserNotifications(); // Use the notification hook
   const notifiedSchedules = useRef<Set<number>>(new Set()); // To track notified schedules
@@ -104,6 +105,14 @@ export function PlanDetailPage() {
       planEditModalRef.current.showModal();
     }
   }, [editingPlan]);
+
+  useEffect(() => {
+    if (showChatbot && chatbotModalRef.current) {
+      chatbotModalRef.current.showModal();
+    } else if (!showChatbot && chatbotModalRef.current) {
+      chatbotModalRef.current.close();
+    }
+  }, [showChatbot]);
 
   useEffect(() => {
     if (!selectedPlan || schedules.length === 0) return;
@@ -351,34 +360,35 @@ export function PlanDetailPage() {
     <div className="min-h-screen bg-base-200">
       
 
-      {/* Header */}
+      {/* Header - Compact version */}
       <header className="bg-base-100 shadow-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-6">
+        <div className="container mx-auto px-4 py-2">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-3xl font-bold">{selectedPlan.title}</h1>
+              <div className="flex items-center gap-2 mb-1">
+                <h1 className="text-xl font-bold">{selectedPlan.title}</h1>
                 {selectedPlan.is_public && (
-                  <div className="badge badge-secondary">공개</div>
+                  <div className="badge badge-secondary badge-sm">공개</div>
                 )}
               </div>
-              <div className="flex items-center gap-4 text-sm text-base-content/70">
+              <div className="flex items-center gap-3 text-xs text-base-content/70">
                 {selectedPlan.region && <span>📍 {selectedPlan.region}</span>}
                 <span>📅 {formatDateRange(selectedPlan.start_date, selectedPlan.end_date)}</span>
                 <span className="font-medium">{days}일</span>
               </div>
             </div>
-            <div className="flex gap-3">
-              <Button variant="ghost" onClick={() => navigate(-1)}>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
                 뒤로
               </Button>
               <Button
-                variant={showChatbot ? "primary" : "ghost"}
-                onClick={() => setShowChatbot(!showChatbot)}
+                variant="primary"
+                size="sm"
+                onClick={() => setShowChatbot(true)}
               >
-                {showChatbot ? '여행 비서 닫기' : '여행 비서'}
+                여행 비서
               </Button>
-              <Button variant="secondary" onClick={() => setEditingPlan(true)}>
+              <Button variant="secondary" size="sm" onClick={() => setEditingPlan(true)}>
                 여행 상세
               </Button>
             </div>
@@ -388,19 +398,6 @@ export function PlanDetailPage() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        {/* Travel Assistant Chatbot - Toggle */}
-        {showChatbot && selectedPlan && (
-          <div className="mb-8">
-            <TravelAssistantChat
-              planId={selectedPlan.id}
-              planTitle={selectedPlan.title}
-              planRegion={selectedPlan.region}
-              planStartDate={selectedPlan.start_date}
-              planEndDate={selectedPlan.end_date}
-              schedules={schedules}
-            />
-          </div>
-        )}
 
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold">일정</h2>
@@ -456,23 +453,23 @@ export function PlanDetailPage() {
               )}
             </Droppable>
           ) : (
-            <div className="overflow-x-auto">
-              <div className="flex space-x-8 pb-4">
+            <div className="overflow-x-auto pb-4">
+              <div className="flex gap-6" style={{ minWidth: 'min-content' }}>
                 {Object.entries(groupedSchedules).map(([date, schedulesForDate]) => (
                   <Droppable droppableId={date} key={date}>
                     {(provided) => (
-                      <div {...provided.droppableProps} ref={provided.innerRef} className="w-80 flex-shrink-0">
-                        <h3 className="text-lg font-bold mb-4">{formatDisplayDate(date)}</h3>
-                        <ul className="steps steps-vertical">
+                      <div {...provided.droppableProps} ref={provided.innerRef} className="flex-shrink-0" style={{ width: '320px' }}>
+                        <h3 className="text-base font-bold mb-3 sticky top-0 bg-base-200 py-2 z-5">{formatDisplayDate(date)}</h3>
+                        <div className="space-y-3 overflow-hidden">
                           {schedulesForDate.map((schedule, index) => (
                             <Draggable key={schedule.id} draggableId={schedule.id.toString()} index={index}>
                               {(provided) => (
-                                <li
+                                <div
                                   ref={provided.innerRef}
                                   {...provided.draggableProps}
                                   {...provided.dragHandleProps}
-                                  className="step"
                                   data-schedule-id={schedule.id}
+                                  className="w-full"
                                 >
                                   <ScheduleCard
                                     schedule={schedule}
@@ -480,12 +477,12 @@ export function PlanDetailPage() {
                                     onDelete={handleDeleteSchedule}
                                     onView={setViewingSchedule}
                                   />
-                                </li>
+                                </div>
                               )}
                             </Draggable>
                           ))}
                           {provided.placeholder}
-                        </ul>
+                        </div>
                       </div>
                     )}
                   </Droppable>
@@ -592,6 +589,31 @@ export function PlanDetailPage() {
             setEditingSchedule(null);
           }}
         />
+
+        {/* 여행 비서 챗봇 모달 */}
+        {selectedPlan && (
+          <dialog ref={chatbotModalRef} className="modal modal-bottom sm:modal-middle">
+            <div className="modal-box max-w-4xl h-[80vh] flex flex-col p-0">
+              <div className="sticky top-0 bg-base-100 border-b border-base-200 px-6 py-4 flex items-center justify-between z-10">
+                <h3 className="font-bold text-xl">여행 비서</h3>
+                <button className="btn btn-sm btn-circle btn-ghost" onClick={() => setShowChatbot(false)}>✕</button>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <TravelAssistantChat
+                  planId={selectedPlan.id}
+                  planTitle={selectedPlan.title}
+                  planRegion={selectedPlan.region}
+                  planStartDate={selectedPlan.start_date}
+                  planEndDate={selectedPlan.end_date}
+                  schedules={schedules}
+                />
+              </div>
+            </div>
+            <form method="dialog" className="modal-backdrop">
+              <button onClick={() => setShowChatbot(false)}>close</button>
+            </form>
+          </dialog>
+        )}
       </main>
     </div>
   );

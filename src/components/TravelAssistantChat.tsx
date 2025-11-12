@@ -141,9 +141,8 @@ export function TravelAssistantChat({
   };
 
   return (
-    <div className="card bg-base-100 shadow-xl h-full flex flex-col">
-      <div className="card-body flex-grow overflow-y-auto">
-        <h3 className="card-title">여행 비서 챗봇</h3>
+    <div className="h-full flex flex-col">
+      <div className="flex-grow overflow-y-auto p-6">
         <div className="flex flex-col space-y-4">
           {messages.length === 0 && (
             <div className="chat chat-start">
@@ -178,7 +177,7 @@ export function TravelAssistantChat({
           <div ref={messagesEndRef} />
         </div>
       </div>
-      <div className="card-actions justify-end p-4 border-t border-base-200 flex items-center gap-2">
+      <div className="sticky bottom-0 bg-base-100 p-4 border-t border-base-200 flex items-center gap-2">
         {browserSupportsSpeechRecognition && (
           <Button
             onClick={isListening ? stopListening : startListening}
