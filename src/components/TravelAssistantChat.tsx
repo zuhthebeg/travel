@@ -30,6 +30,10 @@ export function TravelAssistantChat({
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [ttsEnabled, setTtsEnabled] = useState(() => {
+    const saved = localStorage.getItem('tts_enabled');
+    return saved !== null ? saved === 'true' : true;
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -47,10 +51,22 @@ export function TravelAssistantChat({
     }
   }, [transcript]);
 
-  // Auto-focus input when component mounts
+  // Auto-focus input and prepare TTS when component mounts
   useEffect(() => {
     inputRef.current?.focus();
+
+    // Initialize TTS
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      // Load voices
+      window.speechSynthesis.getVoices();
+    }
   }, []);
+
+  // Save TTS preference to localStorage
+  useEffect(() => {
+    localStorage.setItem('tts_enabled', ttsEnabled.toString());
+  }, [ttsEnabled]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -87,6 +103,11 @@ export function TravelAssistantChat({
   const handleSendMessage = async () => {
     if (input.trim() === '') return;
 
+    // Stop STT if listening
+    if (isListening) {
+      stopListening();
+    }
+
     const userMessage: Message = { role: 'user', content: input };
     setMessages((prevMessages) => [...prevMessages, userMessage]);
     setInput('');
@@ -103,7 +124,7 @@ export function TravelAssistantChat({
   All responses should be in Korean.`;
 
     try {
-      const response = await fetch('/api/assistant', {
+      const response = await fetch(`${window.location.origin}/api/assistant`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -127,8 +148,15 @@ export function TravelAssistantChat({
       const assistantMessage: Message = { role: 'assistant', content: data.reply || data.response || '응답을 받지 못했습니다.' };
       setMessages((prevMessages) => [...prevMessages, assistantMessage]);
 
-      // Automatically speak the assistant's response
-      speak(assistantMessage.content);
+      // Stop STT again in case it was restarted
+      if (isListening) {
+        stopListening();
+      }
+
+      // Automatically speak the assistant's response if TTS is enabled
+      if (ttsEnabled) {
+        speak(assistantMessage.content);
+      }
     } catch (error) {
       console.error('Error sending message to assistant:', error);
       setMessages((prevMessages) => [
@@ -201,6 +229,22 @@ export function TravelAssistantChat({
             </svg>
           </Button>
         )}
+        <Button
+          onClick={() => setTtsEnabled(!ttsEnabled)}
+          variant={ttsEnabled ? 'primary' : 'ghost'}
+          className="btn-circle"
+          title={ttsEnabled ? 'TTS 끄기' : 'TTS 켜기'}
+        >
+          {ttsEnabled ? (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+            </svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9.75L19.5 12m0 0l2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+            </svg>
+          )}
+        </Button>
         <input
           ref={inputRef}
           type="text"
