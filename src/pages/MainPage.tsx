@@ -36,11 +36,14 @@ export function MainPage() {
       <header className="bg-base-100 shadow-sm">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">여행 계획 웹앱</h1>
-              <p className="mt-1 text-sm text-base-content/70">
-                여행을 계획하고 공유하세요
-              </p>
+            <div className="flex items-center gap-3">
+              <img src="/favicon-512x512.png" alt="Travly Logo" className="w-12 h-12 sm:w-14 sm:h-14" />
+              <div>
+                <h1 className="text-3xl font-bold">Travly</h1>
+                <p className="mt-1 text-sm text-base-content/70">
+                  Planning, Sharing, with AI Travel Assistant.
+                </p>
+              </div>
             </div>
             <div className="flex gap-3">
               <Button variant="ghost" onClick={() => navigate('/my')}>

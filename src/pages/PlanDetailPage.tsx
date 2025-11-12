@@ -67,6 +67,7 @@ export function PlanDetailPage() {
   const [editingPlan, setEditingPlan] = useState(false);
   const [showChatbot, setShowChatbot] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('horizontal');
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; city?: string } | null>(null);
   const viewModalRef = useRef<HTMLDialogElement>(null);
   const editModalRef = useRef<HTMLDialogElement>(null);
   const planEditModalRef = useRef<HTMLDialogElement>(null);
@@ -77,6 +78,32 @@ export function PlanDetailPage() {
 
   useEffect(() => {
     requestPermission(); // Request notification permission on component mount
+
+    // Get user location for weather
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+
+          // Try to get city name using reverse geocoding
+          try {
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=ko`
+            );
+            const data = await response.json();
+            const city = data.address?.city || data.address?.town || data.address?.county || data.address?.state;
+
+            setUserLocation({ lat: latitude, lng: longitude, city });
+          } catch (error) {
+            console.error('Failed to get city name:', error);
+            setUserLocation({ lat: latitude, lng: longitude });
+          }
+        },
+        (error) => {
+          console.error('Failed to get user location:', error);
+        }
+      );
+    }
   }, []);
 
   // Removed textToScheduleInput and isTextToScheduleLoading as functionality moved to modal
@@ -374,18 +401,18 @@ export function PlanDetailPage() {
               </div>
               <div className="flex items-center gap-2 text-[11px] sm:text-xs text-base-content/70 flex-wrap">
                 {selectedPlan.region && (
-                  <>
-                    <span className="whitespace-nowrap">📍 {selectedPlan.region}</span>
-                    <a
-                      href={`https://www.google.com/search?q=weather+${encodeURIComponent(selectedPlan.region)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="whitespace-nowrap hover:text-primary transition-colors"
-                      title={`${selectedPlan.region} 날씨 보기`}
-                    >
-                      🌤️ 날씨
-                    </a>
-                  </>
+                  <span className="whitespace-nowrap">📍 {selectedPlan.region}</span>
+                )}
+                {(userLocation?.city || selectedPlan.region) && (
+                  <a
+                    href={`https://www.google.com/search?q=weather+${encodeURIComponent(userLocation?.city || selectedPlan.region || '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="whitespace-nowrap hover:text-primary transition-colors"
+                    title={`${userLocation?.city ? `${userLocation.city} (현재 위치)` : selectedPlan.region} 날씨 보기`}
+                  >
+                    🌤️ {userLocation?.city ? '현재 날씨' : '날씨'}
+                  </a>
                 )}
                 <span className="whitespace-nowrap">📅 {formatDateRange(selectedPlan.start_date, selectedPlan.end_date)}</span>
                 <span className="font-medium whitespace-nowrap">{days}일</span>

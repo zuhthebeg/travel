@@ -8,6 +8,21 @@ interface ScheduleCardProps {
   onView: (schedule: Schedule) => void;
 }
 
+// Helper function to get time period icon and color
+function getTimePeriod(time: string): { icon: string; color: string; bgColor: string } {
+  const [hours] = time.split(':').map(Number);
+
+  if (hours >= 0 && hours < 6) {
+    return { icon: '🌙', color: 'badge-secondary', bgColor: 'bg-secondary' }; // Dawn/Night
+  } else if (hours >= 6 && hours < 12) {
+    return { icon: '🌅', color: 'badge-warning', bgColor: 'bg-warning' }; // Morning
+  } else if (hours >= 12 && hours < 18) {
+    return { icon: '☀️', color: 'badge-accent', bgColor: 'bg-accent' }; // Afternoon
+  } else {
+    return { icon: '🌆', color: 'badge-info', bgColor: 'bg-info' }; // Evening
+  }
+}
+
 // Helper function to determine schedule status
 function getScheduleStatus(schedule: Schedule): 'upcoming' | 'current' | 'past' | 'normal' {
   if (!schedule.time) return 'normal'; // No time set, can't determine status
@@ -39,7 +54,7 @@ function getStatusStyles(status: string): string {
     case 'upcoming':
       return 'bg-info/20 border-2 border-info';
     case 'past':
-      return 'bg-success/10 border-2 border-success/30';
+      return 'bg-base-100 border-2 border-base-300 opacity-60';
     default:
       return 'bg-base-100';
   }
@@ -48,18 +63,22 @@ function getStatusStyles(status: string): string {
 export function ScheduleCard({ schedule, onView }: ScheduleCardProps) {
   const status = getScheduleStatus(schedule);
   const statusStyles = getStatusStyles(status);
+  const timePeriod = schedule.time ? getTimePeriod(schedule.time) : null;
 
   return (
     <div
-      className={`card shadow-xl hover:shadow-2xl transition-all cursor-pointer ${statusStyles}`}
+      className={`card shadow-xl hover:shadow-2xl transition-all cursor-pointer ${statusStyles} ${status === 'past' ? 'grayscale-[30%]' : ''}`}
       onClick={() => onView(schedule)}
     >
       <div className="card-body">
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
-              {schedule.time && (
-                <div className="badge badge-primary badge-lg font-mono">{schedule.time}</div>
+              {schedule.time && timePeriod && (
+                <div className={`badge ${timePeriod.color} badge-lg font-mono gap-1`}>
+                  <span>{timePeriod.icon}</span>
+                  <span>{schedule.time}</span>
+                </div>
               )}
               <div className="text-sm text-base-content/70">
                 {formatDisplayDate(schedule.date)}
