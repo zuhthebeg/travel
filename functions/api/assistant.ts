@@ -64,20 +64,18 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     parts: msg.parts,
   }));
 
+  // Always include system prompt at the beginning for context
   const contents = [
+    {
+      role: 'user',
+      parts: [{ text: systemPromptToUse }],
+    },
     ...convertedHistory,
     {
       role: 'user',
       parts: [{ text: message }],
     },
   ];
-
-  if (history.length === 0) {
-    contents.unshift({
-      role: 'user',
-      parts: [{ text: systemPromptToUse }],
-    });
-  }
 
   try {
     const reply = await callGemini(apiKey, contents, {
