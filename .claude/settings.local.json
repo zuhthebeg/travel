@@ -35,7 +35,8 @@
       "Bash(timeout 10 bash:*)",
       "Bash(wrangler pages secret put:*)",
       "Bash(echo:*)",
-      "Bash(.github/workflows/deploy.yml)"
+      "Bash(.github/workflows/deploy.yml)",
+      "Bash(wrangler whoami:*)"
     ],
     "deny": [],
     "ask": []
