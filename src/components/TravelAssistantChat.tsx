@@ -127,17 +127,28 @@ export function TravelAssistantChat({
     }
   };
 
-  const handleSendMessage = async () => {
-    if (input.trim() === '') return;
+  const handleSendMessage = async (retryCount = 0, lastUserMessage?: string) => {
+    const messageToSend = retryCount === 0 ? input : lastUserMessage;
+
+    if (!messageToSend || (messageToSend.trim() === '' && retryCount === 0)) return;
 
     // Stop STT if listening
     if (isListening) {
       stopListening();
     }
 
-    const userMessage: Message = { role: 'user', content: input };
-    setMessages((prevMessages) => [...prevMessages, userMessage]);
-    setInput('');
+    // Focus back to input after sending
+    if (retryCount === 0) {
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+
+    const userMessage: Message = { role: 'user', content: messageToSend };
+
+    if (retryCount === 0) {
+      setMessages((prevMessages) => [...prevMessages, userMessage]);
+      setInput('');
+    }
+
     setIsLoading(true);
 
     // Get current time and format it
@@ -187,7 +198,7 @@ export function TravelAssistantChat({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: userMessage.content,
+          message: messageToSend,
           history: messages.map(msg => ({ role: msg.role, parts: [{ text: msg.content }] })),
           planId,
           planTitle,
@@ -218,9 +229,18 @@ export function TravelAssistantChat({
       }
     } catch (error) {
       console.error('Error sending message to assistant:', error);
+
+      // Retry up to 3 times
+      if (retryCount < 3) {
+        console.log(`Retrying... Attempt ${retryCount + 1}/3`);
+        setIsLoading(false);
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+        return handleSendMessage(retryCount + 1, messageToSend);
+      }
+
       setMessages((prevMessages) => [
         ...prevMessages,
-        { role: 'assistant', content: '죄송합니다. 메시지를 처리하는 데 문제가 발생했습니다.' },
+        { role: 'assistant', content: '죄송합니다. 메시지를 처리하는 데 문제가 발생했습니다. (3회 재시도 실패)' },
       ]);
     } finally {
       setIsLoading(false);
@@ -308,13 +328,23 @@ export function TravelAssistantChat({
           ref={inputRef}
           type="text"
           value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+          onChange={(e) => {
+            setInput(e.target.value);
+            // Stop TTS when user starts typing
+            if (isSpeaking) {
+              stopSpeaking();
+            }
+          }}
+          onKeyPress={(e) => {
+            if (e.key === 'Enter') {
+              handleSendMessage();
+            }
+          }}
           placeholder="메시지를 입력하세요..."
           className="input input-bordered w-full"
           disabled={isLoading || isListening} // Disable input while listening
         />
-        <Button onClick={handleSendMessage} disabled={isLoading || isListening} variant="primary">
+        <Button onClick={() => handleSendMessage()} disabled={isLoading || isListening} variant="primary">
           전송
         </Button>
       </div>
