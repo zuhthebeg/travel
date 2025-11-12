@@ -7,6 +7,7 @@ interface TravelProgressBarProps {
 
 export function TravelProgressBar({ startDate, endDate }: TravelProgressBarProps) {
   const [progress, setProgress] = useState(0);
+  const [isSleepingTime, setIsSleepingTime] = useState(false);
 
   useEffect(() => {
     const calculateProgress = () => {
@@ -20,6 +21,10 @@ export function TravelProgressBar({ startDate, endDate }: TravelProgressBarProps
 
       const totalDuration = end.getTime() - start.getTime();
       const elapsed = now.getTime() - start.getTime();
+
+      // Check if current time is sleeping time (00:00 - 06:00)
+      const currentHour = now.getHours();
+      setIsSleepingTime(currentHour >= 0 && currentHour < 6);
 
       if (elapsed < 0) {
         // Trip hasn't started yet
@@ -51,12 +56,12 @@ export function TravelProgressBar({ startDate, endDate }: TravelProgressBarProps
   };
 
   return (
-    <div className="mt-8 mb-4">
+    <div>
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-lg font-bold">여행 진행도</h3>
+        <h3 className="text-base font-bold">여행 진행도</h3>
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">{getStatusText()}</span>
-          <span className="text-sm text-base-content/70">{progress.toFixed(1)}%</span>
+          <span className="text-xs font-medium">{getStatusText()}</span>
+          <span className="text-xs text-base-content/70">{progress.toFixed(1)}%</span>
         </div>
       </div>
 
@@ -73,15 +78,21 @@ export function TravelProgressBar({ startDate, endDate }: TravelProgressBarProps
           </div>
         </div>
 
-        {/* Running character animation */}
+        {/* Running/Resting character animation */}
         {progress > 0 && progress < 100 && (
           <div
             className="absolute -top-8 transform -translate-x-1/2 transition-all duration-1000 ease-out"
             style={{ left: `${Math.min(progress, 100)}%` }}
           >
-            <div className="text-4xl animate-run">
-              🏃‍♂️
-            </div>
+            {isSleepingTime ? (
+              <div className="text-4xl animate-sleep">
+                😴
+              </div>
+            ) : (
+              <div className="text-4xl animate-run">
+                🏃‍♂️
+              </div>
+            )}
           </div>
         )}
 
@@ -105,7 +116,7 @@ export function TravelProgressBar({ startDate, endDate }: TravelProgressBarProps
       </div>
 
       {/* Date labels */}
-      <div className="flex justify-between mt-2 text-xs text-base-content/70">
+      <div className="flex justify-between mt-1 text-[10px] text-base-content/70">
         <span>{startDate}</span>
         <span>{endDate}</span>
       </div>
@@ -122,10 +133,19 @@ export function TravelProgressBar({ startDate, endDate }: TravelProgressBarProps
 
         @keyframes run {
           0%, 100% {
-            transform: translateY(0) rotate(-5deg);
+            transform: translateY(0) rotate(-5deg) scaleX(-1);
           }
           50% {
-            transform: translateY(-4px) rotate(5deg);
+            transform: translateY(-4px) rotate(5deg) scaleX(-1);
+          }
+        }
+
+        @keyframes sleep {
+          0%, 100% {
+            transform: translateY(0) rotate(-10deg);
+          }
+          50% {
+            transform: translateY(-2px) rotate(10deg);
           }
         }
 
@@ -135,6 +155,10 @@ export function TravelProgressBar({ startDate, endDate }: TravelProgressBarProps
 
         .animate-run {
           animation: run 0.4s infinite;
+        }
+
+        .animate-sleep {
+          animation: sleep 1.5s ease-in-out infinite;
         }
       `}</style>
     </div>

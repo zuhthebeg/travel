@@ -38,7 +38,8 @@
       "Bash(.github/workflows/deploy.yml)",
       "Bash(wrangler whoami:*)",
       "Bash(gh auth:*)",
-      "Bash(npm run pages:deploy:*)"
+      "Bash(npm run pages:deploy:*)",
+      "Bash(gh run list:*)"
     ],
     "deny": [],
     "ask": []

@@ -398,7 +398,7 @@ export function PlanDetailPage() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 pb-32">
 
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold">일정</h2>
@@ -492,14 +492,6 @@ export function PlanDetailPage() {
             </div>
           )}
         </DragDropContext>
-
-        {/* Travel Progress Bar */}
-        {schedules.length > 0 && (
-          <TravelProgressBar
-            startDate={selectedPlan.start_date}
-            endDate={selectedPlan.end_date}
-          />
-        )}
 
         {/* 일정 상세보기 모달 */}
         {viewingSchedule && (
@@ -624,6 +616,18 @@ export function PlanDetailPage() {
           </dialog>
         )}
       </main>
+
+      {/* Floating Travel Progress Bar */}
+      {schedules.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-base-100 shadow-lg border-t border-base-200 z-20 px-4 py-3">
+          <div className="container mx-auto">
+            <TravelProgressBar
+              startDate={selectedPlan.start_date}
+              endDate={selectedPlan.end_date}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
