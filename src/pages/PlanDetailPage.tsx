@@ -31,7 +31,52 @@ function sortSchedulesByDateTime(schedules: Schedule[]): Schedule[] {
   });
 }
 
-// Helper function to convert URLs in text to clickable links
+// Helper function to detect and linkify flight numbers
+function linkifyFlightNumbers(text: string): (string | JSX.Element)[] {
+  // Pattern: 2-3 uppercase letters followed by 1-4 digits
+  // Matches: KE123, OZ456, AA1234, CAL161, etc.
+  const flightPattern = /\b([A-Z]{2,3})(\d{1,4})\b/g;
+
+  const parts: (string | JSX.Element)[] = [];
+  let lastIndex = 0;
+  let match;
+  let keyCounter = 0;
+
+  while ((match = flightPattern.exec(text)) !== null) {
+    const flightCode = match[0]; // Full match (e.g., "KE123")
+    const matchIndex = match.index;
+
+    // Add text before the match
+    if (matchIndex > lastIndex) {
+      parts.push(text.substring(lastIndex, matchIndex));
+    }
+
+    // Add flight number as a clickable link
+    parts.push(
+      <a
+        key={`flight-${keyCounter++}`}
+        href={`https://ko.flightaware.com/live/flight/${flightCode}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="link link-primary font-semibold inline-flex items-center gap-1 hover:gap-2 transition-all"
+        title={`${flightCode} 항공편 정보 보기`}
+      >
+        ✈️ {flightCode}
+      </a>
+    );
+
+    lastIndex = matchIndex + flightCode.length;
+  }
+
+  // Add remaining text
+  if (lastIndex < text.length) {
+    parts.push(text.substring(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : [text];
+}
+
+// Helper function to convert URLs and flight numbers in text to clickable links
 function linkifyText(text: string) {
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const parts = text.split(urlRegex);
@@ -40,7 +85,7 @@ function linkifyText(text: string) {
     if (part.match(urlRegex)) {
       return (
         <a
-          key={index}
+          key={`url-${index}`}
           href={part}
           target="_blank"
           rel="noopener noreferrer"
@@ -50,7 +95,8 @@ function linkifyText(text: string) {
         </a>
       );
     }
-    return part;
+    // Also linkify flight numbers in non-URL parts
+    return <span key={`text-${index}`}>{linkifyFlightNumbers(part)}</span>;
   });
 }
 
@@ -1109,7 +1155,7 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
           <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" onClick={onClose}>✕</button>
         </form>
 
-        <h3 className="font-bold text-2xl mb-6">{schedule.title}</h3>
+        <h3 className="font-bold text-2xl mb-6">{linkifyFlightNumbers(schedule.title as string)}</h3>
 
         <div className="space-y-4">
           <div className="flex items-center gap-4">
@@ -1123,17 +1169,21 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
               <span className="text-2xl">📍</span>
               <div className="flex-1">
                 <div className="font-semibold text-sm text-base-content/70 mb-1">장소</div>
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(schedule.place)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-lg link link-primary hover:link-hover flex items-center gap-2"
-                >
-                  {schedule.place}
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                  </svg>
-                </a>
+                <div className="text-lg flex items-center gap-2 flex-wrap">
+                  {linkifyFlightNumbers(schedule.place as string)}
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(schedule.place)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="link link-secondary hover:link-hover inline-flex items-center gap-1"
+                    title="지도에서 보기"
+                  >
+                    🗺️
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                    </svg>
+                  </a>
+                </div>
               </div>
             </div>
           )}

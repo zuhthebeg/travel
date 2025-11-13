@@ -8,6 +8,52 @@ interface ScheduleCardProps {
   onView: (schedule: Schedule) => void;
 }
 
+// Helper function to detect and linkify flight numbers
+function linkifyFlightNumbers(text: string) {
+  // Pattern: 2-3 uppercase letters followed by 1-4 digits
+  // Matches: KE123, OZ456, AA1234, CAL161, etc.
+  const flightPattern = /\b([A-Z]{2,3})(\d{1,4})\b/g;
+
+  const parts: (string | JSX.Element)[] = [];
+  let lastIndex = 0;
+  let match;
+  let keyCounter = 0;
+
+  while ((match = flightPattern.exec(text)) !== null) {
+    const flightCode = match[0]; // Full match (e.g., "KE123")
+    const matchIndex = match.index;
+
+    // Add text before the match
+    if (matchIndex > lastIndex) {
+      parts.push(text.substring(lastIndex, matchIndex));
+    }
+
+    // Add flight number as a clickable link
+    parts.push(
+      <a
+        key={`flight-${keyCounter++}`}
+        href={`https://ko.flightaware.com/live/flight/${flightCode}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="link link-primary font-semibold inline-flex items-center gap-1 hover:gap-2 transition-all"
+        onClick={(e) => e.stopPropagation()} // Prevent card click
+        title={`${flightCode} 항공편 정보 보기`}
+      >
+        ✈️ {flightCode}
+      </a>
+    );
+
+    lastIndex = matchIndex + flightCode.length;
+  }
+
+  // Add remaining text
+  if (lastIndex < text.length) {
+    parts.push(text.substring(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : text;
+}
+
 // Helper function to get time period icon and color
 function getTimePeriod(time: string): { icon: string; color: string; bgColor: string } {
   const [hours] = time.split(':').map(Number);
@@ -85,7 +131,7 @@ export function ScheduleCard({ schedule, onView }: ScheduleCardProps) {
               </div>
             </div>
             <h3 className="card-title text-xl">
-              {(schedule.title as string) || ''}
+              {schedule.title ? linkifyFlightNumbers(schedule.title as string) : ''}
             </h3>
           </div>
           {/* 삭제 버튼 제거 - 상세보기에서만 삭제 가능 */}
@@ -95,15 +141,15 @@ export function ScheduleCard({ schedule, onView }: ScheduleCardProps) {
           <p className="text-sm text-base-content/80 mb-2 flex items-center gap-1">
             <span className="text-lg">📍</span>
             <span className="font-medium">
-              {(schedule.place as string) || ''}
+              {linkifyFlightNumbers(schedule.place as string)}
             </span>
           </p>
         )}
 
         {schedule.memo && (
-          <p className="text-sm text-base-content/90 mb-3 whitespace-pre-wrap bg-base-200 p-3 rounded-lg">
-            {schedule.memo}
-          </p>
+          <div className="text-sm text-base-content/90 mb-3 whitespace-pre-wrap bg-base-200 p-3 rounded-lg">
+            {linkifyFlightNumbers(schedule.memo)}
+          </div>
         )}
 
         {schedule.rating && schedule.rating > 0 && (
