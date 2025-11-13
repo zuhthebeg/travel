@@ -10,6 +10,7 @@ import { Loading } from '../components/Loading';
 // import { Map } from '../components/Map'; // 지도 기능 임시 비활성화
 import { TravelAssistantChat } from '../components/TravelAssistantChat'; // Import the new component
 import { TravelProgressBar } from '../components/TravelProgressBar';
+import ReviewSection from '../components/ReviewSection'; // Import ReviewSection
 import type { Schedule, Plan, Comment } from '../store/types';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import useBrowserNotifications from '../hooks/useBrowserNotifications'; // Import the new hook
@@ -1348,6 +1349,10 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
               </div>
             )}
           </div>
+
+          {/* Reviews Section with Photos */}
+          <div className="divider">사진 리뷰</div>
+          <ReviewSection scheduleId={schedule.id} />
         </div>
 
         <div className="modal-action">

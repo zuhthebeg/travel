@@ -41,3 +41,18 @@ export interface Comment {
   content: string;
   created_at: string;
 }
+
+export interface Review {
+  id: number;
+  schedule_id: number;
+  author_name: string;
+  rating: number; // 1-5
+  review_text: string | null;
+  image_data: string; // Base64 encoded WebP image
+  created_at: string;
+}
+
+export interface ReviewStats {
+  totalReviews: number;
+  averageRating: number;
+}

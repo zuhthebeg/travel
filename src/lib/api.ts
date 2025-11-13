@@ -1,4 +1,4 @@
-import type { Plan, Schedule } from '../store/types';
+import type { Plan, Schedule, Review, ReviewStats } from '../store/types';
 
 // API 베이스 URL (개발/프로덕션 환경에 따라 자동 설정)
 const API_BASE_URL = import.meta.env.DEV ? 'http://127.0.0.1:9999' : '';
@@ -171,5 +171,47 @@ export const schedulesAPI = {
       body: JSON.stringify(data),
     });
     return result;
+  },
+};
+
+// Reviews API
+export const reviewsAPI = {
+  // 리뷰 목록 조회 (평균 평점 포함)
+  getByScheduleId: async (scheduleId: number) => {
+    const result = await apiRequest<{ reviews: Review[]; stats: ReviewStats }>(
+      `/api/schedules/${scheduleId}/reviews`
+    );
+    return result;
+  },
+
+  // 리뷰 생성
+  create: async (data: {
+    scheduleId: number;
+    author_name?: string;
+    rating: number;
+    review_text?: string;
+    image_data: string;
+  }) => {
+    const result = await apiRequest<{ review: Review }>(
+      `/api/schedules/${data.scheduleId}/reviews`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          schedule_id: data.scheduleId,
+          author_name: data.author_name,
+          rating: data.rating,
+          review_text: data.review_text,
+          image_data: data.image_data,
+        }),
+      }
+    );
+    return result.review;
+  },
+
+  // 리뷰 삭제
+  delete: async (id: number) => {
+    return apiRequest<void>(`/api/reviews/${id}`, {
+      method: 'DELETE',
+    });
   },
 };

@@ -66,6 +66,16 @@ export interface Comment {
   created_at: string;
 }
 
+export interface Review {
+  id: number;
+  schedule_id: number;
+  author_name: string;
+  rating: number; // 1-5
+  review_text: string | null;
+  image_data: string; // Base64 encoded WebP image
+  created_at: string;
+}
+
 // API 요청/응답 타입
 export interface CreatePlanRequest {
   user_id: number;
@@ -115,6 +125,14 @@ export interface CreateCommentRequest {
   schedule_id: number;
   author_name?: string; // Optional, defaults to '익명'
   content: string;
+}
+
+export interface CreateReviewRequest {
+  schedule_id: number;
+  author_name?: string; // Optional, defaults to '익명'
+  rating: number; // 1-5, required
+  review_text?: string; // Optional review text
+  image_data: string; // Base64 encoded image, required
 }
 
 // API 응답 헬퍼
