@@ -17,7 +17,7 @@ export const onRequestOptions: PagesFunction = async () => {
 };
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
-  const { text, planId, userLang, destLang, planTitle, planRegion, planStartDate, planEndDate } = await context.request.json<{
+  const { text, planId, userLang, destLang, planTitle, planRegion, planStartDate, planEndDate, userLocation } = await context.request.json<{
     text: string;
     planId: number;
     userLang: string;
@@ -26,6 +26,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     planRegion: string;
     planStartDate: string;
     planEndDate: string;
+    userLocation?: { lat: number; lng: number; city?: string };
   }>();
 
   if (!text || !planId || !userLang || !destLang || !planTitle || !planRegion || !planStartDate || !planEndDate) {
@@ -50,6 +51,12 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   }
 
   try {
+    // Get current time in Korea timezone
+    const now = new Date();
+    const koreaTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+    const currentDate = koreaTime.toISOString().split('T')[0]; // YYYY-MM-DD
+    const currentTime = koreaTime.toTimeString().slice(0, 5); // HH:MM
+
     const schedule = await textToSchedule(apiKey, text, {
       userLang,
       destLang,
@@ -57,6 +64,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       planRegion,
       planStartDate,
       planEndDate,
+      currentDate,
+      currentTime,
+      userLocation,
     });
 
     // Here you would typically save the schedule to your database

@@ -153,4 +153,23 @@ export const schedulesAPI = {
       method: 'DELETE',
     });
   },
+
+  // 텍스트로 일정 생성 (AI 파싱)
+  fromText: async (data: {
+    text: string;
+    planId: number;
+    userLang: string;
+    destLang: string;
+    planTitle: string;
+    planRegion: string;
+    planStartDate: string;
+    planEndDate: string;
+    userLocation?: { lat: number; lng: number; city?: string };
+  }) => {
+    const result = await apiRequest<Schedule>('/api/schedules/from-text', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return result;
+  },
 };
