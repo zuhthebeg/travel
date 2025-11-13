@@ -50,12 +50,14 @@ interface SpeechRecognitionHook {
   startListening: () => void;
   stopListening: () => void;
   browserSupportsSpeechRecognition: boolean;
+  setLanguage: (lang: string) => void;
 }
 
-const useSpeechRecognition = (): SpeechRecognitionHook => {
+const useSpeechRecognition = (initialLang: string = 'ko-KR'): SpeechRecognitionHook => {
   const [transcript, setTranscript] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState('');
+  const [language, setLanguage] = useState(initialLang);
 
   const recognitionRef = useRef<LocalSpeechRecognition | null>(null);
 
@@ -71,7 +73,7 @@ const useSpeechRecognition = (): SpeechRecognitionHook => {
     const recognition: LocalSpeechRecognition = new SpeechRecognition();
     recognition.continuous = false; // Listen for a single utterance
     recognition.interimResults = true; // Get interim results as they come
-    recognition.lang = 'ko-KR'; // Set language to Korean
+    recognition.lang = language; // Set language dynamically
 
     // Event handler for when recognition starts
     recognition.onstart = () => {
@@ -120,7 +122,7 @@ const useSpeechRecognition = (): SpeechRecognitionHook => {
         recognitionRef.current.stop();
       }
     };
-  }, []); // Empty dependency array ensures this effect runs only once on mount
+  }, [language]); // Re-initialize when language changes
 
   // Function to start listening
   const startListening = () => {
@@ -144,6 +146,7 @@ const useSpeechRecognition = (): SpeechRecognitionHook => {
     startListening,
     stopListening,
     browserSupportsSpeechRecognition: !!recognitionRef.current, // Indicate if API is supported
+    setLanguage,
   };
 };
 

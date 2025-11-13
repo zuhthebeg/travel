@@ -38,13 +38,34 @@ export function TravelAssistantChat({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Detect browser language and map to supported STT/TTS languages
+  const detectLanguage = () => {
+    const browserLang = navigator.language.toLowerCase();
+
+    // Map browser language to STT/TTS language codes
+    if (browserLang.startsWith('ko')) return { stt: 'ko-KR', tts: 'ko-KR', name: '한국어' };
+    if (browserLang.startsWith('en')) return { stt: 'en-US', tts: 'en-US', name: 'English' };
+    if (browserLang.startsWith('ja')) return { stt: 'ja-JP', tts: 'ja-JP', name: '日本語' };
+    if (browserLang.startsWith('zh-tw') || browserLang.startsWith('zh-hant')) return { stt: 'zh-TW', tts: 'zh-TW', name: '繁體中文' };
+    if (browserLang.startsWith('zh')) return { stt: 'zh-CN', tts: 'zh-CN', name: '简体中文' };
+    if (browserLang.startsWith('es')) return { stt: 'es-ES', tts: 'es-ES', name: 'Español' };
+    if (browserLang.startsWith('fr')) return { stt: 'fr-FR', tts: 'fr-FR', name: 'Français' };
+    if (browserLang.startsWith('de')) return { stt: 'de-DE', tts: 'de-DE', name: 'Deutsch' };
+
+    // Default to Korean
+    return { stt: 'ko-KR', tts: 'ko-KR', name: '한국어' };
+  };
+
+  const [userLanguage] = useState(detectLanguage());
+
   const {
     transcript,
     isListening,
     startListening,
     stopListening,
     browserSupportsSpeechRecognition,
-  } = useSpeechRecognition(); // Use the hook
+    // setLanguage, // Reserved for future use to allow runtime language switching
+  } = useSpeechRecognition(userLanguage.stt); // Use the hook with detected language
 
   useEffect(() => {
     if (transcript) {
@@ -101,20 +122,27 @@ export function TravelAssistantChat({
 
   useEffect(scrollToBottom, [messages]);
 
-  // TTS function
+  // TTS function with language support
   const speak = (text: string) => {
     if ('speechSynthesis' in window) {
       // Stop any ongoing speech
       window.speechSynthesis.cancel();
 
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'ko-KR';
+      utterance.lang = userLanguage.tts;
       utterance.rate = 1.0;
       utterance.pitch = 1.0;
 
       utterance.onstart = () => setIsSpeaking(true);
       utterance.onend = () => setIsSpeaking(false);
       utterance.onerror = () => setIsSpeaking(false);
+
+      // Try to find a voice that matches the language
+      const voices = window.speechSynthesis.getVoices();
+      const matchingVoice = voices.find(voice => voice.lang.startsWith(userLanguage.tts.split('-')[0]));
+      if (matchingVoice) {
+        utterance.voice = matchingVoice;
+      }
 
       window.speechSynthesis.speak(utterance);
     }
@@ -169,8 +197,34 @@ export function TravelAssistantChat({
       ? `\n  Current user location: (${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)})`
       : '';
 
+    // Language-specific response instructions
+    const getLanguageInstructions = () => {
+      const lang = userLanguage.stt.split('-')[0];
+      switch (lang) {
+        case 'ko':
+          return 'All responses should be in Korean (한국어). Use natural, conversational Korean that sounds good when spoken aloud.';
+        case 'en':
+          return 'All responses should be in English. Use natural, conversational English that sounds good when spoken aloud.';
+        case 'ja':
+          return 'All responses should be in Japanese (日本語). Use natural, conversational Japanese that sounds good when spoken aloud.';
+        case 'zh':
+          return userLanguage.stt === 'zh-TW'
+            ? 'All responses should be in Traditional Chinese (繁體中文). Use natural, conversational Chinese that sounds good when spoken aloud.'
+            : 'All responses should be in Simplified Chinese (简体中文). Use natural, conversational Chinese that sounds good when spoken aloud.';
+        case 'es':
+          return 'All responses should be in Spanish (Español). Use natural, conversational Spanish that sounds good when spoken aloud.';
+        case 'fr':
+          return 'All responses should be in French (Français). Use natural, conversational French that sounds good when spoken aloud.';
+        case 'de':
+          return 'All responses should be in German (Deutsch). Use natural, conversational German that sounds good when spoken aloud.';
+        default:
+          return 'All responses should be in Korean (한국어).';
+      }
+    };
+
     const systemPrompt = `You are a friendly and helpful travel assistant. Your goal is to help users plan their trips.
 
+  LANGUAGE: User's preferred language is ${userLanguage.name} (${userLanguage.stt})
   Current time: ${currentTime}${locationInfo}
 
   The current travel plan is for "${planTitle}" in "${planRegion}" from ${planStartDate} to ${planEndDate}.
@@ -189,9 +243,9 @@ export function TravelAssistantChat({
   You can provide information about destinations, suggest activities, and help with scheduling.
   Use the current time, user location, and detailed schedule information (including time, memo, alternatives, ratings, reviews) to provide more relevant and contextual answers.
 
-  IMPORTANT: Keep your answers VERY concise and brief (1-2 sentences maximum). Use simple, natural Korean that sounds good when spoken aloud.
+  IMPORTANT: Keep your answers VERY concise and brief (1-2 sentences maximum). Use simple, natural language that sounds good when spoken aloud.
   Avoid long explanations, lists, or formatting. Focus on the most essential information only.
-  All responses should be in Korean.`;
+  ${getLanguageInstructions()}`;
 
     try {
       const response = await fetch(`${window.location.origin}/api/assistant`, {
