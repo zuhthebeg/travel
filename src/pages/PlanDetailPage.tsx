@@ -618,6 +618,8 @@ export function PlanDetailPage() {
               setSchedules(updatedSchedules);
               setViewingSchedule({ ...viewingSchedule, ...updates });
             }}
+            userLocation={userLocation}
+            planRegion={selectedPlan.region}
           />
         )}
 
@@ -1028,9 +1030,11 @@ interface ScheduleDetailModalProps {
   onEdit: () => void;
   onDelete: (id: number) => void;
   onUpdate: (id: number, updates: Partial<Schedule>) => void;
+  userLocation?: { lat: number; lng: number; city?: string } | null;
+  planRegion?: string | null;
 }
 
-function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, onUpdate }: ScheduleDetailModalProps) {
+function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, onUpdate, userLocation, planRegion }: ScheduleDetailModalProps) {
   const [rating, setRating] = useState<number>(schedule.rating || 0);
   const [review, setReview] = useState<string>(schedule.review || '');
   const [isSaving, setIsSaving] = useState(false);
@@ -1172,7 +1176,15 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
                 <div className="text-lg flex items-center gap-2 flex-wrap">
                   {linkifyFlightNumbers(schedule.place as string)}
                   <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(schedule.place)}`}
+                    href={(() => {
+                      const place = schedule.place as string;
+                      // If place name is short (less than 10 chars) and we have location context, add it
+                      const shouldAddLocation = place.length < 10 && (userLocation?.city || planRegion);
+                      const searchQuery = shouldAddLocation
+                        ? `${place} ${userLocation?.city || planRegion}`
+                        : place;
+                      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`;
+                    })()}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="link link-secondary hover:link-hover inline-flex items-center gap-1"
