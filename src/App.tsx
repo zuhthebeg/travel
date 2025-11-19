@@ -6,7 +6,7 @@ import { CreatePlanPage } from './pages/CreatePlanPage'
 import { PlanDetailPage } from './pages/PlanDetailPage'
 import { AssistantPage } from './pages/AssistantPage'
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '315180918727-3d9rfmpa36r365qna9smdsvrod441jhd.apps.googleusercontent.com';
 
 function App() {
   return (
