@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import { useStore } from '../store/useStore';
-import { plansAPI, authAPI } from '../lib/api';
+import { plansAPI } from '../lib/api';
 import { PlanCard } from '../components/PlanCard';
 import { Button } from '../components/Button';
 import { Loading } from '../components/Loading';
+import GoogleLoginButton from '../components/GoogleLoginButton';
 
 export function MainPage() {
   const navigate = useNavigate();
@@ -31,31 +31,9 @@ export function MainPage() {
     }
   };
 
-  const handleGoogleLogin = async (credentialResponse: CredentialResponse) => {
-    try {
-      if (!credentialResponse.credential) {
-        alert('로그인에 실패했습니다.');
-        return;
-      }
-
-      const user = await authAPI.googleLogin(credentialResponse.credential);
-      setCurrentUser(user);
-
-      // Save user ID to localStorage for backward compatibility
-      localStorage.setItem('temp_user_id', user.id.toString());
-
-      alert(`환영합니다, ${user.username}님!`);
-      navigate('/my');
-    } catch (error) {
-      console.error('Google login failed:', error);
-      alert('로그인에 실패했습니다. 다시 시도해주세요.');
-    }
-  };
-
   const handleLogout = () => {
     setCurrentUser(null);
     localStorage.removeItem('temp_user_id');
-    alert('로그아웃되었습니다.');
   };
 
   return (
@@ -98,18 +76,7 @@ export function MainPage() {
                 </>
               ) : (
                 <>
-                  <div className="scale-90">
-                    <GoogleLogin
-                      onSuccess={handleGoogleLogin}
-                      onError={() => {
-                        console.error('Google Login Failed');
-                        alert('로그인에 실패했습니다.');
-                      }}
-                      text="signin_with"
-                      shape="rectangular"
-                      size="medium"
-                    />
-                  </div>
+                  <GoogleLoginButton />
                   <Button variant="ghost" onClick={() => navigate('/my')}>
                     내 여행
                   </Button>

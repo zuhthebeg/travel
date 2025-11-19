@@ -1,22 +1,29 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import { useStore } from '../store/useStore';
-import { plansAPI, authAPI } from '../lib/api';
+import { plansAPI } from '../lib/api';
 import { getTempUserId } from '../lib/utils';
 import { PlanCard } from '../components/PlanCard';
 import { Button } from '../components/Button';
 import { Loading } from '../components/Loading';
+import LoginModal from '../components/LoginModal';
 
 export function MyPlansPage() {
   const navigate = useNavigate();
   const { plans, setPlans, currentUser, setCurrentUser } = useStore();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   useEffect(() => {
+    // Check if user is logged in
+    if (!currentUser) {
+      setShowLoginModal(true);
+      setIsLoading(false);
+      return;
+    }
     loadMyPlans();
-  }, []);
+  }, [currentUser]);
 
   const loadMyPlans = async () => {
     try {
@@ -33,34 +40,31 @@ export function MyPlansPage() {
     }
   };
 
-  const handleGoogleLogin = async (credentialResponse: CredentialResponse) => {
-    try {
-      if (!credentialResponse.credential) {
-        alert('로그인에 실패했습니다.');
-        return;
-      }
-
-      const user = await authAPI.googleLogin(credentialResponse.credential);
-      setCurrentUser(user);
-      localStorage.setItem('temp_user_id', user.id.toString());
-
-      alert(`환영합니다, ${user.username}님!`);
-      loadMyPlans(); // Reload plans after login
-    } catch (error) {
-      console.error('Google login failed:', error);
-      alert('로그인에 실패했습니다. 다시 시도해주세요.');
-    }
-  };
-
   const handleLogout = () => {
     setCurrentUser(null);
     localStorage.removeItem('temp_user_id');
-    alert('로그아웃되었습니다.');
-    navigate('/');
+    setShowLoginModal(true);
+  };
+
+  const handleLoginSuccess = () => {
+    setShowLoginModal(false);
+    loadMyPlans();
   };
 
   return (
     <div className="min-h-screen bg-base-200">
+      {/* Login Modal */}
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => {
+          setShowLoginModal(false);
+          navigate('/');
+        }}
+        onSuccess={handleLoginSuccess}
+        title="로그인이 필요합니다"
+        message="내 여행을 관리하려면 Google 계정으로 로그인해주세요."
+      />
+
       {/* Header */}
       <header className="bg-base-100 shadow-sm">
         <div className="container mx-auto px-4 py-6">
@@ -96,23 +100,11 @@ export function MyPlansPage() {
                 </>
               ) : (
                 <>
-                  <div className="scale-90">
-                    <GoogleLogin
-                      onSuccess={handleGoogleLogin}
-                      onError={() => {
-                        console.error('Google Login Failed');
-                        alert('로그인에 실패했습니다.');
-                      }}
-                      text="signin_with"
-                      shape="rectangular"
-                      size="medium"
-                    />
-                  </div>
                   <Button variant="ghost" onClick={() => navigate('/')}>
                     홈으로
                   </Button>
-                  <Button variant="primary" onClick={() => navigate('/plan/new')}>
-                    새 여행 만들기
+                  <Button variant="primary" onClick={() => setShowLoginModal(true)}>
+                    로그인
                   </Button>
                 </>
               )}
@@ -123,7 +115,24 @@ export function MyPlansPage() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        {isLoading ? (
+        {!currentUser ? (
+          <div className="card bg-base-100 shadow-xl p-12 text-center">
+            <div className="card-body items-center text-center">
+              <div className="mb-6">
+                <svg className="w-24 h-24 mx-auto text-base-content/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold mb-3">로그인이 필요합니다</h2>
+              <p className="text-base-content/70 mb-6">
+                내 여행을 관리하려면 Google 계정으로 로그인해주세요.
+              </p>
+              <Button variant="primary" onClick={() => setShowLoginModal(true)}>
+                로그인하기
+              </Button>
+            </div>
+          </div>
+        ) : isLoading ? (
           <Loading />
         ) : error ? (
           <div className="alert alert-error">

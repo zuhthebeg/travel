@@ -100,20 +100,28 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   }
 };
 
-// Simple JWT decoder (no signature verification for MVP)
-// In production, verify signature with Google's public keys
+// Decode credential (supports both JWT and base64 JSON)
+// In production, verify JWT signature with Google's public keys
 function decodeJWT(token: string): any {
   try {
     const parts = token.split('.');
-    if (parts.length !== 3) {
-      return null;
+
+    // If it's a JWT (3 parts separated by dots)
+    if (parts.length === 3) {
+      const payload = parts[1];
+      const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+      return JSON.parse(decoded);
     }
 
-    const payload = parts[1];
-    const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
-    return JSON.parse(decoded);
+    // If it's base64 encoded JSON (custom format)
+    try {
+      const decoded = atob(token);
+      return JSON.parse(decoded);
+    } catch {
+      return null;
+    }
   } catch (error) {
-    console.error('JWT decode error:', error);
+    console.error('Credential decode error:', error);
     return null;
   }
 }
