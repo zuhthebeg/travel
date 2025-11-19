@@ -39,7 +39,9 @@
       "Bash(wrangler whoami:*)",
       "Bash(gh auth:*)",
       "Bash(npm run pages:deploy:*)",
-      "Bash(gh run list:*)"
+      "Bash(gh run list:*)",
+      "Bash(wrangler d1 migrations apply:*)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []
