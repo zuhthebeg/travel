@@ -10,7 +10,11 @@ export interface Env {
 export interface User {
   id: number;
   username: string;
-  password: string;
+  password: string | null; // Nullable for Google OAuth users
+  google_id?: string | null;
+  email?: string | null;
+  picture?: string | null;
+  auth_provider?: 'local' | 'google';
   created_at: string;
 }
 
@@ -133,6 +137,10 @@ export interface CreateReviewRequest {
   rating: number; // 1-5, required
   review_text?: string; // Optional review text
   image_data: string; // Base64 encoded image, required
+}
+
+export interface GoogleLoginRequest {
+  credential: string; // Google ID token (JWT)
 }
 
 // API 응답 헬퍼

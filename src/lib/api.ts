@@ -1,4 +1,4 @@
-import type { Plan, Schedule, Review, ReviewStats } from '../store/types';
+import type { Plan, Schedule, Review, ReviewStats, User } from '../store/types';
 
 // API 베이스 URL (개발/프로덕션 환경에 따라 자동 설정)
 const API_BASE_URL = import.meta.env.DEV ? 'http://127.0.0.1:9999' : '';
@@ -213,5 +213,17 @@ export const reviewsAPI = {
     return apiRequest<void>(`/api/reviews/${id}`, {
       method: 'DELETE',
     });
+  },
+};
+
+// Auth API
+export const authAPI = {
+  // Google 로그인
+  googleLogin: async (credential: string) => {
+    const result = await apiRequest<{ user: User }>('/api/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ credential }),
+    });
+    return result.user;
   },
 };

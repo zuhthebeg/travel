@@ -32,6 +32,9 @@ export interface Schedule {
 export interface User {
   id: number;
   username: string;
+  email?: string | null;
+  picture?: string | null;
+  auth_provider?: 'local' | 'google';
 }
 
 export interface Comment {

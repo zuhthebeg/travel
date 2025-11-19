@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import { useStore } from '../store/useStore';
-import { plansAPI } from '../lib/api';
+import { plansAPI, authAPI } from '../lib/api';
 import { PlanCard } from '../components/PlanCard';
 import { Button } from '../components/Button';
 import { Loading } from '../components/Loading';
 
 export function MainPage() {
   const navigate = useNavigate();
-  const { plans, setPlans } = useStore();
+  const { plans, setPlans, currentUser, setCurrentUser } = useStore();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,6 +31,33 @@ export function MainPage() {
     }
   };
 
+  const handleGoogleLogin = async (credentialResponse: CredentialResponse) => {
+    try {
+      if (!credentialResponse.credential) {
+        alert('로그인에 실패했습니다.');
+        return;
+      }
+
+      const user = await authAPI.googleLogin(credentialResponse.credential);
+      setCurrentUser(user);
+
+      // Save user ID to localStorage for backward compatibility
+      localStorage.setItem('temp_user_id', user.id.toString());
+
+      alert(`환영합니다, ${user.username}님!`);
+      navigate('/my');
+    } catch (error) {
+      console.error('Google login failed:', error);
+      alert('로그인에 실패했습니다. 다시 시도해주세요.');
+    }
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('temp_user_id');
+    alert('로그아웃되었습니다.');
+  };
+
   return (
     <div className="min-h-screen bg-base-200">
       {/* Header */}
@@ -45,13 +73,51 @@ export function MainPage() {
                 </p>
               </div>
             </div>
-            <div className="flex gap-3">
-              <Button variant="ghost" onClick={() => navigate('/my')}>
-                내 여행
-              </Button>
-              <Button variant="primary" onClick={() => navigate('/plan/new')}>
-                여행 만들기
-              </Button>
+            <div className="flex gap-3 items-center">
+              {currentUser ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    {currentUser.picture && (
+                      <img
+                        src={currentUser.picture}
+                        alt={currentUser.username}
+                        className="w-8 h-8 rounded-full"
+                      />
+                    )}
+                    <span className="text-sm font-medium">{currentUser.username}</span>
+                  </div>
+                  <Button variant="ghost" onClick={() => navigate('/my')}>
+                    내 여행
+                  </Button>
+                  <Button variant="primary" onClick={() => navigate('/plan/new')}>
+                    여행 만들기
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={handleLogout}>
+                    로그아웃
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <div className="scale-90">
+                    <GoogleLogin
+                      onSuccess={handleGoogleLogin}
+                      onError={() => {
+                        console.error('Google Login Failed');
+                        alert('로그인에 실패했습니다.');
+                      }}
+                      text="signin_with"
+                      shape="rectangular"
+                      size="medium"
+                    />
+                  </div>
+                  <Button variant="ghost" onClick={() => navigate('/my')}>
+                    내 여행
+                  </Button>
+                  <Button variant="primary" onClick={() => navigate('/plan/new')}>
+                    여행 만들기
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>
