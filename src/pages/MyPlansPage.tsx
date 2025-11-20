@@ -96,8 +96,9 @@ export function MyPlansPage() {
                   </div>
 
                   {/* Buttons */}
-                  <Button variant="ghost" size="sm" onClick={() => navigate('/')} className="hidden sm:flex">
-                    홈으로
+                  <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
+                    <span className="hidden sm:inline">홈으로</span>
+                    <span className="sm:hidden">홈</span>
                   </Button>
                   <Button variant="primary" size="sm" onClick={() => navigate('/plan/new')}>
                     <span className="hidden sm:inline">새 여행 만들기</span>
