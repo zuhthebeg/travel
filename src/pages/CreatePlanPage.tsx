@@ -263,10 +263,10 @@ export function CreatePlanPage() {
 
       {/* Header */}
       <header className="bg-base-100 shadow-sm">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold">새 여행 만들기</h1>
-            <Button variant="ghost" onClick={() => navigate(-1)}>
+        <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
+          <div className="flex items-center justify-between gap-2">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold truncate">새 여행 만들기</h1>
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="flex-shrink-0">
               취소
             </Button>
           </div>

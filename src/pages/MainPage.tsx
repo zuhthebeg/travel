@@ -40,48 +40,58 @@ export function MainPage() {
     <div className="min-h-screen bg-base-200">
       {/* Header */}
       <header className="bg-base-100 shadow-sm">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <img src="/favicon-512x512.png" alt="Travly Logo" className="w-12 h-12 sm:w-14 sm:h-14" />
-              <div>
-                <h1 className="text-3xl font-bold">Travly</h1>
-                <p className="mt-1 text-sm text-base-content/70">
+        <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
+          <div className="flex items-center justify-between gap-2">
+            {/* Logo */}
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-shrink">
+              <img src="/favicon-512x512.png" alt="Travly Logo" className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0" />
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Travly</h1>
+                <p className="hidden sm:block mt-1 text-xs md:text-sm text-base-content/70 truncate">
                   Planning, Sharing, with AI Travel Assistant.
                 </p>
               </div>
             </div>
-            <div className="flex gap-3 items-center">
+
+            {/* Actions */}
+            <div className="flex gap-1 sm:gap-2 md:gap-3 items-center flex-shrink-0">
               {currentUser ? (
                 <>
-                  <div className="flex items-center gap-2">
+                  {/* User Profile */}
+                  <div className="flex items-center gap-1 sm:gap-2">
                     {currentUser.picture && (
                       <img
                         src={currentUser.picture}
                         alt={currentUser.username}
-                        className="w-8 h-8 rounded-full"
+                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex-shrink-0"
                       />
                     )}
-                    <span className="text-sm font-medium">{currentUser.username}</span>
+                    <span className="hidden md:inline text-sm font-medium truncate max-w-[100px]">
+                      {currentUser.username}
+                    </span>
                   </div>
-                  <Button variant="ghost" onClick={() => navigate('/my')}>
+
+                  {/* Buttons */}
+                  <Button variant="ghost" size="sm" onClick={() => navigate('/my')} className="hidden sm:flex">
                     내 여행
                   </Button>
-                  <Button variant="primary" onClick={() => navigate('/plan/new')}>
-                    여행 만들기
+                  <Button variant="primary" size="sm" onClick={() => navigate('/plan/new')}>
+                    <span className="hidden sm:inline">여행 만들기</span>
+                    <span className="sm:hidden">+</span>
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={handleLogout}>
+                  <Button variant="ghost" size="sm" onClick={handleLogout} className="hidden md:flex">
                     로그아웃
                   </Button>
                 </>
               ) : (
                 <>
                   <GoogleLoginButton />
-                  <Button variant="ghost" onClick={() => navigate('/my')}>
+                  <Button variant="ghost" size="sm" onClick={() => navigate('/my')} className="hidden sm:flex">
                     내 여행
                   </Button>
-                  <Button variant="primary" onClick={() => navigate('/plan/new')}>
-                    여행 만들기
+                  <Button variant="primary" size="sm" onClick={() => navigate('/plan/new')}>
+                    <span className="hidden sm:inline">여행 만들기</span>
+                    <span className="sm:hidden">+</span>
                   </Button>
                 </>
               )}

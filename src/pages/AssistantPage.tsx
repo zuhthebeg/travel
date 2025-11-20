@@ -56,8 +56,8 @@ export function AssistantPage() {
     <div className="min-h-screen bg-base-200 flex flex-col h-screen">
       {/* Header */}
       <header className="bg-base-100 shadow-sm">
-        <div className="container mx-auto px-4 py-6">
-          <h1 className="text-3xl font-bold">AI 여행 비서</h1>
+        <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">AI 여행 비서</h1>
         </div>
       </header>
 
