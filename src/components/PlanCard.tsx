@@ -1,19 +1,33 @@
 import { useNavigate } from 'react-router-dom';
 import { Card } from './Card';
+import { Button } from './Button';
 import { formatDateRange, getDaysDifference } from '../lib/utils';
 import type { Plan } from '../store/types';
 
 interface PlanCardProps {
   plan: Plan;
+  showImportButton?: boolean;
+  onImport?: (plan: Plan) => void;
 }
 
-export function PlanCard({ plan }: PlanCardProps) {
+export function PlanCard({ plan, showImportButton = false, onImport }: PlanCardProps) {
   const navigate = useNavigate();
   const days = getDaysDifference(plan.start_date, plan.end_date);
 
+  const handleCardClick = () => {
+    navigate(`/plan/${plan.id}`);
+  };
+
+  const handleImportClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    if (onImport) {
+      onImport(plan);
+    }
+  };
+
   return (
     <Card
-      onClick={() => navigate(`/plan/${plan.id}`)}
+      onClick={handleCardClick}
       className="shadow-xl hover:scale-105 transition-transform"
     >
       {plan.thumbnail && (
@@ -27,9 +41,23 @@ export function PlanCard({ plan }: PlanCardProps) {
           {plan.is_public && <div className="badge badge-secondary">공개</div>}
         </Card.Title>
         {plan.region && <p className="text-base-content/70">📍 {plan.region}</p>}
-        <Card.Actions className="justify-between text-base-content/70">
-          <span>📅 {formatDateRange(plan.start_date, plan.end_date)}</span>
-          <span className="font-medium">{days}일</span>
+        <div className="flex-grow" />
+        <Card.Actions className="justify-between items-center text-base-content/70">
+          <div className="flex flex-col sm:flex-row gap-1 sm:gap-4">
+            <span className="text-xs sm:text-sm">📅 {formatDateRange(plan.start_date, plan.end_date)}</span>
+            <span className="font-medium text-xs sm:text-sm">{days}일</span>
+          </div>
+          {showImportButton && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleImportClick}
+              className="flex-shrink-0"
+            >
+              <span className="hidden sm:inline">내 여행으로</span>
+              <span className="sm:hidden">가져오기</span>
+            </Button>
+          )}
         </Card.Actions>
       </Card.Body>
     </Card>

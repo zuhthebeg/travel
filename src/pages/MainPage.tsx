@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { plansAPI } from '../lib/api';
+import { plansAPI, schedulesAPI } from '../lib/api';
+import { getTempUserId, formatDate } from '../lib/utils';
 import { PlanCard } from '../components/PlanCard';
 import { Button } from '../components/Button';
 import { Loading } from '../components/Loading';
 import GoogleLoginButton from '../components/GoogleLoginButton';
+import type { Plan } from '../store/types';
 
 export function MainPage() {
   const navigate = useNavigate();
   const { plans, setPlans, currentUser, setCurrentUser } = useStore();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
 
   useEffect(() => {
     loadPublicPlans();
@@ -36,8 +39,83 @@ export function MainPage() {
     localStorage.removeItem('temp_user_id');
   };
 
+  const handleImportPlan = async (plan: Plan) => {
+    if (!currentUser) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+
+    if (isImporting) return;
+
+    try {
+      setIsImporting(true);
+
+      // Calculate date offset (7 days from today)
+      const today = new Date();
+      const oneWeekLater = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const originalStartDate = new Date(plan.start_date);
+      const originalEndDate = new Date(plan.end_date);
+      const tripDuration = originalEndDate.getTime() - originalStartDate.getTime();
+
+      const newStartDate = formatDate(oneWeekLater);
+      const newEndDate = formatDate(new Date(oneWeekLater.getTime() + tripDuration));
+
+      // Create new plan
+      const newPlan = await plansAPI.create({
+        title: `${plan.title} (복사본)`,
+        region: plan.region || undefined,
+        start_date: newStartDate,
+        end_date: newEndDate,
+        is_public: false, // Make it private by default
+        thumbnail: plan.thumbnail || '',
+        user_id: getTempUserId(),
+      });
+
+      // Fetch original schedules
+      const originalSchedules = await schedulesAPI.getByPlanId(plan.id);
+
+      // Copy schedules with adjusted dates
+      const dateOffset = oneWeekLater.getTime() - originalStartDate.getTime();
+
+      for (const schedule of originalSchedules) {
+        const originalDate = new Date(schedule.date);
+        const newDate = new Date(originalDate.getTime() + dateOffset);
+
+        await schedulesAPI.create({
+          plan_id: newPlan.id,
+          date: formatDate(newDate),
+          time: schedule.time || undefined,
+          title: schedule.title,
+          place: schedule.place || undefined,
+          memo: schedule.memo || undefined,
+          plan_b: schedule.plan_b || undefined,
+          plan_c: schedule.plan_c || undefined,
+          order_index: schedule.order_index,
+        });
+      }
+
+      alert('여행이 성공적으로 가져와졌습니다!');
+      navigate('/my');
+    } catch (err) {
+      console.error('Failed to import plan:', err);
+      alert('여행을 가져오는데 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-base-200">
+      {/* Loading overlay when importing */}
+      {isImporting && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-base-100 p-8 rounded-lg shadow-xl flex flex-col items-center gap-4">
+            <Loading />
+            <p className="text-lg font-medium">여행을 가져오는 중...</p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-base-100 shadow-sm">
         <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
@@ -137,7 +215,12 @@ export function MainPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {plans.map((plan) => (
-              <PlanCard key={plan.id} plan={plan} />
+              <PlanCard
+                key={plan.id}
+                plan={plan}
+                showImportButton={!!currentUser}
+                onImport={handleImportPlan}
+              />
             ))}
           </div>
         )}
