@@ -1,4 +1,4 @@
-import { callGemini } from './_common';
+import { callOpenAI, type OpenAIMessage } from './_common';
 
 interface Env {
   OPENAI_API_KEY: string;
@@ -26,58 +26,74 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     });
   }
 
-  const contextInfo = `${currentTime ? `\n    Current time: ${currentTime}` : ''}${
-    userLocation?.city
-      ? `\n    User location: ${userLocation.city} (${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)})`
-      : userLocation
-      ? `\n    User location: (${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)})`
-      : ''
-  }`;
+  // Detect input language and set output language accordingly
+  const detectLanguage = (t: string) => {
+    if (/[\uAC00-\uD7AF]/.test(t)) return 'Korean';
+    if (/[\u3040-\u30FF]/.test(t)) return 'Japanese';
+    if (/[\u4E00-\u9FFF]/.test(t)) return 'Chinese';
+    return 'Korean'; // default
+  };
+  const outputLang = detectLanguage(text);
 
-  const prompt = `
-    You are a travel plan parser. Parse the following text and extract the travel plan information.${contextInfo}
+  const contextInfo = `
+Current time: ${currentTime || new Date().toISOString()}
+${userLocation?.city ? `User location: ${userLocation.city}` : ''}`;
 
-    Use the current time and user location to provide more accurate date parsing and regional context.
+  const systemPrompt = `You are a travel plan parser and generator. Your job is to:
+1. Parse user input (can be minimal like "부산 3일" or detailed itinerary)
+2. ALWAYS generate complete schedules with real places and activities
+3. Output ONLY valid JSON, no explanations
 
-    The output should be a valid JSON object with the following format:
+CRITICAL: Even if input is minimal (e.g., "부산 3일여행"), you MUST generate a full travel plan with schedules!
+
+Output format:
+{
+  "title": "Travel Plan Title in ${outputLang}",
+  "region": "Main destination",
+  "start_date": "YYYY-MM-DD",
+  "end_date": "YYYY-MM-DD",
+  "schedules": [
     {
-      "title": "Travel Plan Title",
-      "region": "Travel Region",
-      "start_date": "YYYY-MM-DD",
-      "end_date": "YYYY-MM-DD",
-      "schedules": [
-        {
-          "date": "YYYY-MM-DD",
-          "time": "HH:MM",
-          "title": "Activity Title",
-          "place": "Location",
-          "memo": "Notes",
-          "plan_b": "Alternative plan if weather is bad or place is closed",
-          "plan_c": "Another alternative option"
-        },
-        ...
-      ]
+      "date": "YYYY-MM-DD",
+      "time": "HH:MM",
+      "title": "Activity in ${outputLang}",
+      "place": "Specific real place name in ${outputLang}",
+      "memo": "Tips or notes in ${outputLang}",
+      "plan_b": "Alternative if weather is bad",
+      "plan_c": ""
     }
+  ]
+}
 
-    Important instructions:
-    - Make sure the JSON is well-formed and contains no other text or explanations.
-    - The dates in the schedule should be within the provided start and end dates.
-    - If time is not specified, leave it as an empty string.
-    - If there are notes or additional information, include them in the memo field.
-    - If the text mentions alternative plans (Plan B, 대안, 예비 계획, etc.), extract them to plan_b field.
-    - If there are multiple alternatives, put the second one in plan_c field.
-    - If no alternatives are mentioned, leave plan_b and plan_c as empty strings.
+RULES:
+1. ALL output text must be in ${outputLang}
+2. Generate 3-5 activities per day (morning, lunch, afternoon, dinner, evening)
+3. Use REAL, SPECIFIC place names (famous spots, restaurants, cafes)
+4. If no dates given, start from tomorrow
+5. If only duration given (e.g., "3일"), calculate end date from start
+6. Include diverse activities: sightseeing, food, shopping, culture
+7. Add useful tips in memo field
+8. plan_b should be indoor alternatives for bad weather`;
 
-    Here is the text to parse:
-    ---
-    ${text}
-    ---
-  `;
+  const userPrompt = `Parse and generate a complete travel plan from this input:
+---
+${text}
+---
+
+Context:${contextInfo}
+
+Remember: Even if the input is very simple, generate a COMPLETE travel plan with detailed schedules!`;
+
+  const messages: OpenAIMessage[] = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userPrompt },
+  ];
 
   try {
-    const reply = await callGemini(apiKey, [{ role: 'user', parts: [{ text: prompt }] }], {
-      response_mime_type: 'application/json',
-      temperature: 0.2,
+    const reply = await callOpenAI(apiKey, messages, {
+      temperature: 0.7,
+      maxTokens: 4000,
+      responseFormat: 'json_object',
     });
 
     const parsedPlan = JSON.parse(reply);

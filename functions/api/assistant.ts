@@ -1,4 +1,4 @@
-import { callGemini } from './assistant/_common';
+import { callOpenAI, type OpenAIMessage } from './assistant/_common';
 
 interface Env {
   OPENAI_API_KEY: string;
@@ -17,7 +17,7 @@ export const onRequestOptions: PagesFunction = async () => {
 };
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
-  const { message, history, planId, planTitle, planRegion, planStartDate, planEndDate, schedules, systemPrompt: receivedSystemPrompt } = await context.request.json<{
+  const { message, history, planId, planTitle, planRegion, planStartDate, planEndDate, schedules, userLang } = await context.request.json<{
     message: string;
     history: any[];
     planId: number;
@@ -25,8 +25,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     planRegion: string | null;
     planStartDate: string;
     planEndDate: string;
-    schedules: any[]; // Adjust type as needed
-    systemPrompt: string; // Receive the systemPrompt from frontend
+    schedules: any[];
+    userLang?: string;
   }>();
 
   if (!message) {
@@ -49,38 +49,69 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     });
   }
 
-  // Use the received systemPrompt instead of constructing it here
-  const systemPromptToUse = receivedSystemPrompt || `You are a friendly and helpful travel assistant. Your goal is to help users plan their trips.
-  The current travel plan is for "${planTitle}" in "${planRegion}" from ${planStartDate} to ${planEndDate}.
-  The plan currently has the following schedules:
-  ${(schedules || []).map(s => `- ${s.date}: ${s.title} at ${s.place}`).join('\n')}
-  You can provide information about destinations, suggest activities, and help with scheduling.
-  Keep your answers concise and helpful, always referring to the provided plan context.
-  All responses should be in Korean.`; // Fallback in case frontend doesn't send it
+  // Detect language from message or userLang
+  const detectLanguage = (text: string, langHint?: string) => {
+    if (langHint?.startsWith('ko') || /[\uAC00-\uD7AF]/.test(text)) return 'Korean';
+    if (langHint?.startsWith('ja') || /[\u3040-\u30FF]/.test(text)) return 'Japanese';
+    if (langHint?.startsWith('zh') || /[\u4E00-\u9FFF]/.test(text)) return 'Chinese';
+    if (langHint?.startsWith('en')) return 'English';
+    return 'Korean'; // default
+  };
+  const outputLang = detectLanguage(message, userLang);
 
-  // Convert history roles from "assistant" to "model" for Gemini API
-  const convertedHistory = history.map((msg: any) => ({
-    role: msg.role === 'assistant' ? 'model' : 'user',
-    parts: msg.parts,
-  }));
+  const scheduleSummary = (schedules || [])
+    .slice(0, 20) // Limit to prevent token overflow
+    .map(s => `- ${s.date}${s.time ? ' ' + s.time : ''}: ${s.title}${s.place ? ' @ ' + s.place : ''}`)
+    .join('\n');
 
-  // Always include system prompt at the beginning for context
-  const contents = [
-    {
-      role: 'user',
-      parts: [{ text: systemPromptToUse }],
-    },
-    ...convertedHistory,
-    {
-      role: 'user',
-      parts: [{ text: message }],
-    },
+  const systemPrompt = `You are a friendly, knowledgeable travel assistant. Help users plan and enjoy their trips.
+
+TRAVEL PLAN CONTEXT:
+- Title: ${planTitle}
+- Destination: ${planRegion || 'Not specified'}
+- Dates: ${planStartDate} to ${planEndDate}
+- Current schedules:
+${scheduleSummary || '(No schedules yet)'}
+
+INSTRUCTIONS:
+1. ALWAYS respond in ${outputLang} - match the user's language exactly
+2. Be concise but helpful
+3. Suggest specific real places (restaurants, attractions, cafes)
+4. Consider the travel dates and local events/weather
+5. Help modify schedules if asked
+6. Provide practical tips (transport, reservations, local customs)
+7. Be enthusiastic and friendly!
+
+You can help with:
+- Suggesting activities and places to visit
+- Recommending restaurants and cafes
+- Providing tips about the destination
+- Helping reorganize the schedule
+- Answering questions about the area`;
+
+  // Convert history to OpenAI format
+  const messages: OpenAIMessage[] = [
+    { role: 'system', content: systemPrompt },
   ];
 
+  // Add conversation history
+  for (const msg of (history || [])) {
+    const content = msg.parts?.map((p: any) => p.text).join('') || msg.content || '';
+    if (content) {
+      messages.push({
+        role: msg.role === 'model' ? 'assistant' : msg.role,
+        content,
+      });
+    }
+  }
+
+  // Add current message
+  messages.push({ role: 'user', content: message });
+
   try {
-    const reply = await callGemini(apiKey, contents, {
+    const reply = await callOpenAI(apiKey, messages, {
       temperature: 0.7,
-      maxOutputTokens: 1000,
+      maxTokens: 1000,
     });
 
     return new Response(JSON.stringify({ reply }), {
@@ -90,7 +121,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       },
     });
   } catch (error) {
-    console.error('Failed to call Gemini API:', error);
+    console.error('Failed to call OpenAI API:', error);
     return new Response(JSON.stringify({ error: 'Failed to get response from AI assistant' }), {
       status: 500,
       headers: {
