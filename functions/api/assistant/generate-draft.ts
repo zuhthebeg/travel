@@ -1,3 +1,4 @@
+import { callOpenAI, type OpenAIMessage } from './_common';
 import type { Env } from '../../types';
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
@@ -15,59 +16,48 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     });
   }
 
-  const apiKey = context.env.GEMINI_API_KEY;
-  if (!apiKey || apiKey === 'your-gemini-api-key-here') {
+  const apiKey = context.env.OPENAI_API_KEY;
+  if (!apiKey || apiKey === 'your-openai-api-key-here') {
     return new Response(JSON.stringify({ error: 'AI Assistant is not configured.' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const systemPrompt = `You are a travel planner. Generate travel schedules in JSON format.
+Output must be a valid JSON array of schedule objects with this exact format:
+[
+  {"date": "YYYY-MM-DD", "title": "Activity Title", "place": "Location"},
+  ...
+]
+No explanations, just the JSON array.`;
 
-  const prompt = `
-    You are a travel planner. Generate a travel plan draft for a trip to ${destination}
-    from ${start_date} to ${end_date}.
+  const userPrompt = `Generate a travel plan draft for a trip to ${destination} from ${start_date} to ${end_date}.
+Generate a reasonable number of activities for the given duration.
+The dates in the schedule should be within the provided start and end dates.`;
 
-    The output should be a valid JSON array of schedule objects, with the following format:
-    [
-      {"date": "YYYY-MM-DD", "title": "Activity Title", "place": "Location"},
-      ...
-    ]
-
-    Make sure the JSON is well-formed and contains no other text or explanations.
-    The dates in the schedule should be within the provided start and end dates.
-    Generate a reasonable number of activities for the given duration.
-  `;
+  const messages: OpenAIMessage[] = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userPrompt },
+  ];
 
   try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-          response_mime_type: 'application/json',
-          temperature: 0.7,
-        },
-      }),
+    const draftText = await callOpenAI(apiKey, messages, {
+      temperature: 0.7,
+      responseFormat: 'json_object',
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Gemini API error:', errorText);
-      throw new Error(`Gemini API request failed with status ${response.status}`);
+    // Parse and add plan_id to each schedule
+    let schedules;
+    try {
+      const parsed = JSON.parse(draftText);
+      // Handle both array and {schedules: [...]} formats
+      const scheduleArray = Array.isArray(parsed) ? parsed : parsed.schedules || [];
+      schedules = scheduleArray.map((s: any) => ({ ...s, plan_id }));
+    } catch (parseError) {
+      console.error('Failed to parse AI response:', draftText);
+      throw new Error('Failed to parse AI response as JSON');
     }
-
-    const data = await response.json();
-    const draftText = data.candidates[0].content.parts[0].text;
-    const schedules = JSON.parse(draftText).map((s: any) => ({ ...s, plan_id }));
-
-    // Here you would typically save the schedules to the database.
-    // For now, we'll just return them.
-    // const createdSchedules = await context.env.DB.batch(
-    //   schedules.map(s => context.env.DB.prepare('INSERT INTO schedules (plan_id, date, title, place) VALUES (?, ?, ?, ?)').bind(s.plan_id, s.date, s.title, s.place))
-    // );
 
     return new Response(JSON.stringify({ schedules }), {
       headers: { 'Content-Type': 'application/json' },

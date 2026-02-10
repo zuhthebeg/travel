@@ -1,7 +1,7 @@
 import { callGemini } from './assistant/_common';
 
 interface Env {
-  GEMINI_API_KEY: string;
+  OPENAI_API_KEY: string;
 }
 
 // Handle CORS preflight requests
@@ -39,8 +39,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     });
   }
 
-  const apiKey = context.env.GEMINI_API_KEY;
-  if (!apiKey || apiKey === 'your-gemini-api-key-here') {
+  const apiKey = context.env.OPENAI_API_KEY;
+  if (!apiKey || apiKey === 'your-openai-api-key-here') {
     return new Response(JSON.stringify({ reply: 'AI Assistant is not configured.' }), {
       headers: {
         'Content-Type': 'application/json',

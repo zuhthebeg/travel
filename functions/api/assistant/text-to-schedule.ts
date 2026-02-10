@@ -1,7 +1,7 @@
 import { callGemini } from './_common';
 
 interface Env {
-  GEMINI_API_KEY: string;
+  OPENAI_API_KEY: string;
 }
 
 export async function textToSchedule(apiKey: string, text: string, planContext: any) {

@@ -3,7 +3,7 @@
 export interface Env {
   DB: D1Database;
   CACHE?: KVNamespace;
-  GEMINI_API_KEY?: string;
+  OPENAI_API_KEY?: string;
 }
 
 // 데이터베이스 모델 타입
