@@ -26,63 +26,63 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     });
   }
 
-  // Detect input language and set output language accordingly
+  // Detect input language
   const detectLanguage = (t: string) => {
     if (/[\uAC00-\uD7AF]/.test(t)) return 'Korean';
     if (/[\u3040-\u30FF]/.test(t)) return 'Japanese';
     if (/[\u4E00-\u9FFF]/.test(t)) return 'Chinese';
-    return 'Korean'; // default
+    return 'Korean';
   };
   const outputLang = detectLanguage(text);
 
-  const contextInfo = `
-Current time: ${currentTime || new Date().toISOString()}
-${userLocation?.city ? `User location: ${userLocation.city}` : ''}`;
+  // Get tomorrow as default start
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const defaultStart = tomorrow.toISOString().split('T')[0];
 
-  const systemPrompt = `You are a travel plan parser and generator. Your job is to:
-1. Parse user input (can be minimal like "부산 3일" or detailed itinerary)
-2. ALWAYS generate complete schedules with real places and activities
-3. Output ONLY valid JSON, no explanations
+  const systemPrompt = `You are a travel plan parser. Parse user input and extract travel information.
 
-CRITICAL: Even if input is minimal (e.g., "부산 3일여행"), you MUST generate a full travel plan with schedules!
-
-Output format:
+Output ONLY valid JSON:
 {
-  "title": "Travel Plan Title in ${outputLang}",
-  "region": "Main destination",
+  "title": "여행 제목",
+  "region": "목적지",
   "start_date": "YYYY-MM-DD",
   "end_date": "YYYY-MM-DD",
-  "schedules": [
-    {
-      "date": "YYYY-MM-DD",
-      "time": "HH:MM",
-      "title": "Activity in ${outputLang}",
-      "place": "Specific real place name in ${outputLang}",
-      "memo": "Tips or notes in ${outputLang}",
-      "plan_b": "Alternative if weather is bad",
-      "plan_c": ""
-    }
-  ]
+  "schedules": [...]
 }
 
-RULES:
-1. ALL output text must be in ${outputLang}
-2. Generate 3-5 activities per day (morning, lunch, afternoon, dinner, evening)
-3. Use REAL, SPECIFIC place names (famous spots, restaurants, cafes)
-4. If no dates given, start from tomorrow
-5. If only duration given (e.g., "3일"), calculate end date from start
-6. Include diverse activities: sightseeing, food, shopping, culture
-7. Add useful tips in memo field
-8. plan_b should be indoor alternatives for bad weather`;
+CRITICAL DATE RULES:
+1. If user specifies exact dates, use EXACTLY those dates
+2. If user says "3일" or "3박4일" without dates, start from ${defaultStart}
+3. NEVER change or ignore user-specified dates
+4. Dates must be logical (end >= start)
 
-  const userPrompt = `Parse and generate a complete travel plan from this input:
+SCHEDULE GENERATION RULES:
+1. If input contains DETAILED itinerary (times, places, activities), parse it exactly as given
+2. If input is MINIMAL (just "부산 3일"), generate reasonable schedules:
+   - 2-3 activities per day
+   - Morning (09:00-10:00), Afternoon (14:00-15:00), Evening (18:00-19:00)
+   - Use real famous places for the destination
+3. ALL text in ${outputLang}
+
+Schedule format:
+{
+  "date": "YYYY-MM-DD",
+  "time": "HH:MM",
+  "title": "활동명",
+  "place": "장소",
+  "memo": "",
+  "plan_b": "",
+  "plan_c": ""
+}`;
+
+  const userPrompt = `Current time: ${currentTime || new Date().toISOString()}
+Default start date if not specified: ${defaultStart}
+
+Parse this travel plan:
 ---
 ${text}
----
-
-Context:${contextInfo}
-
-Remember: Even if the input is very simple, generate a COMPLETE travel plan with detailed schedules!`;
+---`;
 
   const messages: OpenAIMessage[] = [
     { role: 'system', content: systemPrompt },
@@ -91,13 +91,12 @@ Remember: Even if the input is very simple, generate a COMPLETE travel plan with
 
   try {
     const reply = await callOpenAI(apiKey, messages, {
-      temperature: 0.7,
-      maxTokens: 4000,
+      temperature: 0.3,
+      maxTokens: 3000,
       responseFormat: 'json_object',
     });
 
     const parsedPlan = JSON.parse(reply);
-
     return new Response(JSON.stringify(parsedPlan), {
       headers: { 'Content-Type': 'application/json' },
     });

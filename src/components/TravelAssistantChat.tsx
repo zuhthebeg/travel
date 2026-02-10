@@ -11,6 +11,7 @@ interface TravelAssistantChatProps {
   planStartDate: string;
   planEndDate: string;
   schedules: Schedule[];
+  onScheduleChange?: () => void; // Callback when schedules are modified
 }
 
 interface Message {
@@ -25,6 +26,7 @@ export function TravelAssistantChat({
   planStartDate,
   planEndDate,
   schedules,
+  onScheduleChange,
 }: TravelAssistantChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -271,6 +273,11 @@ export function TravelAssistantChat({
       const data = await response.json();
       const assistantMessage: Message = { role: 'assistant', content: data.reply || data.response || '응답을 받지 못했습니다.' };
       setMessages((prevMessages) => [...prevMessages, assistantMessage]);
+
+      // If schedules were modified, notify parent to reload
+      if (data.hasChanges && onScheduleChange) {
+        onScheduleChange();
+      }
 
       // Stop STT again in case it was restarted
       if (isListening) {

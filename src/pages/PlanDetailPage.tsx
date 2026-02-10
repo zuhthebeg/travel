@@ -717,6 +717,7 @@ export function PlanDetailPage() {
                   planStartDate={selectedPlan.start_date}
                   planEndDate={selectedPlan.end_date}
                   schedules={schedules}
+                  onScheduleChange={() => loadPlanDetail(selectedPlan.id)}
                 />
               </div>
             </div>
