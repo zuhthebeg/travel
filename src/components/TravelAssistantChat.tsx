@@ -368,6 +368,12 @@ export function TravelAssistantChat({
       }
     } catch (error) {
       console.error('Error sending message to assistant:', error);
+      console.error('Request details:', { 
+        origin: window.location.origin, 
+        url: `${window.location.origin}/api/assistant`,
+        hasImage: !!currentImage,
+        messageLength: messageToSend?.length
+      });
 
       // Retry up to 3 times
       if (retryCount < 3) {

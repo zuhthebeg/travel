@@ -148,7 +148,15 @@ Examples:
       responseFormat: 'json_object',
     });
 
-    const parsed = JSON.parse(response);
+    let parsed: any;
+    try {
+      parsed = JSON.parse(response);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError, 'Response was:', response?.substring(0, 500));
+      // If JSON parsing fails, treat the whole response as the reply
+      parsed = { reply: response, actions: [] };
+    }
+    
     const reply = parsed.reply || response;
     const actions = parsed.actions || [];
 
