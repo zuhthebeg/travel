@@ -11,7 +11,7 @@ interface TravelAssistantChatProps {
   planStartDate: string;
   planEndDate: string;
   schedules: Schedule[];
-  onScheduleChange?: () => void; // Callback when schedules are modified
+  onScheduleChange?: (modifiedIds?: number[]) => void; // Callback when schedules are modified
 }
 
 interface Message {
@@ -37,8 +37,11 @@ export function TravelAssistantChat({
     return saved !== null ? saved === 'true' : true;
   });
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; city?: string } | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null); // Base64 preview
+  const [imageData, setImageData] = useState<string | null>(null); // Compressed base64 for API
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Detect browser language and map to supported STT/TTS languages
   const detectLanguage = () => {
@@ -157,6 +160,74 @@ export function TravelAssistantChat({
     }
   };
 
+  // Image compression and handling
+  const compressImage = (file: File, maxWidth = 800, quality = 0.7): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // Scale down if needed
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          // Convert to base64 JPEG
+          const base64 = canvas.toDataURL('image/jpeg', quality);
+          resolve(base64);
+        };
+        img.onerror = reject;
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (max 10MB before compression)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('이미지 크기가 너무 큽니다. 10MB 이하의 이미지를 선택해주세요.');
+      return;
+    }
+
+    try {
+      // Create preview with lower quality for display
+      const preview = await compressImage(file, 400, 0.5);
+      setImagePreview(preview);
+
+      // Create compressed image for API (higher quality but still compact)
+      const compressed = await compressImage(file, 800, 0.7);
+      setImageData(compressed);
+    } catch (error) {
+      console.error('Failed to compress image:', error);
+      alert('이미지 처리에 실패했습니다.');
+    }
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const clearImage = () => {
+    setImagePreview(null);
+    setImageData(null);
+  };
+
   const handleSendMessage = async (retryCount = 0, lastUserMessage?: string) => {
     const messageToSend = retryCount === 0 ? input : lastUserMessage;
 
@@ -249,6 +320,12 @@ export function TravelAssistantChat({
   Avoid long explanations, lists, or formatting. Focus on the most essential information only.
   ${getLanguageInstructions()}`;
 
+    // Capture current image and clear it before sending
+    const currentImage = imageData;
+    if (retryCount === 0) {
+      clearImage();
+    }
+
     try {
       const response = await fetch(`${window.location.origin}/api/assistant`, {
         method: 'POST',
@@ -263,6 +340,7 @@ export function TravelAssistantChat({
           planEndDate,
           schedules,
           systemPrompt, // Pass the systemPrompt to the backend
+          image: currentImage, // Include image if present
         }),
       });
 
@@ -274,9 +352,9 @@ export function TravelAssistantChat({
       const assistantMessage: Message = { role: 'assistant', content: data.reply || data.response || '응답을 받지 못했습니다.' };
       setMessages((prevMessages) => [...prevMessages, assistantMessage]);
 
-      // If schedules were modified, notify parent to reload
+      // If schedules were modified, notify parent to reload with modified IDs
       if (data.hasChanges && onScheduleChange) {
-        onScheduleChange();
+        onScheduleChange(data.modifiedScheduleIds || []);
       }
 
       // Stop STT again in case it was restarted
@@ -345,7 +423,45 @@ export function TravelAssistantChat({
           <div ref={messagesEndRef} />
         </div>
       </div>
+      {/* Image Preview */}
+      {imagePreview && (
+        <div className="px-4 py-2 bg-base-200 border-t border-base-300">
+          <div className="relative inline-block">
+            <img src={imagePreview} alt="Preview" className="h-20 rounded-lg object-cover" />
+            <button
+              onClick={clearImage}
+              className="absolute -top-2 -right-2 btn btn-circle btn-xs btn-error"
+              title="이미지 제거"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+      
       <div className="sticky bottom-0 bg-base-100 p-4 border-t border-base-200 flex items-center gap-2">
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleImageSelect}
+          className="hidden"
+        />
+        
+        {/* Image upload button */}
+        <Button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isLoading}
+          variant={imageData ? 'secondary' : 'ghost'}
+          className="btn-circle"
+          title="사진 첨부"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+          </svg>
+        </Button>
+        
         {browserSupportsSpeechRecognition && (
           <Button
             onClick={isListening ? stopListening : startListening}
@@ -401,7 +517,7 @@ export function TravelAssistantChat({
               handleSendMessage();
             }
           }}
-          placeholder="메시지를 입력하세요..."
+          placeholder={imageData ? "사진에 대해 물어보세요..." : "메시지를 입력하세요..."}
           className="input input-bordered w-full"
           disabled={isLoading || isListening} // Disable input while listening
         />

@@ -113,6 +113,7 @@ export function PlanDetailPage() {
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [editingPlan, setEditingPlan] = useState(false);
   const [showChatbot, setShowChatbot] = useState(false);
+  const [pendingScrollIds, setPendingScrollIds] = useState<number[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('horizontal');
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; city?: string } | null>(null);
   const viewModalRef = useRef<HTMLDialogElement>(null);
@@ -186,8 +187,26 @@ export function PlanDetailPage() {
       chatbotModalRef.current.showModal();
     } else if (!showChatbot && chatbotModalRef.current) {
       chatbotModalRef.current.close();
+      
+      // When chat closes, scroll to and highlight modified schedules
+      if (pendingScrollIds.length > 0) {
+        setTimeout(() => {
+          const firstId = pendingScrollIds[0];
+          const element = document.querySelector(`[data-schedule-id="${firstId}"]`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // Add highlight animation
+            element.classList.add('schedule-highlight');
+            setTimeout(() => {
+              element.classList.remove('schedule-highlight');
+            }, 2000);
+          }
+          setPendingScrollIds([]);
+        }, 300); // Wait for modal close animation
+      }
     }
-  }, [showChatbot]);
+  }, [showChatbot, pendingScrollIds]);
 
   useEffect(() => {
     if (!selectedPlan || schedules.length === 0) return;
@@ -717,7 +736,12 @@ export function PlanDetailPage() {
                   planStartDate={selectedPlan.start_date}
                   planEndDate={selectedPlan.end_date}
                   schedules={schedules}
-                  onScheduleChange={() => loadPlanDetail(selectedPlan.id)}
+                  onScheduleChange={(modifiedIds) => {
+                    loadPlanDetail(selectedPlan.id);
+                    if (modifiedIds && modifiedIds.length > 0) {
+                      setPendingScrollIds(modifiedIds);
+                    }
+                  }}
                 />
               </div>
             </div>

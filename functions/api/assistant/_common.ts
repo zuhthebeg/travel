@@ -5,7 +5,16 @@
 
 export interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant';
-  content: string;
+  content: string | OpenAIContentPart[];
+}
+
+export interface OpenAIContentPart {
+  type: 'text' | 'image_url';
+  text?: string;
+  image_url?: {
+    url: string; // base64 data URL or http URL
+    detail?: 'low' | 'high' | 'auto';
+  };
 }
 
 export async function callOpenAI(
@@ -38,6 +47,49 @@ export async function callOpenAI(
     const errorText = await response.text();
     console.error('OpenAI API error:', errorText);
     throw new Error(`OpenAI API request failed with status ${response.status}: ${errorText}`);
+  }
+
+  const data = await response.json() as {
+    choices: Array<{ message: { content: string } }>;
+  };
+
+  return data.choices[0].message.content;
+}
+
+/**
+ * OpenAI Vision API 호출 (이미지 포함)
+ * gpt-4o-mini는 vision도 지원
+ */
+export async function callOpenAIWithVision(
+  apiKey: string, 
+  messages: OpenAIMessage[], 
+  options: {
+    temperature?: number;
+    maxTokens?: number;
+    responseFormat?: 'text' | 'json_object';
+  } = {}
+): Promise<string> {
+  const { temperature = 0.7, maxTokens = 2000, responseFormat = 'text' } = options;
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini', // gpt-4o-mini supports vision
+      messages,
+      temperature,
+      max_tokens: maxTokens,
+      ...(responseFormat === 'json_object' && { response_format: { type: 'json_object' } }),
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('OpenAI Vision API error:', errorText);
+    throw new Error(`OpenAI Vision API request failed with status ${response.status}: ${errorText}`);
   }
 
   const data = await response.json() as {

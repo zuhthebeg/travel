@@ -1,4 +1,4 @@
-import { callOpenAI, type OpenAIMessage } from './assistant/_common';
+import { callOpenAI, callOpenAIWithVision, type OpenAIMessage, type OpenAIContentPart } from './assistant/_common';
 
 interface Env {
   OPENAI_API_KEY: string;
@@ -18,7 +18,7 @@ export const onRequestOptions: PagesFunction = async () => {
 };
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
-  const { message, history, planId, planTitle, planRegion, planStartDate, planEndDate, schedules, userLang } = await context.request.json<{
+  const { message, history, planId, planTitle, planRegion, planStartDate, planEndDate, schedules, userLang, image } = await context.request.json<{
     message: string;
     history: any[];
     planId: number;
@@ -28,10 +28,11 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     planEndDate: string;
     schedules: any[];
     userLang?: string;
+    image?: string; // base64 data URL
   }>();
 
-  if (!message) {
-    return new Response(JSON.stringify({ error: 'Message is required' }), {
+  if (!message && !image) {
+    return new Response(JSON.stringify({ error: 'Message or image is required' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     });
@@ -57,7 +58,17 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     .map(s => `[ID:${s.id}] ${s.date}${s.time ? ' ' + s.time : ''}: ${s.title}${s.place ? ' @ ' + s.place : ''}`)
     .join('\n');
 
-  const systemPrompt = `You are a travel assistant that can CHAT and MODIFY schedules.
+  const imageInstructions = image ? `
+IMAGE ANALYSIS:
+When the user sends an image, analyze it in the context of their travel:
+- Identify the location, landmark, or scene
+- Relate it to their travel plan (${planRegion || 'their destination'})
+- Suggest relevant activities or provide interesting facts
+- If it's a menu/sign, translate or explain it
+- If it's a map/directions, provide guidance
+- Can also add the location as a schedule if user asks` : '';
+
+  const systemPrompt = `You are a travel assistant that can CHAT, ANALYZE IMAGES, and MODIFY schedules.
 
 TRAVEL PLAN:
 - Title: ${planTitle}
@@ -65,6 +76,7 @@ TRAVEL PLAN:
 - Dates: ${planStartDate} to ${planEndDate}
 - Schedules:
 ${scheduleSummary || '(No schedules)'}
+${imageInstructions}
 
 RESPONSE FORMAT:
 Always respond with JSON:
@@ -79,18 +91,20 @@ ACTIONS (only when user asks to modify schedules):
 - DELETE: {"type": "delete", "id": <schedule_id>}
 
 RULES:
-1. For normal chat (questions, suggestions), just reply with empty actions: []
+1. For normal chat (questions, suggestions, image analysis), just reply with empty actions: []
 2. For schedule modifications, include appropriate actions
 3. Always confirm what you're doing in the reply
 4. Use schedule IDs from the list above
 5. Reply in ${outputLang}
 6. Be friendly and helpful!
+7. Keep responses concise (1-3 sentences) for voice readability
 
 Examples:
 - "오후 3시에 해운대 추가해줘" → ADD action with date, time, place
 - "첫번째 일정 삭제해줘" → DELETE action with id
 - "점심 시간을 1시로 바꿔줘" → UPDATE action with id and time change
-- "부산 맛집 추천해줘" → Just reply, no actions`;
+- "부산 맛집 추천해줘" → Just reply, no actions
+- [Image of landmark] → Analyze and describe, no actions unless asked`;
 
   const messages: OpenAIMessage[] = [{ role: 'system', content: systemPrompt }];
 
@@ -101,10 +115,34 @@ Examples:
       messages.push({ role: msg.role === 'model' ? 'assistant' : msg.role, content });
     }
   }
-  messages.push({ role: 'user', content: message });
+
+  // Build user message with optional image
+  if (image) {
+    const userContent: OpenAIContentPart[] = [];
+    
+    if (message) {
+      userContent.push({ type: 'text', text: message });
+    } else {
+      userContent.push({ type: 'text', text: '이 사진을 분석해주세요. 여행과 관련된 정보가 있다면 알려주세요.' });
+    }
+    
+    userContent.push({
+      type: 'image_url',
+      image_url: {
+        url: image, // base64 data URL
+        detail: 'low' // Use low detail to reduce token usage
+      }
+    });
+    
+    messages.push({ role: 'user', content: userContent });
+  } else {
+    messages.push({ role: 'user', content: message });
+  }
 
   try {
-    const response = await callOpenAI(apiKey, messages, {
+    // Use vision API if image is present, otherwise regular API
+    const apiCall = image ? callOpenAIWithVision : callOpenAI;
+    const response = await apiCall(apiKey, messages, {
       temperature: 0.7,
       maxTokens: 1500,
       responseFormat: 'json_object',
@@ -152,10 +190,16 @@ Examples:
       }
     }
 
+    // Collect modified schedule IDs for scroll/highlight
+    const modifiedIds = results
+      .filter(r => r.success && r.id)
+      .map(r => r.id);
+
     return new Response(JSON.stringify({ 
       reply, 
       actions: results,
-      hasChanges: results.length > 0 
+      hasChanges: results.length > 0,
+      modifiedScheduleIds: modifiedIds
     }), {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     });
