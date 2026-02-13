@@ -198,9 +198,16 @@ export function CreatePlanPage() {
             // 좌표가 없으면 지역 좌표 사용
             const finalCoords = scheduleCoords || regionCoords;
 
+            // 필요한 필드만 명시적으로 추출
             await schedulesAPI.create({
-              ...schedule,
               plan_id: newPlan.id,
+              date: schedule.date,
+              time: schedule.time || undefined,
+              title: schedule.title || '일정',
+              place: schedule.place || undefined,
+              memo: schedule.memo || undefined,
+              plan_b: schedule.plan_b || undefined,
+              plan_c: schedule.plan_c || undefined,
               latitude: finalCoords?.lat,
               longitude: finalCoords?.lng,
             });
