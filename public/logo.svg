@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Globe circle -->
+  <circle cx="32" cy="32" r="28" stroke="#6366f1" stroke-width="3" fill="none"/>
+  
+  <!-- Globe horizontal lines -->
+  <ellipse cx="32" cy="32" rx="28" ry="10" stroke="#6366f1" stroke-width="2" fill="none"/>
+  <ellipse cx="32" cy="32" rx="28" ry="20" stroke="#6366f1" stroke-width="1.5" fill="none" opacity="0.5"/>
+  
+  <!-- Globe vertical line -->
+  <ellipse cx="32" cy="32" rx="10" ry="28" stroke="#6366f1" stroke-width="2" fill="none"/>
+  
+  <!-- Location pin -->
+  <g transform="translate(38, 14)">
+    <path d="M8 0C3.58 0 0 3.58 0 8c0 5.5 8 14 8 14s8-8.5 8-14c0-4.42-3.58-8-8-8z" fill="#ec4899"/>
+    <circle cx="8" cy="8" r="3" fill="white"/>
+  </g>
+  
+  <!-- Plane -->
+  <g transform="translate(6, 38) rotate(-30)">
+    <path d="M12 2L8 6H4L2 10L6 10L8 14L12 10L16 10L14 6L18 2L14 2L12 0L10 2Z" fill="#6366f1" opacity="0.8"/>
+  </g>
+</svg>
