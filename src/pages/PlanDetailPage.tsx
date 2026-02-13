@@ -815,24 +815,85 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
     date: string;
     time: string;
     title: string;
-    place: string | null; // Explicitly allow null
+    place: string | null;
     memo: string;
     plan_b: string;
     plan_c: string;
+    latitude: number | null;
+    longitude: number | null;
   }>({
     date: schedule?.date || formatDate(new Date()),
     time: schedule?.time || '',
-    title: (schedule?.title as string) || '', // Explicitly cast to string
-    place: (schedule?.place as string | null) || '', // Explicitly cast to string | null
+    title: (schedule?.title as string) || '',
+    place: (schedule?.place as string | null) || '',
     memo: schedule?.memo || '',
     plan_b: schedule?.plan_b || '',
     plan_c: schedule?.plan_c || '',
+    latitude: schedule?.latitude || null,
+    longitude: schedule?.longitude || null,
   });
 
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error' | null>(null);
 
   const [textInputForAI, setTextInputForAI] = useState('');
   const [isAIProcessing, setIsAIProcessing] = useState(false);
+
+  // 장소 검색 상태
+  const [placeResults, setPlaceResults] = useState<Array<{ id: number; name: string; lat: number; lng: number }>>([]);
+  const [isSearchingPlace, setIsSearchingPlace] = useState(false);
+  const [showPlaceResults, setShowPlaceResults] = useState(false);
+  const placeSearchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 장소 검색 함수
+  const searchPlace = async (query: string) => {
+    if (!query.trim() || query.length < 2) {
+      setPlaceResults([]);
+      return;
+    }
+
+    setIsSearchingPlace(true);
+    try {
+      // planRegion 추가해서 더 정확한 검색
+      const searchQuery = planRegion ? `${query}, ${planRegion}` : query;
+      const response = await fetch(`/api/geocode?q=${encodeURIComponent(searchQuery)}&limit=5`);
+      if (response.ok) {
+        const data = await response.json();
+        setPlaceResults(data.places || []);
+        setShowPlaceResults(true);
+      }
+    } catch (error) {
+      console.error('Place search error:', error);
+    } finally {
+      setIsSearchingPlace(false);
+    }
+  };
+
+  // 디바운스된 장소 검색
+  const handlePlaceInputChange = (value: string) => {
+    setFormData({ ...formData, place: value, latitude: null, longitude: null });
+
+    if (placeSearchTimeout.current) {
+      clearTimeout(placeSearchTimeout.current);
+    }
+
+    placeSearchTimeout.current = setTimeout(() => {
+      searchPlace(value);
+    }, 300);
+  };
+
+  // 장소 선택
+  const selectPlace = (place: { id: number; name: string; lat: number; lng: number }) => {
+    // 짧은 이름 추출 (첫 번째 콤마 앞까지)
+    const shortName = place.name.split(',')[0].trim();
+    setFormData({
+      ...formData,
+      place: shortName,
+      latitude: place.lat,
+      longitude: place.lng,
+    });
+    setShowPlaceResults(false);
+    setPlaceResults([]);
+  };
 
   const handleAICreateSchedule = async () => {
     if (!textInputForAI.trim()) return;
@@ -896,26 +957,29 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
 
     setSaveStatus('saving');
     try {
-      // No need to convert title and place back to multi-language objects for saving
       const savedSchedule = schedule?.id
         ? await schedulesAPI.update(schedule.id, {
             date: formData.date,
             time: formData.time || undefined,
-            title: formData.title, // Directly use string
-            place: formData.place, // Directly use string
+            title: formData.title,
+            place: formData.place,
             memo: formData.memo || undefined,
             plan_b: formData.plan_b || undefined,
             plan_c: formData.plan_c || undefined,
+            latitude: formData.latitude ?? undefined,
+            longitude: formData.longitude ?? undefined,
           })
         : await schedulesAPI.create({
             plan_id: planId,
             date: formData.date,
             time: formData.time || undefined,
-            title: formData.title, // Directly use string
-            place: formData.place, // Directly use string
+            title: formData.title,
+            place: formData.place,
             memo: formData.memo || undefined,
             plan_b: formData.plan_b || undefined,
             plan_c: formData.plan_c || undefined,
+            latitude: formData.latitude ?? undefined,
+            longitude: formData.longitude ?? undefined,
           });
 
       onSave(savedSchedule);
@@ -1010,17 +1074,47 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
             />
           </div>
 
-          <div className="form-control w-full">
+          <div className="form-control w-full relative">
             <label className="label">
               <span className="label-text">장소</span>
+              {formData.latitude && formData.longitude && (
+                <span className="label-text-alt text-success">📍 위치 저장됨</span>
+              )}
             </label>
-            <input
-              type="text"
-              value={formData.place || ''} // Ensure value is always a string
-              onChange={(e) => setFormData({ ...formData, place: e.target.value })}
-              placeholder="예: 성산일출봉"
-              className="input input-bordered w-full"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                value={formData.place || ''}
+                onChange={(e) => handlePlaceInputChange(e.target.value)}
+                onFocus={() => placeResults.length > 0 && setShowPlaceResults(true)}
+                onBlur={() => setTimeout(() => setShowPlaceResults(false), 200)}
+                placeholder="장소를 검색하세요 (예: 에펠탑)"
+                className="input input-bordered w-full pr-10"
+              />
+              {isSearchingPlace && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <span className="loading loading-spinner loading-sm"></span>
+                </span>
+              )}
+            </div>
+            {/* 검색 결과 드롭다운 */}
+            {showPlaceResults && placeResults.length > 0 && (
+              <ul className="absolute z-50 top-full left-0 right-0 mt-1 bg-base-100 border border-base-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                {placeResults.map((place) => (
+                  <li
+                    key={place.id}
+                    className="px-4 py-3 hover:bg-base-200 cursor-pointer border-b border-base-200 last:border-b-0"
+                    onMouseDown={() => selectPlace(place)}
+                  >
+                    <div className="font-medium text-sm">{place.name.split(',')[0]}</div>
+                    <div className="text-xs text-base-content/60 truncate">{place.name}</div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <label className="label">
+              <span className="label-text-alt text-base-content/50">검색 결과에서 선택하면 지도에 표시됩니다</span>
+            </label>
           </div>
 
           <div className="form-control w-full">
