@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Flag, Trophy, Moon, PersonStanding } from 'lucide-react';
 
 interface TravelProgressBarProps {
   startDate: string; // YYYY-MM-DD format
@@ -85,12 +86,12 @@ export function TravelProgressBar({ startDate, endDate }: TravelProgressBarProps
             style={{ left: `${Math.min(progress, 100)}%` }}
           >
             {isSleepingTime ? (
-              <div className="text-4xl animate-sleep">
-                😴
+              <div className="animate-sleep text-secondary">
+                <Moon className="w-8 h-8" />
               </div>
             ) : (
-              <div className="text-4xl animate-run">
-                🏃‍♂️
+              <div className="animate-run text-primary">
+                <PersonStanding className="w-8 h-8" />
               </div>
             )}
           </div>
@@ -99,8 +100,8 @@ export function TravelProgressBar({ startDate, endDate }: TravelProgressBarProps
         {/* Completion flag */}
         {progress === 100 && (
           <div className="absolute -top-8 right-0 transform translate-x-1/2">
-            <div className="text-4xl animate-bounce">
-              🏁
+            <div className="animate-bounce text-warning">
+              <Trophy className="w-8 h-8" />
             </div>
           </div>
         )}
@@ -108,8 +109,8 @@ export function TravelProgressBar({ startDate, endDate }: TravelProgressBarProps
         {/* Start flag */}
         {progress === 0 && (
           <div className="absolute -top-8 left-0 transform -translate-x-1/2">
-            <div className="text-4xl">
-              🚩
+            <div className="text-error">
+              <Flag className="w-8 h-8" />
             </div>
           </div>
         )}

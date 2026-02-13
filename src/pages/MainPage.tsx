@@ -9,6 +9,7 @@ import { TravelMap, type MapPoint } from '../components/TravelMap';
 import { Button } from '../components/Button';
 import { Loading } from '../components/Loading';
 import type { Plan, Schedule } from '../store/types';
+import { Globe, Map as MapIcon, List } from 'lucide-react';
 
 interface PlanWithSchedules extends Plan {
   schedules?: Schedule[];
@@ -193,7 +194,9 @@ export function MainPage() {
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
             <div>
-              <h2 className="text-2xl font-bold">🌍 세계의 여행</h2>
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                <Globe className="w-6 h-6" /> 세계의 여행
+              </h2>
               <p className="text-base-content/70">
                 {plansWithSchedules.length}개의 공개 여행 | {allMapPoints.length}개의 여행지
               </p>
@@ -202,16 +205,16 @@ export function MainPage() {
             {/* View Toggle */}
             <div className="tabs tabs-boxed">
               <a 
-                className={`tab ${viewMode === 'map' ? 'tab-active' : ''}`}
+                className={`tab gap-1 ${viewMode === 'map' ? 'tab-active' : ''}`}
                 onClick={() => setViewMode('map')}
               >
-                🗺️ 지도
+                <MapIcon className="w-4 h-4" /> 지도
               </a>
               <a 
-                className={`tab ${viewMode === 'list' ? 'tab-active' : ''}`}
+                className={`tab gap-1 ${viewMode === 'list' ? 'tab-active' : ''}`}
                 onClick={() => setViewMode('list')}
               >
-                📋 목록
+                <List className="w-4 h-4" /> 목록
               </a>
             </div>
           </div>
@@ -249,7 +252,7 @@ export function MainPage() {
                 />
               ) : (
                 <div className="h-[400px] flex flex-col items-center justify-center text-base-content/50">
-                  <span className="text-6xl mb-4">🗺️</span>
+                  <MapIcon className="w-16 h-16 mb-4" />
                   <p>아직 위치 정보가 있는 여행이 없습니다</p>
                   <p className="text-sm mt-2">여행 일정에 위치를 추가해보세요!</p>
                 </div>

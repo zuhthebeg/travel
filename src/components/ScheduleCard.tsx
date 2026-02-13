@@ -1,5 +1,6 @@
 import { formatDisplayDate } from '../lib/utils';
 import type { Schedule } from '../store/types';
+import { MapPin, Plane, Sunrise, Sun, Sunset, Moon } from 'lucide-react';
 
 interface ScheduleCardProps {
   schedule: Schedule;
@@ -39,7 +40,7 @@ function linkifyFlightNumbers(text: string) {
         onClick={(e) => e.stopPropagation()} // Prevent card click
         title={`${flightCode} 항공편 정보 보기`}
       >
-        ✈️ {flightCode}
+        <Plane className="w-4 h-4" /> {flightCode}
       </a>
     );
 
@@ -55,17 +56,17 @@ function linkifyFlightNumbers(text: string) {
 }
 
 // Helper function to get time period icon and color
-function getTimePeriod(time: string): { icon: string; color: string; bgColor: string } {
+function getTimePeriod(time: string): { icon: React.ReactNode; color: string; bgColor: string } {
   const [hours] = time.split(':').map(Number);
 
   if (hours >= 0 && hours < 6) {
-    return { icon: '🌙', color: 'badge-secondary', bgColor: 'bg-secondary' }; // Dawn/Night
+    return { icon: <Moon className="w-4 h-4" />, color: 'badge-secondary', bgColor: 'bg-secondary' }; // Dawn/Night
   } else if (hours >= 6 && hours < 12) {
-    return { icon: '🌅', color: 'badge-warning', bgColor: 'bg-warning' }; // Morning
+    return { icon: <Sunrise className="w-4 h-4" />, color: 'badge-warning', bgColor: 'bg-warning' }; // Morning
   } else if (hours >= 12 && hours < 18) {
-    return { icon: '☀️', color: 'badge-accent', bgColor: 'bg-accent' }; // Afternoon
+    return { icon: <Sun className="w-4 h-4" />, color: 'badge-accent', bgColor: 'bg-accent' }; // Afternoon
   } else {
-    return { icon: '🌆', color: 'badge-info', bgColor: 'bg-info' }; // Evening
+    return { icon: <Sunset className="w-4 h-4" />, color: 'badge-info', bgColor: 'bg-info' }; // Evening
   }
 }
 
@@ -122,7 +123,7 @@ export function ScheduleCard({ schedule, onView }: ScheduleCardProps) {
             <div className="flex items-center gap-2 mb-2">
               {schedule.time && timePeriod && (
                 <div className={`badge ${timePeriod.color} badge-lg font-mono gap-1`}>
-                  <span>{timePeriod.icon}</span>
+                  {timePeriod.icon}
                   <span>{schedule.time}</span>
                 </div>
               )}
@@ -138,8 +139,8 @@ export function ScheduleCard({ schedule, onView }: ScheduleCardProps) {
         </div>
 
         {schedule.place && (
-          <p className="text-sm text-base-content/80 mb-2 flex items-center gap-1">
-            <span className="text-lg">📍</span>
+          <p className="text-sm text-base-content/80 mb-2 flex items-center gap-1.5">
+            <MapPin className="w-4 h-4 text-primary flex-shrink-0" />
             <span className="font-medium">
               {linkifyFlightNumbers(schedule.place as string)}
             </span>

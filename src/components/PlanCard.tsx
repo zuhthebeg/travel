@@ -3,6 +3,7 @@ import { Card } from './Card';
 import { Button } from './Button';
 import { formatDateRange, getDaysDifference, getCountryFlag, extractCountryFromRegion } from '../lib/utils';
 import type { Plan } from '../store/types';
+import { MapPin, Calendar, Globe } from 'lucide-react';
 
 interface PlanCardProps {
   plan: Plan;
@@ -18,7 +19,7 @@ export function PlanCard({ plan, showImportButton = false, onImport }: PlanCardP
   const countryInfo = plan.country_code 
     ? { code: plan.country_code, name: plan.country || '' }
     : extractCountryFromRegion(plan.region);
-  const flag = countryInfo ? getCountryFlag(countryInfo.code) : '🌍';
+  const flag = countryInfo ? getCountryFlag(countryInfo.code) : null;
 
   const handleCardClick = () => {
     navigate(`/plan/${plan.id}`);
@@ -47,9 +48,14 @@ export function PlanCard({ plan, showImportButton = false, onImport }: PlanCardP
           {plan.is_public && <div className="badge badge-secondary">공개</div>}
         </Card.Title>
         {plan.region && (
-          <p className="text-base-content/70 flex items-center gap-1">
-            <span className="text-lg">{flag}</span>
-            <span>📍 {plan.region}</span>
+          <p className="text-base-content/70 flex items-center gap-1.5">
+            {flag ? (
+              <span className="text-lg">{flag}</span>
+            ) : (
+              <Globe className="w-4 h-4 text-base-content/50" />
+            )}
+            <MapPin className="w-4 h-4 text-primary" />
+            <span>{plan.region}</span>
             {countryInfo && countryInfo.name && countryInfo.name !== plan.region && (
               <span className="badge badge-ghost badge-sm">{countryInfo.name}</span>
             )}
@@ -58,7 +64,10 @@ export function PlanCard({ plan, showImportButton = false, onImport }: PlanCardP
         <div className="flex-grow" />
         <Card.Actions className="justify-between items-center text-base-content/70">
           <div className="flex flex-col sm:flex-row gap-1 sm:gap-4">
-            <span className="text-xs sm:text-sm">📅 {formatDateRange(plan.start_date, plan.end_date)}</span>
+            <span className="text-xs sm:text-sm flex items-center gap-1">
+              <Calendar className="w-3.5 h-3.5" />
+              {formatDateRange(plan.start_date, plan.end_date)}
+            </span>
             <span className="font-medium text-xs sm:text-sm">{days}일</span>
           </div>
           {showImportButton && (

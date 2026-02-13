@@ -14,6 +14,7 @@ import ReviewSection from '../components/ReviewSection'; // Import ReviewSection
 import type { Schedule, Plan, Comment } from '../store/types';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import useBrowserNotifications from '../hooks/useBrowserNotifications'; // Import the new hook
+import { MapPin, Calendar, Cloud, Map, Plane } from 'lucide-react';
 
 type ViewMode = 'vertical' | 'horizontal';
 
@@ -62,7 +63,7 @@ function linkifyFlightNumbers(text: string): (string | JSX.Element)[] {
         className="link link-primary font-semibold inline-flex items-center gap-1 hover:gap-2 transition-all"
         title={`${flightCode} 항공편 정보 보기`}
       >
-        ✈️ {flightCode}
+        <Plane className="w-4 h-4 inline" /> {flightCode}
       </a>
     );
 
@@ -467,20 +468,20 @@ export function PlanDetailPage() {
               </div>
               <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-base-content/70 flex-wrap">
                 {selectedPlan.region && (
-                  <span className="whitespace-nowrap">📍 {selectedPlan.region}</span>
+                  <span className="whitespace-nowrap flex items-center gap-0.5"><MapPin className="w-3 h-3" /> {selectedPlan.region}</span>
                 )}
                 {(userLocation?.city || selectedPlan.region) && (
                   <a
                     href={`https://www.google.com/search?q=weather+${encodeURIComponent(userLocation?.city || selectedPlan.region || '')}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="whitespace-nowrap hover:text-primary transition-colors"
+                    className="whitespace-nowrap hover:text-primary transition-colors flex items-center gap-0.5"
                     title={`${userLocation?.city ? `${userLocation.city} (현재 위치)` : selectedPlan.region} 날씨 보기`}
                   >
-                    🌤️ <span className="hidden xs:inline">{userLocation?.city ? '현재 날씨' : '날씨'}</span>
+                    <Cloud className="w-3 h-3" /> <span className="hidden xs:inline">{userLocation?.city ? '현재 날씨' : '날씨'}</span>
                   </a>
                 )}
-                <span className="whitespace-nowrap">📅 {formatDateRange(selectedPlan.start_date, selectedPlan.end_date)}</span>
+                <span className="whitespace-nowrap flex items-center gap-0.5"><Calendar className="w-3 h-3" /> {formatDateRange(selectedPlan.start_date, selectedPlan.end_date)}</span>
                 <span className="font-medium whitespace-nowrap">{days}일</span>
               </div>
             </div>
@@ -536,7 +537,7 @@ export function PlanDetailPage() {
                 <div className="collapse collapse-arrow bg-base-100 shadow-lg rounded-lg">
                   <input type="checkbox" defaultChecked />
                   <div className="collapse-title text-xl font-medium flex items-center gap-2">
-                    🗺️ 여행 동선
+                    <Map className="w-5 h-5" /> 여행 동선
                     <span className="badge badge-primary badge-sm">{mapPoints.length}곳</span>
                   </div>
                   <div className="collapse-content">
@@ -546,8 +547,8 @@ export function PlanDetailPage() {
                       height="350px"
                       className="mt-2"
                     />
-                    <p className="text-sm text-base-content/60 mt-2 text-center">
-                      📍 마커를 클릭하면 상세 정보를 볼 수 있습니다
+                    <p className="text-sm text-base-content/60 mt-2 text-center flex items-center justify-center gap-1">
+                      <MapPin className="w-4 h-4" /> 마커를 클릭하면 상세 정보를 볼 수 있습니다
                     </p>
                   </div>
                 </div>
@@ -1320,7 +1321,7 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
 
           {schedule.place && (
             <div className="flex items-start gap-2">
-              <span className="text-2xl">📍</span>
+              <MapPin className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
               <div className="flex-1">
                 <div className="font-semibold text-sm text-base-content/70 mb-1">장소</div>
                 <div className="text-lg flex items-center gap-2 flex-wrap">
@@ -1340,7 +1341,7 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
                     className="link link-secondary hover:link-hover inline-flex items-center gap-1"
                     title="지도에서 보기"
                   >
-                    🗺️
+                    <Map className="w-4 h-4" />
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
                     </svg>

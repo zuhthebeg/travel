@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import GoogleLoginButton from './GoogleLoginButton';
+import { Map, ClipboardList, Plane, LogOut } from 'lucide-react';
 
 export function GlobalNav() {
   const navigate = useNavigate();
@@ -16,9 +17,9 @@ export function GlobalNav() {
   };
 
   const navItems = [
-    { path: '/', label: '홈', icon: '🗺️' },
-    { path: '/my', label: '내 여행', icon: '📋' },
-    { path: '/plan/new', label: '여행 만들기', icon: '✈️' },
+    { path: '/', label: '홈', icon: Map },
+    { path: '/my', label: '내 여행', icon: ClipboardList },
+    { path: '/plan/new', label: '여행 만들기', icon: Plane },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -39,16 +40,19 @@ export function GlobalNav() {
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex flex-none gap-2">
-          {navItems.map((item) => (
-            <button
-              key={item.path}
-              className={`btn btn-ghost btn-sm ${isActive(item.path) ? 'btn-active' : ''}`}
-              onClick={() => navigate(item.path)}
-            >
-              <span className="mr-1">{item.icon}</span>
-              {item.label}
-            </button>
-          ))}
+          {navItems.map((item) => {
+            const IconComponent = item.icon;
+            return (
+              <button
+                key={item.path}
+                className={`btn btn-ghost btn-sm ${isActive(item.path) ? 'btn-active' : ''}`}
+                onClick={() => navigate(item.path)}
+              >
+                <IconComponent className="w-4 h-4" />
+                {item.label}
+              </button>
+            );
+          })}
           
           {currentUser ? (
             <div className="dropdown dropdown-end">
@@ -69,9 +73,9 @@ export function GlobalNav() {
                 <li className="menu-title">
                   <span>{currentUser.username}</span>
                 </li>
-                <li><a onClick={() => navigate('/my')}>📋 내 여행</a></li>
-                <li><a onClick={() => navigate('/plan/new')}>✈️ 새 여행</a></li>
-                <li><a onClick={handleLogout}>🚪 로그아웃</a></li>
+                <li><a onClick={() => navigate('/my')} className="flex items-center gap-2"><ClipboardList className="w-4 h-4" /> 내 여행</a></li>
+                <li><a onClick={() => navigate('/plan/new')} className="flex items-center gap-2"><Plane className="w-4 h-4" /> 새 여행</a></li>
+                <li><a onClick={handleLogout} className="flex items-center gap-2"><LogOut className="w-4 h-4" /> 로그아웃</a></li>
               </ul>
             </div>
           ) : (
@@ -96,20 +100,23 @@ export function GlobalNav() {
       {isMenuOpen && (
         <div className="md:hidden absolute top-full left-0 right-0 bg-base-100 shadow-lg border-t">
           <ul className="menu menu-compact p-2">
-            {navItems.map((item) => (
-              <li key={item.path}>
-                <a
-                  className={isActive(item.path) ? 'active' : ''}
-                  onClick={() => {
-                    navigate(item.path);
-                    setIsMenuOpen(false);
-                  }}
-                >
-                  <span>{item.icon}</span>
-                  {item.label}
-                </a>
-              </li>
-            ))}
+            {navItems.map((item) => {
+              const IconComponent = item.icon;
+              return (
+                <li key={item.path}>
+                  <a
+                    className={isActive(item.path) ? 'active' : ''}
+                    onClick={() => {
+                      navigate(item.path);
+                      setIsMenuOpen(false);
+                    }}
+                  >
+                    <IconComponent className="w-4 h-4" />
+                    {item.label}
+                  </a>
+                </li>
+              );
+            })}
             {currentUser ? (
               <>
                 <li className="menu-title mt-2">
@@ -120,7 +127,7 @@ export function GlobalNav() {
                     {currentUser.username}
                   </span>
                 </li>
-                <li><a onClick={handleLogout}>🚪 로그아웃</a></li>
+                <li><a onClick={handleLogout} className="flex items-center gap-2"><LogOut className="w-4 h-4" /> 로그아웃</a></li>
               </>
             ) : (
               <li className="mt-2 px-2">
