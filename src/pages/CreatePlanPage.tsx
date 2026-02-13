@@ -6,13 +6,23 @@ import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { GlobalNav } from '../components/GlobalNav';
 import { Loading, LoadingOverlay } from '../components/Loading';
-import useSpeechRecognition from '../hooks/useSpeechRecognition'; // Import the hook
-import useBrowserNotifications from '../hooks/useBrowserNotifications'; // Import the new hook
+import useSpeechRecognition from '../hooks/useSpeechRecognition';
+import useBrowserNotifications from '../hooks/useBrowserNotifications';
+import { Sparkles, MapPin, Clock, ChevronDown, ArrowRight, MessageCircle, FileText } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
+
+// 예시 질의 목록
+const EXAMPLE_QUERIES = [
+  '3시간 거리 혼자 갈만한 여행지 추천해줘',
+  '이번 주말 2박3일 가족여행 추천',
+  '지금 시즌에 3명 갈만한 곳',
+  '당일치기 드라이브 코스 추천',
+  '비 와도 즐길 수 있는 여행지',
+];
 
 export function CreatePlanPage() {
   const navigate = useNavigate();
@@ -23,8 +33,8 @@ export function CreatePlanPage() {
     title: '',
     region: '',
     start_date: formatDate(new Date()),
-    end_date: formatDate(new Date(Date.now() + 86400000)), // 내일
-    is_public: true, // 기본값 true로 변경
+    end_date: formatDate(new Date(Date.now() + 86400000)),
+    is_public: true,
     thumbnail: '',
   });
   const [pastedPlan, setPastedPlan] = useState('');
@@ -32,6 +42,7 @@ export function CreatePlanPage() {
   const [input, setInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; city?: string } | null>(null);
+  const [showManualForm, setShowManualForm] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -40,7 +51,9 @@ export function CreatePlanPage() {
     startListening,
     stopListening,
     browserSupportsSpeechRecognition,
-  } = useSpeechRecognition(); // Use the hook
+  } = useSpeechRecognition();
+
+  const { showNotification } = useBrowserNotifications();
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -48,7 +61,7 @@ export function CreatePlanPage() {
 
   useEffect(() => {
     if (transcript) {
-      setInput(transcript); // Update input with transcribed text
+      setInput(transcript);
     }
   }, [transcript]);
 
@@ -58,15 +71,12 @@ export function CreatePlanPage() {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
-
-          // Try to get city name using reverse geocoding
           try {
             const response = await fetch(
               `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=ko`
             );
             const data = await response.json();
             const city = data.address?.city || data.address?.town || data.address?.county || data.address?.state;
-
             setUserLocation({ lat: latitude, lng: longitude, city });
           } catch (error) {
             console.error('Failed to get city name:', error);
@@ -80,24 +90,39 @@ export function CreatePlanPage() {
     }
   }, []);
 
+  // 현재 시간 포맷
+  const getCurrentTimeContext = () => {
+    const now = new Date();
+    return {
+      dateTime: now.toLocaleString('ko-KR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        weekday: 'long',
+        timeZone: 'Asia/Seoul'
+      }),
+      season: (() => {
+        const month = now.getMonth() + 1;
+        if (month >= 3 && month <= 5) return '봄';
+        if (month >= 6 && month <= 8) return '여름';
+        if (month >= 9 && month <= 11) return '가을';
+        return '겨울';
+      })(),
+    };
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsUploading(true);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('File upload failed');
-      }
-
+      const fd = new FormData();
+      fd.append('file', file);
+      const response = await fetch('/api/upload', { method: 'POST', body: fd });
+      if (!response.ok) throw new Error('File upload failed');
       const { url } = await response.json();
       setFormData((prev) => ({ ...prev, thumbnail: url }));
     } catch (error) {
@@ -108,9 +133,6 @@ export function CreatePlanPage() {
     }
   };
 
-  const { showNotification } = useBrowserNotifications(); // Use the notification hook
-
-  // 지역 위경도 검색 헬퍼
   const geocodeRegion = async (region: string): Promise<{ lat: number; lng: number } | null> => {
     try {
       const response = await fetch(`/api/geocode?q=${encodeURIComponent(region)}&limit=1`);
@@ -131,41 +153,27 @@ export function CreatePlanPage() {
 
     setIsGenerating(true);
     try {
-      // Get current time
-      const now = new Date();
-      const currentTime = now.toLocaleString('ko-KR', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        weekday: 'long',
-        timeZone: 'Asia/Seoul'
-      });
+      const { dateTime } = getCurrentTimeContext();
 
       const response = await fetch('/api/assistant/parse-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: pastedPlan,
-          currentTime,
+          currentTime: dateTime,
           userLocation,
         }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to parse plan');
-      }
+      if (!response.ok) throw new Error('Failed to parse plan');
 
       const { title, region, start_date, end_date, schedules } = await response.json();
       
-      // 여행지 좌표 검색
       let regionCoords: { lat: number; lng: number } | null = null;
       if (region) {
         regionCoords = await geocodeRegion(region);
       }
 
-      // 제목 생성: AI가 못 만들었으면 지역+기간으로 자동 생성
       const days = start_date && end_date 
         ? Math.ceil((new Date(end_date).getTime() - new Date(start_date).getTime()) / (1000 * 60 * 60 * 24)) + 1
         : 1;
@@ -173,7 +181,6 @@ export function CreatePlanPage() {
         ? `${region} ${days > 1 ? `${days}일` : ''} 여행`.trim()
         : `새 여행 ${new Date().toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}`;
       
-      // 임시 user_id로 1 사용
       const newPlan = await plansAPI.create({
         user_id: 1,
         title: title || autoTitle,
@@ -188,17 +195,12 @@ export function CreatePlanPage() {
       if (schedules && schedules.length > 0) {
         for (const schedule of schedules) {
           try {
-            // 장소 좌표 검색 시도
             let scheduleCoords: { lat: number; lng: number } | null = null;
             if (schedule.place && region) {
-              const placeQuery = `${schedule.place}, ${region}`;
-              scheduleCoords = await geocodeRegion(placeQuery);
+              scheduleCoords = await geocodeRegion(`${schedule.place}, ${region}`);
             }
-            
-            // 좌표가 없으면 지역 좌표 사용
             const finalCoords = scheduleCoords || regionCoords;
 
-            // 필요한 필드만 명시적으로 추출
             await schedulesAPI.create({
               plan_id: newPlan.id,
               date: schedule.date,
@@ -213,22 +215,16 @@ export function CreatePlanPage() {
             });
             createdSchedulesCount++;
           } catch (scheduleError) {
-            console.error('Failed to create individual schedule:', scheduleError);
+            console.error('Failed to create schedule:', scheduleError);
           }
         }
       }
 
-      // 성공! 네비게이션 먼저 실행
       navigate(`/plan/${newPlan.id}`);
       
-      // 알림은 네비게이션 후에
       if (createdSchedulesCount > 0) {
         showNotification('여행 생성 완료', {
           body: `${newPlan.title} - ${createdSchedulesCount}개 일정 추가됨`,
-        });
-      } else {
-        showNotification('여행 생성 완료', {
-          body: newPlan.title,
         });
       }
 
@@ -240,39 +236,73 @@ export function CreatePlanPage() {
     }
   };
 
-  const handleSendMessage = async () => {
-    if (!input.trim()) return;
+  const handleSendMessage = async (messageText?: string) => {
+    const text = messageText || input;
+    if (!text.trim()) return;
 
-    const userMessage = { role: 'user' as const, content: input };
+    const userMessage = { role: 'user' as const, content: text };
     const newMessages: Message[] = [...messages, userMessage];
     setMessages(newMessages);
     setInput('');
     setIsChatLoading(true);
 
     try {
+      const { dateTime, season } = getCurrentTimeContext();
+      
+      // Build context-aware message
+      const contextMessage = `[사용자 컨텍스트]
+현재 시간: ${dateTime}
+계절: ${season}
+위치: ${userLocation?.city || '알 수 없음'}
+
+[질문]
+${text}`;
+
       const history = newMessages.slice(0, -1).map(msg => ({
         role: msg.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: msg.content }],
       }));
 
-      const response = await fetch('/api/assistant', {
+      const response = await fetch('/api/assistant/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input, history }),
+        body: JSON.stringify({ 
+          message: contextMessage, 
+          history,
+          userLocation,
+          currentTime: dateTime,
+        }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to get response from assistant');
-      }
+      if (!response.ok) throw new Error('Failed to get response');
 
       const { reply } = await response.json();
       setMessages([...newMessages, { role: 'assistant', content: reply }]);
     } catch (error) {
       console.error('Failed to send message:', error);
-      setMessages([...newMessages, { role: 'assistant', content: 'Sorry, something went wrong.' }]);
+      setMessages([...newMessages, { role: 'assistant', content: '죄송합니다, 오류가 발생했습니다.' }]);
     } finally {
       setIsChatLoading(false);
     }
+  };
+
+  // AI 답변을 텍스트 입력으로 옮기기
+  const transferToTextInput = (content: string) => {
+    setPastedPlan(content);
+    // 스크롤 to text input
+    document.getElementById('text-input-section')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // 여행 일정 포맷인지 감지 (간단한 휴리스틱)
+  const looksLikeTravelPlan = (text: string) => {
+    const patterns = [
+      /\d+일차/,
+      /\d+박\d+일/,
+      /오전|오후|저녁/,
+      /\d{1,2}:\d{2}/,
+      /DAY\s*\d/i,
+    ];
+    return patterns.some(p => p.test(text));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -285,21 +315,20 @@ export function CreatePlanPage() {
 
     setIsLoading(true);
     try {
-      // 임시 user_id로 1 사용 (운영 DB에 id=1인 사용자가 없으면 생성 필요)
       const newPlan = await plansAPI.create({
         user_id: 1,
         title: formData.title,
         region: formData.region || undefined,
         start_date: formData.start_date,
         end_date: formData.end_date,
-        is_public: true, // 기본 공개
+        is_public: true,
         thumbnail: formData.thumbnail || undefined,
       });
 
       navigate(`/plan/${newPlan.id}`);
     } catch (error) {
       console.error('Failed to create plan:', error);
-      alert('여행 생성에 실패했습니다. 다시 시도해주세요.');
+      alert('여행 생성에 실패했습니다.');
     } finally {
       setIsLoading(false);
     }
@@ -307,36 +336,185 @@ export function CreatePlanPage() {
 
   return (
     <div className="min-h-screen bg-base-200">
-      {/* Global Navigation */}
       <GlobalNav />
       
       {(isLoading || isGenerating || isUploading) && <LoadingOverlay />}
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        {/* Page Title */}
+      <main className="container mx-auto px-4 py-6 max-w-4xl">
+        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-2xl font-bold">✈️ 새 여행 만들기</h2>
-            <p className="text-base-content/70">여행의 기본 정보를 입력하세요</p>
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <Sparkles className="w-6 h-6 text-primary" /> 새 여행 만들기
+            </h2>
+            <p className="text-base-content/70 flex items-center gap-2 mt-1">
+              {userLocation?.city && (
+                <span className="badge badge-sm gap-1">
+                  <MapPin className="w-3 h-3" /> {userLocation.city}
+                </span>
+              )}
+              <span className="badge badge-sm gap-1">
+                <Clock className="w-3 h-3" /> {getCurrentTimeContext().season}
+              </span>
+            </p>
           </div>
           <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
             취소
           </Button>
         </div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div>
-          <Card className="shadow-xl">
-            <Card.Body>
-              <Card.Title>
-                여행 정보
-              </Card.Title>
-              <p className="text-base-content/70 -mt-2 mb-4">
-                여행의 기본 정보를 입력해주세요
-              </p>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+        {/* AI 비서 섹션 (우선 배치) */}
+        <Card className="shadow-xl mb-6">
+          <Card.Body>
+            <Card.Title className="flex items-center gap-2">
+              <MessageCircle className="w-5 h-5 text-primary" />
+              AI 여행 비서
+            </Card.Title>
+            <p className="text-sm text-base-content/60 mb-4">
+              여행지 추천부터 일정 생성까지, AI에게 물어보세요
+            </p>
+
+            {/* 예시 질의 칩 */}
+            {messages.length === 0 && (
+              <div className="mb-4">
+                <p className="text-xs text-base-content/50 mb-2">💡 이런 것도 물어볼 수 있어요:</p>
+                <div className="flex flex-wrap gap-2">
+                  {EXAMPLE_QUERIES.map((query, i) => (
+                    <button
+                      key={i}
+                      className="btn btn-sm btn-outline btn-primary"
+                      onClick={() => handleSendMessage(query)}
+                      disabled={isChatLoading}
+                    >
+                      {query}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 채팅 영역 */}
+            <div className="bg-base-200 rounded-lg p-4 max-h-80 overflow-y-auto mb-4">
+              {messages.length === 0 ? (
+                <div className="text-center text-base-content/50 py-8">
+                  <Sparkles className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                  <p>AI에게 여행 관련 질문을 해보세요</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {messages.map((msg, index) => (
+                    <div key={index} className={`chat ${msg.role === 'user' ? 'chat-end' : 'chat-start'}`}>
+                      <div className={`chat-bubble ${msg.role === 'user' ? 'chat-bubble-primary' : ''}`}>
+                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                        
+                        {/* AI 답변에 여행 일정 포맷이 있으면 "옮기기" 버튼 */}
+                        {msg.role === 'assistant' && looksLikeTravelPlan(msg.content) && (
+                          <button
+                            className="btn btn-xs btn-secondary mt-2 gap-1"
+                            onClick={() => transferToTextInput(msg.content)}
+                          >
+                            <ArrowRight className="w-3 h-3" />
+                            일정으로 옮기기
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {isChatLoading && (
+                    <div className="chat chat-start">
+                      <div className="chat-bubble">
+                        <Loading />
+                      </div>
+                    </div>
+                  )}
+                  <div ref={chatEndRef} />
+                </div>
+              )}
+            </div>
+
+            {/* 입력 */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                placeholder="여행지 추천, 일정 생성 등 무엇이든 물어보세요..."
+                className="input input-bordered flex-1"
+                disabled={isChatLoading}
+              />
+              <Button onClick={() => handleSendMessage()} disabled={isChatLoading || !input.trim()}>
+                {isChatLoading ? <Loading /> : '전송'}
+              </Button>
+              {browserSupportsSpeechRecognition && (
+                <Button
+                  onClick={isListening ? stopListening : startListening}
+                  disabled={isChatLoading}
+                  variant={isListening ? 'secondary' : 'ghost'}
+                  className="btn-circle"
+                >
+                  🎤
+                </Button>
+              )}
+            </div>
+          </Card.Body>
+        </Card>
+
+        {/* 텍스트로 일정 만들기 */}
+        <Card className="shadow-xl mb-6" id="text-input-section">
+          <Card.Body>
+            <Card.Title className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-secondary" />
+              텍스트로 일정 만들기
+            </Card.Title>
+            <p className="text-sm text-base-content/60 mb-4">
+              여행 일정을 붙여넣거나, AI 답변을 옮겨서 일정을 자동 생성하세요
+            </p>
+            <textarea
+              className="textarea textarea-bordered w-full"
+              rows={8}
+              placeholder={`예시:
+부산 2박3일 여행
+
+1일차
+- 10:00 해운대 해수욕장
+- 12:00 광안리 회센터에서 점심
+- 15:00 감천문화마을
+
+2일차
+- 09:00 기장 죽성성당
+...`}
+              value={pastedPlan}
+              onChange={(e) => setPastedPlan(e.target.value)}
+            />
+            <Card.Actions className="justify-end mt-4">
+              <Button 
+                onClick={handleParsePlan} 
+                variant="primary" 
+                disabled={!pastedPlan || isGenerating}
+                className="gap-2"
+              >
+                {isGenerating ? <Loading /> : <><Sparkles className="w-4 h-4" /> AI로 일정 생성</>}
+              </Button>
+            </Card.Actions>
+          </Card.Body>
+        </Card>
+
+        {/* 수동 입력 폼 (접이식) */}
+        <Card className="shadow-xl">
+          <Card.Body>
+            <button
+              className="w-full flex items-center justify-between text-left"
+              onClick={() => setShowManualForm(!showManualForm)}
+            >
+              <Card.Title className="flex items-center gap-2 mb-0">
+                직접 입력하기
+              </Card.Title>
+              <ChevronDown className={`w-5 h-5 transition-transform ${showManualForm ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {showManualForm && (
+              <form onSubmit={handleSubmit} className="space-y-4 mt-4">
                 {/* 썸네일 */}
                 <div className="form-control w-full">
                   <label className="label">
@@ -349,7 +527,7 @@ export function CreatePlanPage() {
                     className="file-input file-input-bordered w-full"
                   />
                   {formData.thumbnail && (
-                    <img src={formData.thumbnail} alt="thumbnail preview" className="mt-4 w-full h-auto rounded-lg" />
+                    <img src={formData.thumbnail} alt="preview" className="mt-4 w-full h-auto rounded-lg max-h-48 object-cover" />
                   )}
                 </div>
 
@@ -371,7 +549,7 @@ export function CreatePlanPage() {
                 {/* 지역 */}
                 <div className="form-control w-full">
                   <label className="label">
-                    <span className="label-text">지역 (AI 초안 생성에 필요)</span>
+                    <span className="label-text">지역</span>
                   </label>
                   <input
                     type="text"
@@ -383,8 +561,8 @@ export function CreatePlanPage() {
                 </div>
 
                 {/* 날짜 */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="form-control w-full">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="form-control">
                     <label className="label">
                       <span className="label-text">시작일 *</span>
                     </label>
@@ -396,8 +574,7 @@ export function CreatePlanPage() {
                       required
                     />
                   </div>
-
-                  <div className="form-control w-full">
+                  <div className="form-control">
                     <label className="label">
                       <span className="label-text">종료일 *</span>
                     </label>
@@ -425,82 +602,15 @@ export function CreatePlanPage() {
                   </label>
                 </div>
 
-                {/* 버튼 */}
                 <Card.Actions className="justify-end pt-4">
                   <Button type="submit" variant="primary">
-                    직접 만들기
+                    여행 만들기
                   </Button>
                 </Card.Actions>
               </form>
-            </Card.Body>
-          </Card>
-        </div>
-        <div className="flex flex-col">
-          <Card className="shadow-xl flex-1">
-            <Card.Body>
-              <Card.Title>AI 비서</Card.Title>
-              <div className="flex-1 overflow-y-auto space-y-4 pr-4">
-                {messages.map((msg, index) => (
-                  <div key={index} className={`chat ${msg.role === 'user' ? 'chat-end' : 'chat-start'}`}>
-                    <div className={`chat-bubble ${msg.role === 'user' ? 'chat-bubble-primary' : ''}`}>
-                      {msg.content}
-                    </div>
-                  </div>
-                ))}
-                {isChatLoading && (
-                  <div className="chat chat-start">
-                    <div className="chat-bubble">
-                      <Loading />
-                    </div>
-                  </div>
-                )}
-                <div ref={chatEndRef} />
-              </div>
-              <div className="flex gap-2 mt-4">
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                  placeholder="AI에게 무엇이든 물어보세요..."
-                  className="input input-bordered w-full"
-                  disabled={isChatLoading}
-                />
-                <Button onClick={handleSendMessage} disabled={isChatLoading}>
-                  {isChatLoading ? <Loading /> : '전송'}
-                </Button>
-                {browserSupportsSpeechRecognition && (
-                  <Button
-                    onClick={isListening ? stopListening : startListening}
-                    disabled={isChatLoading}
-                    variant={isListening ? 'secondary' : 'ghost'}
-                    className="btn-circle"
-                  >
-                    {isListening ? <Loading /> : <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 0-6-6v-1.5m6 7.5v3m-3-3h6m-10.875-9.75a6 6 0 0 1 6-6h.75m-12.75 6h.75m-3 0a6 6 0 0 0 6 6h.75" /></svg>}
-                  </Button>
-                )}
-              </div>
-            </Card.Body>
-          </Card>
-          <Card className="shadow-xl mt-8">
-            <Card.Body>
-              <Card.Title>텍스트로 일정 만들기</Card.Title>
-              <textarea
-                className="textarea textarea-bordered w-full"
-                rows={10}
-                placeholder="여기에 여행 일정을 붙여넣으세요..."
-                value={pastedPlan}
-                onChange={(e) => setPastedPlan(e.target.value)}
-              />
-              <Card.Actions className="justify-end">
-                <Button onClick={handleParsePlan} variant="primary" disabled={!pastedPlan || isGenerating}>
-                  {isGenerating ? '일정 생성 중...' : '일정 생성'}
-                </Button>
-              </Card.Actions>
-            </Card.Body>
-          </Card>
-        </div>
-        </div>
+            )}
+          </Card.Body>
+        </Card>
       </main>
     </div>
   );
