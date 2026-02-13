@@ -44,3 +44,29 @@ body {
   border-color: rgb(59, 130, 246) !important;
   border-width: 2px !important;
 }
+
+/* Leaflet 지도 커스텀 스타일 */
+.leaflet-container {
+  font-family: inherit;
+  z-index: 1;
+}
+
+.leaflet-popup-content {
+  margin: 8px 12px;
+}
+
+.custom-marker {
+  background: none;
+  border: none;
+}
+
+/* 지도 로딩 중 스타일 */
+.leaflet-container.loading {
+  background: #f3f4f6;
+}
+
+/* 팝업 스타일 개선 */
+.leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}

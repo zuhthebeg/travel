@@ -23,6 +23,8 @@ export interface Plan {
   user_id: number;
   title: string;
   region: string | null;
+  country: string | null; // 국가명
+  country_code: string | null; // ISO 3166-1 alpha-2
   start_date: string;
   end_date: string;
   thumbnail: string | null;
@@ -44,6 +46,8 @@ export interface Schedule {
   order_index: number;
   rating: number | null; // 1-5 stars, null if not rated yet
   review: string | null; // Text review, null if not reviewed yet
+  latitude: number | null; // 위도
+  longitude: number | null; // 경도
   created_at: string;
 }
 
@@ -110,6 +114,8 @@ export interface CreateScheduleRequest {
   plan_b?: string;
   plan_c?: string;
   order_index?: number;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface UpdateScheduleRequest {
@@ -123,6 +129,8 @@ export interface UpdateScheduleRequest {
   order_index?: number;
   rating?: number;
   review?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface CreateCommentRequest {

@@ -116,6 +116,8 @@ export const schedulesAPI = {
     plan_b?: string;
     plan_c?: string;
     order_index?: number;
+    latitude?: number;
+    longitude?: number;
   }) => {
     const result = await apiRequest<{ schedule: Schedule }>('/api/schedules', {
       method: 'POST',
@@ -138,6 +140,8 @@ export const schedulesAPI = {
       order_index?: number;
       rating?: number;
       review?: string;
+      latitude?: number;
+      longitude?: number;
     }
   ) => {
     const result = await apiRequest<{ schedule: Schedule }>(`/api/schedules/${id}`, {

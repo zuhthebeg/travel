@@ -7,7 +7,7 @@ import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { ScheduleCard } from '../components/ScheduleCard';
 import { Loading } from '../components/Loading';
-// import { Map } from '../components/Map'; // 지도 기능 임시 비활성화
+import { TravelMap, schedulesToMapPoints } from '../components/TravelMap'; // 여행 동선 지도
 import { TravelAssistantChat } from '../components/TravelAssistantChat'; // Import the new component
 import { TravelProgressBar } from '../components/TravelProgressBar';
 import ReviewSection from '../components/ReviewSection'; // Import ReviewSection
@@ -526,6 +526,36 @@ export function PlanDetailPage() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 pb-32">
+
+        {/* 여행 동선 지도 (좌표가 있는 일정이 있을 때만 표시) */}
+        {(() => {
+          const mapPoints = schedulesToMapPoints(schedules);
+          if (mapPoints.length > 0) {
+            return (
+              <div className="mb-8">
+                <div className="collapse collapse-arrow bg-base-100 shadow-lg rounded-lg">
+                  <input type="checkbox" defaultChecked />
+                  <div className="collapse-title text-xl font-medium flex items-center gap-2">
+                    🗺️ 여행 동선
+                    <span className="badge badge-primary badge-sm">{mapPoints.length}곳</span>
+                  </div>
+                  <div className="collapse-content">
+                    <TravelMap 
+                      points={mapPoints} 
+                      showRoute={true}
+                      height="350px"
+                      className="mt-2"
+                    />
+                    <p className="text-sm text-base-content/60 mt-2 text-center">
+                      📍 마커를 클릭하면 상세 정보를 볼 수 있습니다
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+          return null;
+        })()}
 
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold">일정</h2>

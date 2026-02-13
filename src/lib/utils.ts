@@ -46,3 +46,103 @@ export function getTempUserId(): number {
 export function cn(...classes: (string | boolean | undefined)[]): string {
   return classes.filter(Boolean).join(' ');
 }
+
+// 국가 코드를 국기 이모지로 변환 (ISO 3166-1 alpha-2)
+export function getCountryFlag(countryCode: string | null | undefined): string {
+  if (!countryCode || countryCode.length !== 2) return '🌍';
+  
+  // ISO 3166-1 alpha-2 코드를 Regional Indicator Symbol로 변환
+  const codePoints = countryCode
+    .toUpperCase()
+    .split('')
+    .map(char => 127397 + char.charCodeAt(0));
+  
+  return String.fromCodePoint(...codePoints);
+}
+
+// 주요 국가 코드 매핑 (지역명에서 추출용)
+const COUNTRY_MAPPINGS: Record<string, { code: string; name: string }> = {
+  // 한국
+  '서울': { code: 'KR', name: '한국' },
+  '부산': { code: 'KR', name: '한국' },
+  '제주': { code: 'KR', name: '한국' },
+  '제주도': { code: 'KR', name: '한국' },
+  '경주': { code: 'KR', name: '한국' },
+  '전주': { code: 'KR', name: '한국' },
+  '강릉': { code: 'KR', name: '한국' },
+  '인천': { code: 'KR', name: '한국' },
+  '한국': { code: 'KR', name: '한국' },
+  
+  // 일본
+  '도쿄': { code: 'JP', name: '일본' },
+  '오사카': { code: 'JP', name: '일본' },
+  '교토': { code: 'JP', name: '일본' },
+  '후쿠오카': { code: 'JP', name: '일본' },
+  '삿포로': { code: 'JP', name: '일본' },
+  '나고야': { code: 'JP', name: '일본' },
+  '오키나와': { code: 'JP', name: '일본' },
+  '일본': { code: 'JP', name: '일본' },
+  'tokyo': { code: 'JP', name: '일본' },
+  'osaka': { code: 'JP', name: '일본' },
+  'kyoto': { code: 'JP', name: '일본' },
+  
+  // 미국
+  '뉴욕': { code: 'US', name: '미국' },
+  '로스앤젤레스': { code: 'US', name: '미국' },
+  'LA': { code: 'US', name: '미국' },
+  '샌프란시스코': { code: 'US', name: '미국' },
+  '하와이': { code: 'US', name: '미국' },
+  '라스베이거스': { code: 'US', name: '미국' },
+  '시애틀': { code: 'US', name: '미국' },
+  '미국': { code: 'US', name: '미국' },
+  
+  // 유럽
+  '파리': { code: 'FR', name: '프랑스' },
+  '프랑스': { code: 'FR', name: '프랑스' },
+  '런던': { code: 'GB', name: '영국' },
+  '영국': { code: 'GB', name: '영국' },
+  '로마': { code: 'IT', name: '이탈리아' },
+  '이탈리아': { code: 'IT', name: '이탈리아' },
+  '바르셀로나': { code: 'ES', name: '스페인' },
+  '스페인': { code: 'ES', name: '스페인' },
+  '베를린': { code: 'DE', name: '독일' },
+  '독일': { code: 'DE', name: '독일' },
+  '스위스': { code: 'CH', name: '스위스' },
+  '취리히': { code: 'CH', name: '스위스' },
+  
+  // 아시아
+  '방콕': { code: 'TH', name: '태국' },
+  '태국': { code: 'TH', name: '태국' },
+  '싱가포르': { code: 'SG', name: '싱가포르' },
+  '베트남': { code: 'VN', name: '베트남' },
+  '하노이': { code: 'VN', name: '베트남' },
+  '호치민': { code: 'VN', name: '베트남' },
+  '다낭': { code: 'VN', name: '베트남' },
+  '홍콩': { code: 'HK', name: '홍콩' },
+  '대만': { code: 'TW', name: '대만' },
+  '타이베이': { code: 'TW', name: '대만' },
+  '발리': { code: 'ID', name: '인도네시아' },
+  '인도네시아': { code: 'ID', name: '인도네시아' },
+  
+  // 오세아니아
+  '시드니': { code: 'AU', name: '호주' },
+  '멜버른': { code: 'AU', name: '호주' },
+  '호주': { code: 'AU', name: '호주' },
+  '뉴질랜드': { code: 'NZ', name: '뉴질랜드' },
+};
+
+// 지역명에서 국가 정보 추출
+export function extractCountryFromRegion(region: string | null | undefined): { code: string; name: string } | null {
+  if (!region) return null;
+  
+  const normalized = region.toLowerCase().trim();
+  
+  // 정확히 매칭
+  for (const [key, value] of Object.entries(COUNTRY_MAPPINGS)) {
+    if (normalized.includes(key.toLowerCase())) {
+      return value;
+    }
+  }
+  
+  return null;
+}

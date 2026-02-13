@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Card } from './Card';
 import { Button } from './Button';
-import { formatDateRange, getDaysDifference } from '../lib/utils';
+import { formatDateRange, getDaysDifference, getCountryFlag, extractCountryFromRegion } from '../lib/utils';
 import type { Plan } from '../store/types';
 
 interface PlanCardProps {
@@ -13,6 +13,12 @@ interface PlanCardProps {
 export function PlanCard({ plan, showImportButton = false, onImport }: PlanCardProps) {
   const navigate = useNavigate();
   const days = getDaysDifference(plan.start_date, plan.end_date);
+  
+  // 국가 정보 (DB에 있으면 사용, 없으면 지역명에서 추출)
+  const countryInfo = plan.country_code 
+    ? { code: plan.country_code, name: plan.country || '' }
+    : extractCountryFromRegion(plan.region);
+  const flag = countryInfo ? getCountryFlag(countryInfo.code) : '🌍';
 
   const handleCardClick = () => {
     navigate(`/plan/${plan.id}`);
@@ -40,7 +46,15 @@ export function PlanCard({ plan, showImportButton = false, onImport }: PlanCardP
           {plan.title}
           {plan.is_public && <div className="badge badge-secondary">공개</div>}
         </Card.Title>
-        {plan.region && <p className="text-base-content/70">📍 {plan.region}</p>}
+        {plan.region && (
+          <p className="text-base-content/70 flex items-center gap-1">
+            <span className="text-lg">{flag}</span>
+            <span>📍 {plan.region}</span>
+            {countryInfo && countryInfo.name && countryInfo.name !== plan.region && (
+              <span className="badge badge-ghost badge-sm">{countryInfo.name}</span>
+            )}
+          </p>
+        )}
         <div className="flex-grow" />
         <Card.Actions className="justify-between items-center text-base-content/70">
           <div className="flex flex-col sm:flex-row gap-1 sm:gap-4">

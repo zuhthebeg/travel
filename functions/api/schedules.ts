@@ -46,8 +46,8 @@ export async function onRequestPost(context: { env: Env; request: Request }): Pr
     const placeToSave = body.place;
 
     const result = await env.DB.prepare(
-      `INSERT INTO schedules (plan_id, date, time, title, place, memo, plan_b, plan_c, order_index)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO schedules (plan_id, date, time, title, place, memo, plan_b, plan_c, order_index, latitude, longitude)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
       .bind(
         body.plan_id,
@@ -58,7 +58,9 @@ export async function onRequestPost(context: { env: Env; request: Request }): Pr
         body.memo || null,
         body.plan_b || null,
         body.plan_c || null,
-        body.order_index || 0
+        body.order_index || 0,
+        body.latitude || null,
+        body.longitude || null
       )
       .run();
 
@@ -127,6 +129,14 @@ export async function onRequestPut(context: { env: Env; request: Request }): Pro
     if (body.order_index !== undefined) {
       fieldsToUpdate.push('order_index = ?');
       valuesToUpdate.push(body.order_index);
+    }
+    if ((body as any).latitude !== undefined) {
+      fieldsToUpdate.push('latitude = ?');
+      valuesToUpdate.push((body as any).latitude);
+    }
+    if ((body as any).longitude !== undefined) {
+      fieldsToUpdate.push('longitude = ?');
+      valuesToUpdate.push((body as any).longitude);
     }
 
     if (fieldsToUpdate.length === 0) {
