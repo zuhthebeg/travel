@@ -110,6 +110,22 @@ export function CreatePlanPage() {
 
   const { showNotification } = useBrowserNotifications(); // Use the notification hook
 
+  // 지역 위경도 검색 헬퍼
+  const geocodeRegion = async (region: string): Promise<{ lat: number; lng: number } | null> => {
+    try {
+      const response = await fetch(`/api/geocode?q=${encodeURIComponent(region)}&limit=1`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.places && data.places.length > 0) {
+          return { lat: data.places[0].lat, lng: data.places[0].lng };
+        }
+      }
+    } catch (e) {
+      console.error('Geocode error:', e);
+    }
+    return null;
+  };
+
   const handleParsePlan = async () => {
     if (!pastedPlan) return;
 
@@ -143,51 +159,75 @@ export function CreatePlanPage() {
 
       const { title, region, start_date, end_date, schedules } = await response.json();
       
-      // 임시 user_id로 1 사용 (운영 DB에 id=1인 사용자가 없으면 생성 필요)
+      // 여행지 좌표 검색
+      let regionCoords: { lat: number; lng: number } | null = null;
+      if (region) {
+        regionCoords = await geocodeRegion(region);
+      }
+
+      // 제목 생성: AI가 못 만들었으면 지역+기간으로 자동 생성
+      const days = start_date && end_date 
+        ? Math.ceil((new Date(end_date).getTime() - new Date(start_date).getTime()) / (1000 * 60 * 60 * 24)) + 1
+        : 1;
+      const autoTitle = region 
+        ? `${region} ${days > 1 ? `${days}일` : ''} 여행`.trim()
+        : `새 여행 ${new Date().toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}`;
+      
+      // 임시 user_id로 1 사용
       const newPlan = await plansAPI.create({
         user_id: 1,
-        title: title || formData.title,
+        title: title || autoTitle,
         region: region || formData.region,
         start_date: start_date || formData.start_date,
         end_date: end_date || formData.end_date,
-        is_public: true, // 기본 공개
+        is_public: true,
         thumbnail: formData.thumbnail || undefined,
       });
 
+      let createdSchedulesCount = 0;
       if (schedules && schedules.length > 0) {
-        // Process schedules asynchronously and show notification
-        let createdSchedulesCount = 0;
         for (const schedule of schedules) {
           try {
+            // 장소 좌표 검색 시도
+            let scheduleCoords: { lat: number; lng: number } | null = null;
+            if (schedule.place && region) {
+              const placeQuery = `${schedule.place}, ${region}`;
+              scheduleCoords = await geocodeRegion(placeQuery);
+            }
+            
+            // 좌표가 없으면 지역 좌표 사용
+            const finalCoords = scheduleCoords || regionCoords;
+
             await schedulesAPI.create({
               ...schedule,
               plan_id: newPlan.id,
+              latitude: finalCoords?.lat,
+              longitude: finalCoords?.lng,
             });
             createdSchedulesCount++;
           } catch (scheduleError) {
             console.error('Failed to create individual schedule:', scheduleError);
-            // Optionally show a notification for failed individual schedules
           }
         }
-        showNotification('일정 생성 완료', {
-          body: `${createdSchedulesCount}개의 일정이 성공적으로 추가되었습니다.`,
-          onClick: () => navigate(`/plan/${newPlan.id}`),
-        });
-      } else {
-        showNotification('여행 계획 생성 완료', {
-          body: '일정 없이 여행 계획이 생성되었습니다.',
-          onClick: () => navigate(`/plan/${newPlan.id}`),
-        });
       }
 
+      // 성공! 네비게이션 먼저 실행
       navigate(`/plan/${newPlan.id}`);
+      
+      // 알림은 네비게이션 후에
+      if (createdSchedulesCount > 0) {
+        showNotification('여행 생성 완료', {
+          body: `${newPlan.title} - ${createdSchedulesCount}개 일정 추가됨`,
+        });
+      } else {
+        showNotification('여행 생성 완료', {
+          body: newPlan.title,
+        });
+      }
 
     } catch (error) {
       console.error('Failed to parse plan:', error);
       alert('일정 파싱에 실패했습니다. 다시 시도해주세요.');
-      showNotification('일정 파싱 실패', {
-        body: '여행 계획 파싱 중 오류가 발생했습니다.',
-      });
     } finally {
       setIsGenerating(false);
     }

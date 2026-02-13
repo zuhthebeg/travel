@@ -51,6 +51,12 @@ Output ONLY valid JSON:
   "schedules": [...]
 }
 
+TITLE RULES (CRITICAL):
+1. ALWAYS generate a descriptive title
+2. Format: "[목적지] [기간] 여행" (예: "부산 3일 여행", "제주도 2박3일 가족여행")
+3. Include purpose if mentioned (출장, 가족여행, 신혼여행, etc.)
+4. NEVER leave title empty or generic like "새 여행"
+
 CRITICAL DATE RULES:
 1. If user specifies exact dates, use EXACTLY those dates
 2. If user says "3일" or "3박4일" without dates, start from ${defaultStart}
@@ -62,15 +68,16 @@ SCHEDULE GENERATION RULES:
 2. If input is MINIMAL (just "부산 3일"), generate reasonable schedules:
    - 2-3 activities per day
    - Morning (09:00-10:00), Afternoon (14:00-15:00), Evening (18:00-19:00)
-   - Use real famous places for the destination
+   - Use REAL famous places for the destination (search your knowledge)
 3. ALL text in ${outputLang}
+4. place field should be specific location name (not just city)
 
 Schedule format:
 {
   "date": "YYYY-MM-DD",
   "time": "HH:MM",
   "title": "활동명",
-  "place": "장소",
+  "place": "장소 (구체적인 장소명)",
   "memo": "",
   "plan_b": "",
   "plan_c": ""
