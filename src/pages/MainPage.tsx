@@ -9,7 +9,7 @@ import { TravelMap, type MapPoint } from '../components/TravelMap';
 import { Button } from '../components/Button';
 import { Loading } from '../components/Loading';
 import type { Plan, Schedule } from '../store/types';
-import { Globe, Map as MapIcon, List } from 'lucide-react';
+import { Globe, Map as MapIcon, Calendar, Clock } from 'lucide-react';
 
 interface PlanWithSchedules extends Plan {
   schedules?: Schedule[];
@@ -22,8 +22,11 @@ export function MainPage() {
   const [error, setError] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [plansWithSchedules, setPlansWithSchedules] = useState<PlanWithSchedules[]>([]);
-  const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
+  
+  // 시간 슬라이더 상태 (0 = 현재, 음수 = 과거 일수, 양수 = 미래 일수)
+  const [timeOffset, setTimeOffset] = useState(0);
+  const TIME_RANGE = 180; // ±180일 범위
 
   useEffect(() => {
     loadPublicPlans();
@@ -56,11 +59,36 @@ export function MainPage() {
     }
   };
 
-  // 모든 공개 여행의 좌표를 지도 포인트로 변환
+  // 최신순 정렬 및 10개 제한
+  const sortedPlans = useMemo(() => {
+    return [...plansWithSchedules]
+      .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
+      .slice(0, 10);
+  }, [plansWithSchedules]);
+
+  // 시간 필터링된 여행 (슬라이더 기준 ±30일 범위)
+  const filteredPlansByTime = useMemo(() => {
+    const targetDate = new Date();
+    targetDate.setDate(targetDate.getDate() + timeOffset);
+    
+    return sortedPlans.filter((plan) => {
+      const start = new Date(plan.start_date);
+      const end = new Date(plan.end_date);
+      // 여행 기간이 타겟 날짜 ±30일 범위와 겹치는지 확인
+      const rangeStart = new Date(targetDate);
+      rangeStart.setDate(rangeStart.getDate() - 30);
+      const rangeEnd = new Date(targetDate);
+      rangeEnd.setDate(rangeEnd.getDate() + 30);
+      
+      return !(end < rangeStart || start > rangeEnd);
+    });
+  }, [sortedPlans, timeOffset]);
+
+  // 지도 포인트 생성 (시간 필터링 적용)
   const allMapPoints = useMemo((): MapPoint[] => {
     const points: MapPoint[] = [];
     
-    plansWithSchedules.forEach((plan) => {
+    filteredPlansByTime.forEach((plan) => {
       if (!plan.schedules) return;
       
       // 선택된 여행만 표시하거나, 선택 없으면 전체 표시
@@ -83,7 +111,14 @@ export function MainPage() {
     });
     
     return points;
-  }, [plansWithSchedules, selectedPlanId]);
+  }, [filteredPlansByTime, selectedPlanId]);
+
+  // 슬라이더용 현재 타겟 날짜
+  const targetDateLabel = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + timeOffset);
+    return d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' });
+  }, [timeOffset]);
 
   // 국가별 여행 통계
   const countryStats = useMemo(() => {
@@ -198,25 +233,13 @@ export function MainPage() {
                 <Globe className="w-6 h-6" /> 세계의 여행
               </h2>
               <p className="text-base-content/70">
-                {plansWithSchedules.length}개의 공개 여행 | {allMapPoints.length}개의 여행지
+                최신 {sortedPlans.length}개 | {filteredPlansByTime.length}개 표시 중
               </p>
             </div>
             
-            {/* View Toggle */}
-            <div className="tabs tabs-boxed">
-              <a 
-                className={`tab gap-1 ${viewMode === 'map' ? 'tab-active' : ''}`}
-                onClick={() => setViewMode('map')}
-              >
-                <MapIcon className="w-4 h-4" /> 지도
-              </a>
-              <a 
-                className={`tab gap-1 ${viewMode === 'list' ? 'tab-active' : ''}`}
-                onClick={() => setViewMode('list')}
-              >
-                <List className="w-4 h-4" /> 목록
-              </a>
-            </div>
+            <Button variant="primary" size="sm" onClick={() => navigate('/plan/new')}>
+              + 새 여행
+            </Button>
           </div>
 
           {/* Country Stats */}
@@ -237,28 +260,72 @@ export function MainPage() {
           )}
 
           {/* Map View */}
-          {viewMode === 'map' && (
-            <div className="card bg-base-100 shadow-xl overflow-hidden">
-              {isLoading ? (
-                <div className="h-[400px] flex items-center justify-center">
-                  <Loading />
-                </div>
-              ) : allMapPoints.length > 0 ? (
-                <TravelMap
-                  points={allMapPoints}
-                  showRoute={!!selectedPlanId}
-                  height="450px"
-                  onPointClick={handleMapPointClick}
+          <div className="card bg-base-100 shadow-xl overflow-hidden">
+            {isLoading ? (
+              <div className="h-[400px] flex items-center justify-center">
+                <Loading />
+              </div>
+            ) : allMapPoints.length > 0 ? (
+              <TravelMap
+                points={allMapPoints}
+                showRoute={!!selectedPlanId}
+                height="400px"
+                onPointClick={handleMapPointClick}
+              />
+            ) : (
+              <div className="h-[300px] flex flex-col items-center justify-center text-base-content/50">
+                <MapIcon className="w-16 h-16 mb-4" />
+                <p>이 기간에 여행이 없습니다</p>
+                <p className="text-sm mt-2">슬라이더를 움직여 다른 시간대를 확인해보세요</p>
+              </div>
+            )}
+
+            {/* Time Slider */}
+            <div className="p-4 bg-base-200 border-t">
+              <div className="flex items-center gap-3 mb-2">
+                <Clock className="w-4 h-4 text-primary" />
+                <span className="font-medium text-sm">시간 여행</span>
+                <span className="badge badge-primary badge-sm">{targetDateLabel}</span>
+                {timeOffset !== 0 && (
+                  <button 
+                    className="btn btn-xs btn-ghost"
+                    onClick={() => setTimeOffset(0)}
+                  >
+                    오늘로
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-base-content/50 w-16 text-right">
+                  {(() => {
+                    const d = new Date();
+                    d.setDate(d.getDate() - TIME_RANGE);
+                    return d.toLocaleDateString('ko-KR', { month: 'short' });
+                  })()}
+                </span>
+                <input
+                  type="range"
+                  min={-TIME_RANGE}
+                  max={TIME_RANGE}
+                  value={timeOffset}
+                  onChange={(e) => setTimeOffset(parseInt(e.target.value))}
+                  className="range range-primary range-sm flex-1"
                 />
-              ) : (
-                <div className="h-[400px] flex flex-col items-center justify-center text-base-content/50">
-                  <MapIcon className="w-16 h-16 mb-4" />
-                  <p>아직 위치 정보가 있는 여행이 없습니다</p>
-                  <p className="text-sm mt-2">여행 일정에 위치를 추가해보세요!</p>
-                </div>
-              )}
+                <span className="text-xs text-base-content/50 w-16">
+                  {(() => {
+                    const d = new Date();
+                    d.setDate(d.getDate() + TIME_RANGE);
+                    return d.toLocaleDateString('ko-KR', { month: 'short' });
+                  })()}
+                </span>
+              </div>
+              <div className="flex justify-between mt-1 text-xs text-base-content/40 px-16">
+                <span>과거</span>
+                <span>|</span>
+                <span>미래</span>
+              </div>
             </div>
-          )}
+          </div>
         </div>
 
         {/* Plan Filter (when a plan is selected) */}
@@ -274,14 +341,33 @@ export function MainPage() {
           </div>
         )}
 
-        {/* Plans List/Grid */}
-        <div className="mb-6">
-          <h3 className="text-xl font-bold mb-4">공개 여행 둘러보기</h3>
-        </div>
+        {/* 최신 여행 카드 (가로 스크롤) */}
+        {!isLoading && sortedPlans.length > 0 && (
+          <div className="mb-8">
+            <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
+              <Calendar className="w-5 h-5" /> 최신 여행
+            </h3>
+            <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 snap-x snap-mandatory">
+              {sortedPlans.map((plan) => (
+                <div 
+                  key={plan.id}
+                  className={`flex-shrink-0 w-72 snap-start transition-all ${selectedPlanId === plan.id ? 'ring-2 ring-primary rounded-2xl' : ''}`}
+                  onMouseEnter={() => setSelectedPlanId(plan.id)}
+                  onMouseLeave={() => setSelectedPlanId(null)}
+                >
+                  <PlanCard
+                    plan={plan}
+                    showImportButton={!!currentUser}
+                    onImport={handleImportPlan}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-        {isLoading ? (
-          <Loading />
-        ) : error ? (
+        {/* Error State */}
+        {error && (
           <div className="alert alert-error">
             <div>
               <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -293,7 +379,10 @@ export function MainPage() {
               </Button>
             </div>
           </div>
-        ) : plans.length === 0 ? (
+        )}
+
+        {/* Empty State */}
+        {!isLoading && plans.length === 0 && (
           <div className="card bg-base-100 shadow-xl p-12 text-center">
             <div className="card-body items-center text-center">
               <p className="text-lg mb-4">
@@ -305,23 +394,6 @@ export function MainPage() {
                 </Button>
               </div>
             </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {plans.map((plan) => (
-              <div 
-                key={plan.id}
-                className={`transition-all ${selectedPlanId === plan.id ? 'ring-2 ring-primary rounded-2xl' : ''}`}
-                onMouseEnter={() => viewMode === 'map' && setSelectedPlanId(plan.id)}
-                onMouseLeave={() => viewMode === 'map' && setSelectedPlanId(null)}
-              >
-                <PlanCard
-                  plan={plan}
-                  showImportButton={!!currentUser}
-                  onImport={handleImportPlan}
-                />
-              </div>
-            ))}
           </div>
         )}
       </main>
