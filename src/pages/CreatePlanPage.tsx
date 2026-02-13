@@ -4,6 +4,7 @@ import { plansAPI, schedulesAPI } from '../lib/api';
 import { formatDate } from '../lib/utils';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
+import { GlobalNav } from '../components/GlobalNav';
 import { Loading, LoadingOverlay } from '../components/Loading';
 import useSpeechRecognition from '../hooks/useSpeechRecognition'; // Import the hook
 import useBrowserNotifications from '../hooks/useBrowserNotifications'; // Import the new hook
@@ -259,22 +260,25 @@ export function CreatePlanPage() {
 
   return (
     <div className="min-h-screen bg-base-200">
+      {/* Global Navigation */}
+      <GlobalNav />
+      
       {(isLoading || isGenerating || isUploading) && <LoadingOverlay />}
 
-      {/* Header */}
-      <header className="bg-base-100 shadow-sm">
-        <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
-          <div className="flex items-center justify-between gap-2">
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold truncate">새 여행 만들기</h1>
-            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="flex-shrink-0">
-              취소
-            </Button>
-          </div>
-        </div>
-      </header>
-
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <main className="container mx-auto px-4 py-8">
+        {/* Page Title */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-2xl font-bold">✈️ 새 여행 만들기</h2>
+            <p className="text-base-content/70">여행의 기본 정보를 입력하세요</p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+            취소
+          </Button>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div>
           <Card className="shadow-xl">
             <Card.Body>
@@ -448,6 +452,7 @@ export function CreatePlanPage() {
               </Card.Actions>
             </Card.Body>
           </Card>
+        </div>
         </div>
       </main>
     </div>

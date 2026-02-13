@@ -4,13 +4,14 @@ import { useStore } from '../store/useStore';
 import { plansAPI } from '../lib/api';
 import { getTempUserId } from '../lib/utils';
 import { PlanCard } from '../components/PlanCard';
+import { GlobalNav } from '../components/GlobalNav';
 import { Button } from '../components/Button';
 import { Loading } from '../components/Loading';
 import LoginModal from '../components/LoginModal';
 
 export function MyPlansPage() {
   const navigate = useNavigate();
-  const { plans, setPlans, currentUser, setCurrentUser } = useStore();
+  const { plans, setPlans, currentUser } = useStore();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -40,12 +41,6 @@ export function MyPlansPage() {
     }
   };
 
-  const handleLogout = () => {
-    setCurrentUser(null);
-    localStorage.removeItem('temp_user_id');
-    setShowLoginModal(true);
-  };
-
   const handleLoginSuccess = () => {
     setShowLoginModal(false);
     loadMyPlans();
@@ -53,6 +48,9 @@ export function MyPlansPage() {
 
   return (
     <div className="min-h-screen bg-base-200">
+      {/* Global Navigation */}
+      <GlobalNav />
+
       {/* Login Modal */}
       <LoginModal
         isOpen={showLoginModal}
@@ -65,67 +63,14 @@ export function MyPlansPage() {
         message="내 여행을 관리하려면 Google 계정으로 로그인해주세요."
       />
 
-      {/* Header */}
-      <header className="bg-base-100 shadow-sm">
-        <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
-          <div className="flex items-center justify-between gap-2">
-            {/* Title */}
-            <div className="min-w-0 flex-shrink">
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">내 여행</h1>
-              <p className="hidden sm:block mt-1 text-xs md:text-sm text-base-content/70">
-                나의 여행 계획을 관리하세요
-              </p>
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-1 sm:gap-2 md:gap-3 items-center flex-shrink-0">
-              {currentUser ? (
-                <>
-                  {/* User Profile */}
-                  <div className="flex items-center gap-1 sm:gap-2">
-                    {currentUser.picture && (
-                      <img
-                        src={currentUser.picture}
-                        alt={currentUser.username}
-                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex-shrink-0"
-                      />
-                    )}
-                    <span className="hidden md:inline text-sm font-medium truncate max-w-[100px]">
-                      {currentUser.username}
-                    </span>
-                  </div>
-
-                  {/* Buttons */}
-                  <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
-                    <span className="hidden sm:inline">홈으로</span>
-                    <span className="sm:hidden">홈</span>
-                  </Button>
-                  <Button variant="primary" size="sm" onClick={() => navigate('/plan/new')}>
-                    <span className="hidden sm:inline">새 여행 만들기</span>
-                    <span className="sm:hidden">+</span>
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={handleLogout} className="hidden md:flex">
-                    로그아웃
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
-                    <span className="hidden sm:inline">홈으로</span>
-                    <span className="sm:hidden">홈</span>
-                  </Button>
-                  <Button variant="primary" size="sm" onClick={() => setShowLoginModal(true)}>
-                    로그인
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
-
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
+        {/* Page Title */}
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold">📋 내 여행</h2>
+          <p className="text-base-content/70">나의 여행 계획을 관리하세요</p>
+        </div>
+
         {!currentUser ? (
           <div className="card bg-base-100 shadow-xl p-12 text-center">
             <div className="card-body items-center text-center">

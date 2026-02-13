@@ -1,20 +1,28 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { plansAPI, schedulesAPI } from '../lib/api';
-import { getTempUserId, formatDate } from '../lib/utils';
+import { getTempUserId, formatDate, getCountryFlag, extractCountryFromRegion } from '../lib/utils';
 import { PlanCard } from '../components/PlanCard';
+import { GlobalNav } from '../components/GlobalNav';
+import { TravelMap, type MapPoint } from '../components/TravelMap';
 import { Button } from '../components/Button';
 import { Loading } from '../components/Loading';
-import GoogleLoginButton from '../components/GoogleLoginButton';
-import type { Plan } from '../store/types';
+import type { Plan, Schedule } from '../store/types';
+
+interface PlanWithSchedules extends Plan {
+  schedules?: Schedule[];
+}
 
 export function MainPage() {
   const navigate = useNavigate();
-  const { plans, setPlans, currentUser, setCurrentUser } = useStore();
+  const { plans, setPlans, currentUser } = useStore();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [plansWithSchedules, setPlansWithSchedules] = useState<PlanWithSchedules[]>([]);
+  const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
+  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
 
   useEffect(() => {
     loadPublicPlans();
@@ -26,6 +34,19 @@ export function MainPage() {
       setError(null);
       const publicPlans = await plansAPI.getAll({ is_public: true });
       setPlans(publicPlans);
+
+      // 각 여행의 일정(좌표) 로드
+      const plansWithData: PlanWithSchedules[] = await Promise.all(
+        publicPlans.map(async (plan) => {
+          try {
+            const schedules = await schedulesAPI.getByPlanId(plan.id);
+            return { ...plan, schedules };
+          } catch {
+            return { ...plan, schedules: [] };
+          }
+        })
+      );
+      setPlansWithSchedules(plansWithData);
     } catch (err) {
       setError(err instanceof Error ? err.message : '여행 목록을 불러오는데 실패했습니다.');
       console.error('Failed to load plans:', err);
@@ -34,10 +55,50 @@ export function MainPage() {
     }
   };
 
-  const handleLogout = () => {
-    setCurrentUser(null);
-    localStorage.removeItem('temp_user_id');
-  };
+  // 모든 공개 여행의 좌표를 지도 포인트로 변환
+  const allMapPoints = useMemo((): MapPoint[] => {
+    const points: MapPoint[] = [];
+    
+    plansWithSchedules.forEach((plan) => {
+      if (!plan.schedules) return;
+      
+      // 선택된 여행만 표시하거나, 선택 없으면 전체 표시
+      if (selectedPlanId && plan.id !== selectedPlanId) return;
+      
+      plan.schedules.forEach((schedule) => {
+        if (schedule.latitude && schedule.longitude) {
+          const countryInfo = extractCountryFromRegion(plan.region);
+          points.push({
+            id: schedule.id,
+            lat: schedule.latitude,
+            lng: schedule.longitude,
+            title: `${getCountryFlag(countryInfo?.code)} ${plan.title}`,
+            place: schedule.title,
+            date: schedule.date,
+            order: schedule.order_index,
+          });
+        }
+      });
+    });
+    
+    return points;
+  }, [plansWithSchedules, selectedPlanId]);
+
+  // 국가별 여행 통계
+  const countryStats = useMemo(() => {
+    const stats = new Map<string, { count: number; flag: string; name: string }>();
+    
+    plansWithSchedules.forEach((plan) => {
+      const countryInfo = extractCountryFromRegion(plan.region);
+      if (countryInfo) {
+        const existing = stats.get(countryInfo.code) || { count: 0, flag: getCountryFlag(countryInfo.code), name: countryInfo.name };
+        existing.count++;
+        stats.set(countryInfo.code, existing);
+      }
+    });
+    
+    return Array.from(stats.values()).sort((a, b) => b.count - a.count);
+  }, [plansWithSchedules]);
 
   const handleImportPlan = async (plan: Plan) => {
     if (!currentUser) {
@@ -50,7 +111,6 @@ export function MainPage() {
     try {
       setIsImporting(true);
 
-      // Calculate date offset (7 days from today)
       const today = new Date();
       const oneWeekLater = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
       const originalStartDate = new Date(plan.start_date);
@@ -60,21 +120,17 @@ export function MainPage() {
       const newStartDate = formatDate(oneWeekLater);
       const newEndDate = formatDate(new Date(oneWeekLater.getTime() + tripDuration));
 
-      // Create new plan
       const newPlan = await plansAPI.create({
         title: `${plan.title} (복사본)`,
         region: plan.region || undefined,
         start_date: newStartDate,
         end_date: newEndDate,
-        is_public: false, // Make it private by default
+        is_public: false,
         thumbnail: plan.thumbnail || '',
         user_id: getTempUserId(),
       });
 
-      // Fetch original schedules
       const originalSchedules = await schedulesAPI.getByPlanId(plan.id);
-
-      // Copy schedules with adjusted dates
       const dateOffset = oneWeekLater.getTime() - originalStartDate.getTime();
 
       for (const schedule of originalSchedules) {
@@ -91,6 +147,8 @@ export function MainPage() {
           plan_b: schedule.plan_b || undefined,
           plan_c: schedule.plan_c || undefined,
           order_index: schedule.order_index,
+          latitude: schedule.latitude || undefined,
+          longitude: schedule.longitude || undefined,
         });
       }
 
@@ -104,8 +162,21 @@ export function MainPage() {
     }
   };
 
+  const handleMapPointClick = (point: MapPoint) => {
+    // 해당 일정의 여행을 찾아서 상세 페이지로 이동
+    const plan = plansWithSchedules.find(p => 
+      p.schedules?.some(s => s.id === point.id)
+    );
+    if (plan) {
+      navigate(`/plan/${plan.id}`);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-base-200">
+      {/* Global Navigation */}
+      <GlobalNav />
+
       {/* Loading overlay when importing */}
       {isImporting && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -116,73 +187,93 @@ export function MainPage() {
         </div>
       )}
 
-      {/* Header */}
-      <header className="bg-base-100 shadow-sm">
-        <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
-          <div className="flex items-center justify-between gap-2">
-            {/* Logo */}
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-shrink">
-              <img src="/favicon-512x512.png" alt="Travly Logo" className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0" />
-              <div className="min-w-0">
-                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Travly</h1>
-                <p className="hidden sm:block mt-1 text-xs md:text-sm text-base-content/70 truncate">
-                  Planning, Sharing, with AI Travel Assistant.
-                </p>
-              </div>
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-6">
+        {/* Hero Section with Map */}
+        <div className="mb-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+            <div>
+              <h2 className="text-2xl font-bold">🌍 세계의 여행</h2>
+              <p className="text-base-content/70">
+                {plansWithSchedules.length}개의 공개 여행 | {allMapPoints.length}개의 여행지
+              </p>
             </div>
-
-            {/* Actions */}
-            <div className="flex gap-1 sm:gap-2 md:gap-3 items-center flex-shrink-0">
-              {currentUser ? (
-                <>
-                  {/* User Profile */}
-                  <div className="flex items-center gap-1 sm:gap-2">
-                    {currentUser.picture && (
-                      <img
-                        src={currentUser.picture}
-                        alt={currentUser.username}
-                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex-shrink-0"
-                      />
-                    )}
-                    <span className="hidden md:inline text-sm font-medium truncate max-w-[100px]">
-                      {currentUser.username}
-                    </span>
-                  </div>
-
-                  {/* Buttons */}
-                  <Button variant="ghost" size="sm" onClick={() => navigate('/my')} className="hidden sm:flex">
-                    내 여행
-                  </Button>
-                  <Button variant="primary" size="sm" onClick={() => navigate('/plan/new')}>
-                    <span className="hidden sm:inline">여행 만들기</span>
-                    <span className="sm:hidden">+</span>
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={handleLogout} className="hidden md:flex">
-                    로그아웃
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <GoogleLoginButton />
-                  <Button variant="ghost" size="sm" onClick={() => navigate('/my')} className="hidden sm:flex">
-                    내 여행
-                  </Button>
-                  <Button variant="primary" size="sm" onClick={() => navigate('/plan/new')}>
-                    <span className="hidden sm:inline">여행 만들기</span>
-                    <span className="sm:hidden">+</span>
-                  </Button>
-                </>
-              )}
+            
+            {/* View Toggle */}
+            <div className="tabs tabs-boxed">
+              <a 
+                className={`tab ${viewMode === 'map' ? 'tab-active' : ''}`}
+                onClick={() => setViewMode('map')}
+              >
+                🗺️ 지도
+              </a>
+              <a 
+                className={`tab ${viewMode === 'list' ? 'tab-active' : ''}`}
+                onClick={() => setViewMode('list')}
+              >
+                📋 목록
+              </a>
             </div>
           </div>
-        </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+          {/* Country Stats */}
+          {countryStats.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {countryStats.slice(0, 10).map((stat) => (
+                <div 
+                  key={stat.name}
+                  className="badge badge-lg gap-1 cursor-pointer hover:badge-primary transition-colors"
+                  onClick={() => setSelectedPlanId(null)}
+                >
+                  <span className="text-lg">{stat.flag}</span>
+                  <span>{stat.name}</span>
+                  <span className="badge badge-sm">{stat.count}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Map View */}
+          {viewMode === 'map' && (
+            <div className="card bg-base-100 shadow-xl overflow-hidden">
+              {isLoading ? (
+                <div className="h-[400px] flex items-center justify-center">
+                  <Loading />
+                </div>
+              ) : allMapPoints.length > 0 ? (
+                <TravelMap
+                  points={allMapPoints}
+                  showRoute={!!selectedPlanId}
+                  height="450px"
+                  onPointClick={handleMapPointClick}
+                />
+              ) : (
+                <div className="h-[400px] flex flex-col items-center justify-center text-base-content/50">
+                  <span className="text-6xl mb-4">🗺️</span>
+                  <p>아직 위치 정보가 있는 여행이 없습니다</p>
+                  <p className="text-sm mt-2">여행 일정에 위치를 추가해보세요!</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Plan Filter (when a plan is selected) */}
+        {selectedPlanId && (
+          <div className="alert mb-4">
+            <span>선택된 여행만 표시 중</span>
+            <button 
+              className="btn btn-sm btn-ghost"
+              onClick={() => setSelectedPlanId(null)}
+            >
+              전체 보기
+            </button>
+          </div>
+        )}
+
+        {/* Plans List/Grid */}
         <div className="mb-6">
-          <h2 className="text-2xl font-bold mb-2">공개 여행 둘러보기</h2>
-          <p className="text-base-content/70">다른 사람들의 여행 계획을 참고해보세요</p>
+          <h3 className="text-xl font-bold mb-4">공개 여행 둘러보기</h3>
         </div>
 
         {isLoading ? (
@@ -215,16 +306,31 @@ export function MainPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {plans.map((plan) => (
-              <PlanCard
+              <div 
                 key={plan.id}
-                plan={plan}
-                showImportButton={!!currentUser}
-                onImport={handleImportPlan}
-              />
+                className={`transition-all ${selectedPlanId === plan.id ? 'ring-2 ring-primary rounded-2xl' : ''}`}
+                onMouseEnter={() => viewMode === 'map' && setSelectedPlanId(plan.id)}
+                onMouseLeave={() => viewMode === 'map' && setSelectedPlanId(null)}
+              >
+                <PlanCard
+                  plan={plan}
+                  showImportButton={!!currentUser}
+                  onImport={handleImportPlan}
+                />
+              </div>
             ))}
           </div>
         )}
       </main>
+
+      {/* Footer */}
+      <footer className="footer footer-center p-6 bg-base-100 text-base-content mt-12">
+        <div>
+          <p className="text-sm opacity-70">
+            © 2026 Travly - AI Travel Assistant
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }
