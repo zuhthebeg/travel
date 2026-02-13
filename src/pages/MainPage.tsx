@@ -24,9 +24,12 @@ export function MainPage() {
   const [plansWithSchedules, setPlansWithSchedules] = useState<PlanWithSchedules[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
   
-  // 시간 슬라이더 상태 (0 = 현재, 음수 = 과거 일수, 양수 = 미래 일수)
+  // 시간 슬라이더 상태 (로그인 사용자용)
   const [timeOffset, setTimeOffset] = useState(0);
-  const TIME_RANGE = 180; // ±180일 범위
+  const TIME_RANGE = 180;
+  
+  // 국가 토글 상태 (비로그인용) - Set으로 선택된 국가 코드 관리
+  const [selectedCountries, setSelectedCountries] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadPublicPlans();
@@ -120,14 +123,19 @@ export function MainPage() {
     return d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' });
   }, [timeOffset]);
 
-  // 국가별 여행 통계
+  // 국가별 여행 통계 (코드 포함)
   const countryStats = useMemo(() => {
-    const stats = new Map<string, { count: number; flag: string; name: string }>();
+    const stats = new Map<string, { code: string; count: number; flag: string; name: string }>();
     
     plansWithSchedules.forEach((plan) => {
       const countryInfo = extractCountryFromRegion(plan.region);
       if (countryInfo) {
-        const existing = stats.get(countryInfo.code) || { count: 0, flag: getCountryFlag(countryInfo.code), name: countryInfo.name };
+        const existing = stats.get(countryInfo.code) || { 
+          code: countryInfo.code,
+          count: 0, 
+          flag: getCountryFlag(countryInfo.code), 
+          name: countryInfo.name 
+        };
         existing.count++;
         stats.set(countryInfo.code, existing);
       }
@@ -135,6 +143,58 @@ export function MainPage() {
     
     return Array.from(stats.values()).sort((a, b) => b.count - a.count);
   }, [plansWithSchedules]);
+
+  // 초기 로드 시 모든 국가 선택
+  useEffect(() => {
+    if (countryStats.length > 0 && selectedCountries.size === 0) {
+      setSelectedCountries(new Set(countryStats.map(s => s.code)));
+    }
+  }, [countryStats]);
+
+  // 국가 토글 핸들러
+  const toggleCountry = (code: string) => {
+    setSelectedCountries(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(code)) {
+        newSet.delete(code);
+      } else {
+        newSet.add(code);
+      }
+      return newSet;
+    });
+  };
+
+  // 비로그인용: 지역별 대표 좌표 (여행별 첫 번째 좌표만)
+  const regionMapPoints = useMemo((): MapPoint[] => {
+    const points: MapPoint[] = [];
+    const seenRegions = new Set<string>();
+    
+    plansWithSchedules.forEach((plan) => {
+      const countryInfo = extractCountryFromRegion(plan.region);
+      if (!countryInfo || !selectedCountries.has(countryInfo.code)) return;
+      
+      // 지역당 하나의 포인트만
+      const regionKey = plan.region || 'unknown';
+      if (seenRegions.has(regionKey)) return;
+      
+      // 첫 번째 좌표 있는 일정 찾기
+      const scheduleWithCoords = plan.schedules?.find(s => s.latitude && s.longitude);
+      if (scheduleWithCoords) {
+        seenRegions.add(regionKey);
+        points.push({
+          id: plan.id,
+          lat: scheduleWithCoords.latitude!,
+          lng: scheduleWithCoords.longitude!,
+          title: `${getCountryFlag(countryInfo.code)} ${plan.region || '여행지'}`,
+          place: `${plan.title}`,
+          date: plan.start_date,
+          order: 1,
+        });
+      }
+    });
+    
+    return points;
+  }, [plansWithSchedules, selectedCountries]);
 
   const handleImportPlan = async (plan: Plan) => {
     if (!currentUser) {
@@ -233,7 +293,10 @@ export function MainPage() {
                 <Globe className="w-6 h-6" /> 세계의 여행
               </h2>
               <p className="text-base-content/70">
-                최신 {sortedPlans.length}개 | {filteredPlansByTime.length}개 표시 중
+                {currentUser 
+                  ? `최신 ${sortedPlans.length}개 | ${filteredPlansByTime.length}개 표시 중`
+                  : `${countryStats.length}개 국가 | ${plansWithSchedules.length}개 여행`
+                }
               </p>
             </div>
             
@@ -242,45 +305,72 @@ export function MainPage() {
             </Button>
           </div>
 
-          {/* Country Stats */}
+          {/* Country Stats - 토글 가능 */}
           {countryStats.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-4">
-              {countryStats.slice(0, 10).map((stat) => (
-                <div 
-                  key={stat.name}
-                  className="badge badge-lg gap-1 cursor-pointer hover:badge-primary transition-colors"
-                  onClick={() => setSelectedPlanId(null)}
+              {countryStats.slice(0, 10).map((stat) => {
+                const isSelected = selectedCountries.has(stat.code);
+                return (
+                  <div 
+                    key={stat.code}
+                    className={`badge badge-lg gap-1 cursor-pointer transition-all ${
+                      isSelected 
+                        ? 'badge-primary' 
+                        : 'badge-ghost opacity-50 hover:opacity-75'
+                    }`}
+                    onClick={() => toggleCountry(stat.code)}
+                  >
+                    <span className="text-lg">{stat.flag}</span>
+                    <span>{stat.name}</span>
+                    <span className={`badge badge-sm ${isSelected ? 'badge-secondary' : ''}`}>
+                      {stat.count}
+                    </span>
+                  </div>
+                );
+              })}
+              {selectedCountries.size < countryStats.length && (
+                <button 
+                  className="btn btn-xs btn-ghost"
+                  onClick={() => setSelectedCountries(new Set(countryStats.map(s => s.code)))}
                 >
-                  <span className="text-lg">{stat.flag}</span>
-                  <span>{stat.name}</span>
-                  <span className="badge badge-sm">{stat.count}</span>
-                </div>
-              ))}
+                  전체 선택
+                </button>
+              )}
+              {selectedCountries.size > 0 && selectedCountries.size === countryStats.length && (
+                <button 
+                  className="btn btn-xs btn-ghost"
+                  onClick={() => setSelectedCountries(new Set())}
+                >
+                  전체 해제
+                </button>
+              )}
             </div>
           )}
 
-          {/* Map View */}
+          {/* Map View - 비로그인: 심플 / 로그인: 상세 */}
           <div className="card bg-base-100 shadow-xl overflow-hidden">
             {isLoading ? (
               <div className="h-[400px] flex items-center justify-center">
                 <Loading />
               </div>
-            ) : allMapPoints.length > 0 ? (
+            ) : (currentUser ? allMapPoints : regionMapPoints).length > 0 ? (
               <TravelMap
-                points={allMapPoints}
-                showRoute={!!selectedPlanId}
+                points={currentUser ? allMapPoints : regionMapPoints}
+                showRoute={!!currentUser && !!selectedPlanId}
                 height="400px"
-                onPointClick={handleMapPointClick}
+                onPointClick={currentUser ? handleMapPointClick : (point) => navigate(`/plan/${point.id}`)}
+                key={`map-${selectedCountries.size}-${currentUser ? 'user' : 'guest'}`}
               />
             ) : (
               <div className="h-[300px] flex flex-col items-center justify-center text-base-content/50">
                 <MapIcon className="w-16 h-16 mb-4" />
-                <p>이 기간에 여행이 없습니다</p>
-                <p className="text-sm mt-2">슬라이더를 움직여 다른 시간대를 확인해보세요</p>
+                <p>{selectedCountries.size === 0 ? '국가를 선택해주세요' : '선택한 국가에 여행이 없습니다'}</p>
+                <p className="text-sm mt-2">위의 국기를 클릭해서 토글하세요</p>
               </div>
             )}
 
-            {/* Time Slider */}
+            {/* Time Slider - 로그인 사용자만 */}
+            {currentUser && (
             <div className="p-4 bg-base-200 border-t">
               <div className="flex items-center gap-3 mb-2">
                 <Clock className="w-4 h-4 text-primary" />
@@ -325,11 +415,12 @@ export function MainPage() {
                 <span>미래</span>
               </div>
             </div>
+            )}
           </div>
         </div>
 
-        {/* Plan Filter (when a plan is selected) */}
-        {selectedPlanId && (
+        {/* Plan Filter (when a plan is selected) - 로그인 사용자만 */}
+        {currentUser && selectedPlanId && (
           <div className="alert mb-4">
             <span>선택된 여행만 표시 중</span>
             <button 
@@ -341,8 +432,8 @@ export function MainPage() {
           </div>
         )}
 
-        {/* 최신 여행 카드 (가로 스크롤) */}
-        {!isLoading && sortedPlans.length > 0 && (
+        {/* 최신 여행 카드 (가로 스크롤) - 로그인 사용자만 */}
+        {currentUser && !isLoading && sortedPlans.length > 0 && (
           <div className="mb-8">
             <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
               <Calendar className="w-5 h-5" /> 최신 여행
@@ -362,6 +453,23 @@ export function MainPage() {
                   />
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* 비로그인: 로그인 유도 */}
+        {!currentUser && !isLoading && (
+          <div className="card bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20 mb-8">
+            <div className="card-body text-center py-8">
+              <h3 className="text-lg font-bold mb-2">여행 기록을 시작하세요 ✈️</h3>
+              <p className="text-base-content/70 mb-4">
+                로그인하면 시간 슬라이더, 상세 일정, 내 여행 관리 기능을 사용할 수 있어요
+              </p>
+              <div className="flex justify-center gap-2">
+                <Button variant="primary" onClick={() => navigate('/plan/new')}>
+                  여행 만들기
+                </Button>
+              </div>
             </div>
           </div>
         )}
