@@ -14,7 +14,7 @@ import ReviewSection from '../components/ReviewSection'; // Import ReviewSection
 import type { Schedule, Plan, Comment } from '../store/types';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import useBrowserNotifications from '../hooks/useBrowserNotifications'; // Import the new hook
-import { MapPin, Calendar, Cloud, Map, Plane } from 'lucide-react';
+import { MapPin, Calendar, Cloud, Map, Plane, Clock, FileText, Sparkles, AlertCircle, Search } from 'lucide-react';
 
 type ViewMode = 'vertical' | 'horizontal';
 
@@ -1003,172 +1003,250 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
 
   return (
     <dialog ref={modalRef} className="modal modal-bottom sm:modal-middle">
-      <div className="modal-box">
-        <form method="dialog">
-          <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" onClick={onClose}>✕</button>
-        </form>
-        <h3 className="font-bold text-lg mb-4">
-          {schedule?.id ? '일정 수정' : '일정 추가'}
-        </h3>
-        
-        {/* AI 텍스트 입력으로 일정 생성 */}
-        <div className="mb-6 p-4 bg-base-100 rounded-lg shadow-inner">
-          <p className="text-sm font-semibold mb-2">AI로 일정 생성하기</p>
-          <p className="text-xs text-base-content/70 mb-3">
-            "내일 10시에 에펠탑 구경"처럼 자연어로 입력하면 AI가 자동으로 채워줍니다.
-          </p>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={textInputForAI}
-              onChange={(e) => setTextInputForAI(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleAICreateSchedule()}
-              placeholder="AI에게 일정을 설명해주세요..."
-              className="input input-bordered w-full"
-              disabled={isAIProcessing}
-            />
-            <Button onClick={handleAICreateSchedule} disabled={isAIProcessing} variant="secondary">
-              {isAIProcessing ? <Loading /> : 'AI 생성'}
-            </Button>
-          </div>
+      <div className="modal-box max-w-lg p-0 overflow-hidden">
+        {/* Header */}
+        <div className="sticky top-0 bg-base-100 border-b px-4 py-3 flex items-center justify-between z-10">
+          <h3 className="font-bold text-lg flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-primary" />
+            {schedule?.id ? '일정 수정' : '새 일정'}
+          </h3>
+          <button className="btn btn-sm btn-circle btn-ghost" onClick={onClose}>✕</button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">날짜 *</span>
+        <div className="p-4 max-h-[70vh] overflow-y-auto">
+          {/* AI 텍스트 입력으로 일정 생성 */}
+          <div className="mb-6 p-4 bg-gradient-to-r from-primary/10 to-secondary/10 rounded-xl border border-primary/20">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="w-5 h-5 text-primary" />
+              <p className="font-semibold">AI로 빠르게 추가</p>
+            </div>
+            <p className="text-xs text-base-content/70 mb-3">
+              "내일 10시 에펠탑 구경" 처럼 자연어로 입력하세요
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={textInputForAI}
+                onChange={(e) => setTextInputForAI(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleAICreateSchedule()}
+                placeholder="예: 모레 오후 3시 루브르 박물관"
+                className="input input-bordered input-sm flex-1 h-12 text-base"
+                disabled={isAIProcessing}
+              />
+              <Button 
+                onClick={handleAICreateSchedule} 
+                disabled={isAIProcessing || !textInputForAI.trim()} 
+                variant="primary"
+                size="sm"
+                className="h-12 px-4"
+              >
+                {isAIProcessing ? <Loading /> : <><Sparkles className="w-4 h-4" /> 생성</>}
+              </Button>
+            </div>
+          </div>
+
+          <div className="divider text-xs text-base-content/50">또는 직접 입력</div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* 날짜 & 시간 */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="form-control">
+                <label className="label py-1">
+                  <span className="label-text font-medium flex items-center gap-1.5">
+                    <Calendar className="w-4 h-4 text-primary" /> 날짜 *
+                  </span>
+                </label>
+                <input
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  className="input input-bordered h-12 text-base"
+                  required
+                />
+              </div>
+
+              <div className="form-control">
+                <label className="label py-1">
+                  <span className="label-text font-medium flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-secondary" /> 시간
+                  </span>
+                </label>
+                <input
+                  type="time"
+                  value={formData.time}
+                  onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                  className="input input-bordered h-12 text-base font-mono"
+                />
+              </div>
+            </div>
+
+            {/* 제목 */}
+            <div className="form-control">
+              <label className="label py-1">
+                <span className="label-text font-medium flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-accent" /> 제목 *
+                </span>
               </label>
               <input
-                type="date"
-                value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                className="input input-bordered w-full"
+                type="text"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                placeholder="예: 에펠탑 야경 보기"
+                className="input input-bordered h-12 text-base"
                 required
               />
             </div>
 
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text">시간</span>
-              </label>
-              <input
-                type="time"
-                value={formData.time}
-                onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                className="input input-bordered w-full font-mono"
-              />
-            </div>
-          </div>
-
-          <div className="form-control w-full">
-            <label className="label">
-              <span className="label-text">제목 *</span>
-            </label>
-            <input
-              type="text"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="예: 성산일출봉 관람"
-              className="input input-bordered w-full"
-              required
-            />
-          </div>
-
-          <div className="form-control w-full relative">
-            <label className="label">
-              <span className="label-text">장소</span>
-              {formData.latitude && formData.longitude && (
-                <span className="label-text-alt text-success">📍 위치 저장됨</span>
-              )}
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={formData.place || ''}
-                onChange={(e) => handlePlaceInputChange(e.target.value)}
-                onFocus={() => placeResults.length > 0 && setShowPlaceResults(true)}
-                onBlur={() => setTimeout(() => setShowPlaceResults(false), 200)}
-                placeholder="장소를 검색하세요 (예: 에펠탑)"
-                className="input input-bordered w-full pr-10"
-              />
-              {isSearchingPlace && (
-                <span className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <span className="loading loading-spinner loading-sm"></span>
+            {/* 장소 */}
+            <div className="form-control relative">
+              <label className="label py-1">
+                <span className="label-text font-medium flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4 text-error" /> 장소
                 </span>
+                {formData.latitude && formData.longitude && (
+                  <span className="label-text-alt text-success flex items-center gap-1">
+                    <MapPin className="w-3 h-3" /> 위치 저장됨
+                  </span>
+                )}
+              </label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40" />
+                <input
+                  type="text"
+                  value={formData.place || ''}
+                  onChange={(e) => handlePlaceInputChange(e.target.value)}
+                  onFocus={() => placeResults.length > 0 && setShowPlaceResults(true)}
+                  onBlur={() => setTimeout(() => setShowPlaceResults(false), 200)}
+                  placeholder="장소 검색 (예: 에펠탑, 루브르)"
+                  className="input input-bordered h-12 text-base w-full pl-10 pr-10"
+                />
+                {isSearchingPlace && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <span className="loading loading-spinner loading-sm text-primary"></span>
+                  </span>
+                )}
+              </div>
+              
+              {/* 검색 결과 드롭다운 */}
+              {showPlaceResults && placeResults.length > 0 && (
+                <ul className="absolute z-50 top-full left-0 right-0 mt-1 bg-base-100 border border-base-300 rounded-xl shadow-xl max-h-60 overflow-auto">
+                  {placeResults.map((place) => (
+                    <li
+                      key={place.id}
+                      className="px-4 py-3 hover:bg-primary/10 cursor-pointer border-b border-base-200 last:border-b-0 transition-colors"
+                      onMouseDown={() => selectPlace(place)}
+                    >
+                      <div className="flex items-start gap-2">
+                        <MapPin className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <div className="font-medium">{place.name.split(',')[0]}</div>
+                          <div className="text-xs text-base-content/60 truncate">{place.name}</div>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               )}
+
+              {/* 미니 맵 프리뷰 */}
+              {formData.latitude && formData.longitude && (
+                <div className="mt-2 rounded-lg overflow-hidden border border-base-300">
+                  <TravelMap
+                    points={[{
+                      id: 1,
+                      lat: formData.latitude,
+                      lng: formData.longitude,
+                      title: formData.title || '선택한 위치',
+                      date: formData.date,
+                      order: 1,
+                    }]}
+                    height="120px"
+                    showRoute={false}
+                  />
+                </div>
+              )}
+              
+              <label className="label py-1">
+                <span className="label-text-alt text-base-content/50">
+                  검색 결과에서 선택하면 지도에 핀이 표시됩니다
+                </span>
+              </label>
             </div>
-            {/* 검색 결과 드롭다운 */}
-            {showPlaceResults && placeResults.length > 0 && (
-              <ul className="absolute z-50 top-full left-0 right-0 mt-1 bg-base-100 border border-base-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                {placeResults.map((place) => (
-                  <li
-                    key={place.id}
-                    className="px-4 py-3 hover:bg-base-200 cursor-pointer border-b border-base-200 last:border-b-0"
-                    onMouseDown={() => selectPlace(place)}
-                  >
-                    <div className="font-medium text-sm">{place.name.split(',')[0]}</div>
-                    <div className="text-xs text-base-content/60 truncate">{place.name}</div>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <label className="label">
-              <span className="label-text-alt text-base-content/50">검색 결과에서 선택하면 지도에 표시됩니다</span>
-            </label>
-          </div>
 
-          <div className="form-control w-full">
-            <label className="label">
-              <span className="label-text">메모</span>
-            </label>
-            <textarea
-              value={formData.memo}
-              onChange={(e) => setFormData({ ...formData, memo: e.target.value })}
-              placeholder="상세 내용을 입력하세요"
-              rows={3}
-              className="textarea textarea-bordered w-full"
-            />
-          </div>
-
-          <div className="form-control w-full">
-            <label className="label">
-              <span className="label-text">Plan B (대안)</span>
-            </label>
-            <input
-              type="text"
-              value={formData.plan_b}
-              onChange={(e) => setFormData({ ...formData, plan_b: e.target.value })}
-              placeholder="날씨가 안 좋을 때 대안"
-              className="input input-bordered w-full"
-            />
-          </div>
-
-          <div className="form-control w-full">
-            <label className="label">
-              <span className="label-text">Plan C (또 다른 대안)</span>
-            </label>
-            <input
-              type="text"
-              value={formData.plan_c}
-              onChange={(e) => setFormData({ ...formData, plan_c: e.target.value })}
-              placeholder="또 다른 대안"
-              className="input input-bordered w-full"
-            />
-          </div>
-
-          <div className="modal-action">
-            <div className="text-sm text-base-content/70">
-              {saveStatus === 'saving' && '저장 중...'}
-              {saveStatus === 'saved' && '저장됨'}
-              {saveStatus === 'error' && '저장 실패'}
+            {/* 메모 */}
+            <div className="form-control">
+              <label className="label py-1">
+                <span className="label-text font-medium">메모</span>
+              </label>
+              <textarea
+                value={formData.memo}
+                onChange={(e) => setFormData({ ...formData, memo: e.target.value })}
+                placeholder="상세 내용, 예약 정보, 팁 등"
+                rows={3}
+                className="textarea textarea-bordered text-base leading-relaxed"
+              />
             </div>
-            <Button type="submit" variant="primary" disabled={saveStatus === 'saving'}>
-              저장하고 닫기
-            </Button>
-          </div>
-        </form>
+
+            {/* 대안 계획 - 접이식 */}
+            <div className="collapse collapse-arrow bg-base-200 rounded-lg">
+              <input type="checkbox" />
+              <div className="collapse-title py-3 min-h-0 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-warning" />
+                <span className="font-medium text-sm">대안 계획 (선택)</span>
+              </div>
+              <div className="collapse-content space-y-3">
+                <div className="form-control">
+                  <label className="label py-1">
+                    <span className="label-text text-sm">Plan B</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.plan_b}
+                    onChange={(e) => setFormData({ ...formData, plan_b: e.target.value })}
+                    placeholder="비 오면 실내 카페로"
+                    className="input input-bordered input-sm h-10"
+                  />
+                </div>
+
+                <div className="form-control">
+                  <label className="label py-1">
+                    <span className="label-text text-sm">Plan C</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.plan_c}
+                    onChange={(e) => setFormData({ ...formData, plan_c: e.target.value })}
+                    placeholder="그것도 안되면..."
+                    className="input input-bordered input-sm h-10"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 저장 버튼 */}
+            <div className="sticky bottom-0 bg-base-100 pt-3 -mx-4 px-4 -mb-4 pb-4 border-t">
+              <div className="flex items-center justify-between">
+                <div className="text-sm">
+                  {saveStatus === 'saving' && <span className="text-primary">저장 중...</span>}
+                  {saveStatus === 'saved' && <span className="text-success">✓ 저장됨</span>}
+                  {saveStatus === 'error' && <span className="text-error">저장 실패</span>}
+                </div>
+                <Button 
+                  type="submit" 
+                  variant="primary" 
+                  disabled={saveStatus === 'saving' || !formData.title || !formData.date}
+                  className="h-12 px-6"
+                >
+                  {schedule?.id ? '수정 완료' : '일정 추가'}
+                </Button>
+              </div>
+            </div>
+          </form>
+        </div>
       </div>
+      <form method="dialog" className="modal-backdrop">
+        <button onClick={onClose}>닫기</button>
+      </form>
     </dialog>
   );
 }
