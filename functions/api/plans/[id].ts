@@ -48,6 +48,13 @@ export async function onRequestPut(context: {
   try {
     const body: UpdatePlanRequest = await request.json();
 
+    // 기존 plan 조회 (날짜 변경 시 스케줄 이동을 위해)
+    const { results: existingPlans } = await env.DB.prepare('SELECT start_date FROM plans WHERE id = ?')
+      .bind(planId)
+      .all();
+    
+    const oldStartDate = existingPlans[0]?.start_date as string | undefined;
+
     // 업데이트할 필드만 동적으로 쿼리 생성
     const updates: string[] = [];
     const values: any[] = [];
@@ -86,6 +93,20 @@ export async function onRequestPut(context: {
 
     const query = `UPDATE plans SET ${updates.join(', ')} WHERE id = ?`;
     await env.DB.prepare(query).bind(...values).run();
+
+    // 시작일이 변경된 경우 모든 스케줄 날짜도 함께 이동
+    if (body.start_date && oldStartDate && body.start_date !== oldStartDate) {
+      const oldDate = new Date(oldStartDate);
+      const newDate = new Date(body.start_date);
+      const diffDays = Math.round((newDate.getTime() - oldDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (diffDays !== 0) {
+        const sign = diffDays > 0 ? '+' : '';
+        await env.DB.prepare(
+          `UPDATE schedules SET date = date(date, ? || ' days') WHERE plan_id = ?`
+        ).bind(sign + diffDays, planId).run();
+      }
+    }
 
     // 업데이트된 plan 조회
     const { results } = await env.DB.prepare('SELECT * FROM plans WHERE id = ?')

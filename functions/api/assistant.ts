@@ -68,9 +68,10 @@ When the user sends an image, analyze it in the context of their travel:
 - If it's a map/directions, provide guidance
 - Can also add the location as a schedule if user asks` : '';
 
-  const systemPrompt = `You are a travel assistant that can CHAT, ANALYZE IMAGES, and MODIFY schedules.
+  const systemPrompt = `You are a travel assistant that can CHAT, ANALYZE IMAGES, MODIFY schedules, and UPDATE plan info.
 
 TRAVEL PLAN:
+- Plan ID: ${planId}
 - Title: ${planTitle}
 - Region: ${planRegion || 'N/A'}
 - Dates: ${planStartDate} to ${planEndDate}
@@ -85,26 +86,36 @@ Always respond with JSON:
   "actions": []
 }
 
-ACTIONS (only when user asks to modify schedules):
+SCHEDULE ACTIONS:
 - ADD: {"type": "add", "schedule": {"date": "YYYY-MM-DD", "time": "HH:MM", "title": "...", "place": "...", "memo": ""}}
-- UPDATE: {"type": "update", "id": <schedule_id>, "changes": {"title": "...", "time": "...", ...}}
+- UPDATE: {"type": "update", "id": <schedule_id>, "changes": {"title": "...", "time": "...", "date": "...", ...}}
 - DELETE: {"type": "delete", "id": <schedule_id>}
+- SHIFT_ALL: {"type": "shift_all", "days": <number>} - Move ALL schedules by N days (positive=future, negative=past)
+- DELETE_MATCHING: {"type": "delete_matching", "pattern": "transport|이동|버스|택시|공항|비행기|기차|KTX|..."} - Delete schedules matching keyword pattern
+
+PLAN INFO ACTIONS:
+- UPDATE_PLAN: {"type": "update_plan", "changes": {"title": "...", "region": "...", "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD"}}
 
 RULES:
 1. For normal chat (questions, suggestions, image analysis), just reply with empty actions: []
-2. For schedule modifications, include appropriate actions
+2. For modifications, include appropriate actions
 3. Always confirm what you're doing in the reply
-4. Use schedule IDs from the list above
+4. Use schedule IDs from the list above when targeting specific schedules
 5. Reply in ${outputLang}
 6. Be friendly and helpful!
 7. Keep responses concise (1-3 sentences) for voice readability
+8. For bulk operations like "10일 뒤로 미뤄줘", use SHIFT_ALL action
+9. For "이동 일정 지워줘" type requests, use DELETE_MATCHING with transport-related keywords
+10. For "하루에 2개만" type requests, analyze schedules by date and DELETE extras (keep important ones)
 
 Examples:
-- "오후 3시에 해운대 추가해줘" → ADD action with date, time, place
-- "첫번째 일정 삭제해줘" → DELETE action with id
-- "점심 시간을 1시로 바꿔줘" → UPDATE action with id and time change
-- "부산 맛집 추천해줘" → Just reply, no actions
-- [Image of landmark] → Analyze and describe, no actions unless asked`;
+- "오후 3시에 해운대 추가해줘" → ADD action
+- "일정 모두 10일 뒤로 미뤄줘" → SHIFT_ALL with days: 10
+- "이동 일정 다 지워줘" → DELETE_MATCHING with pattern for transport keywords
+- "하루에 주요 일정 2개만 남겨줘" → Multiple DELETE actions for excess schedules per day
+- "여행 제목 바꿔줘: 부산 여행" → UPDATE_PLAN with title change
+- "날짜를 3월 1일부터로 바꿔줘" → UPDATE_PLAN with date changes
+- "부산 맛집 추천해줘" → Just reply, no actions`;
 
   const messages: OpenAIMessage[] = [{ role: 'system', content: systemPrompt }];
 
@@ -191,6 +202,51 @@ Examples:
         } else if (action.type === 'delete' && action.id) {
           await context.env.DB.prepare('DELETE FROM schedules WHERE id = ?').bind(action.id).run();
           results.push({ type: 'delete', success: true, id: action.id });
+        } else if (action.type === 'shift_all' && typeof action.days === 'number') {
+          // Shift all schedules by N days
+          const shiftDays = action.days;
+          await context.env.DB.prepare(
+            `UPDATE schedules SET date = date(date, ? || ' days') WHERE plan_id = ?`
+          ).bind(shiftDays > 0 ? '+' + shiftDays : String(shiftDays), planId).run();
+          // Also update plan dates
+          await context.env.DB.prepare(
+            `UPDATE plans SET start_date = date(start_date, ? || ' days'), end_date = date(end_date, ? || ' days') WHERE id = ?`
+          ).bind(shiftDays > 0 ? '+' + shiftDays : String(shiftDays), shiftDays > 0 ? '+' + shiftDays : String(shiftDays), planId).run();
+          results.push({ type: 'shift_all', success: true, days: shiftDays });
+        } else if (action.type === 'delete_matching' && action.pattern) {
+          // Delete schedules matching pattern (case insensitive)
+          const keywords = action.pattern.split('|').map((k: string) => k.trim().toLowerCase());
+          const allSchedules = await context.env.DB.prepare(
+            `SELECT id, title, place, memo FROM schedules WHERE plan_id = ?`
+          ).bind(planId).all();
+          
+          let deletedCount = 0;
+          for (const sched of allSchedules.results || []) {
+            const searchText = `${sched.title || ''} ${sched.place || ''} ${sched.memo || ''}`.toLowerCase();
+            if (keywords.some((kw: string) => searchText.includes(kw))) {
+              await context.env.DB.prepare('DELETE FROM schedules WHERE id = ?').bind(sched.id).run();
+              deletedCount++;
+            }
+          }
+          results.push({ type: 'delete_matching', success: true, count: deletedCount });
+        } else if (action.type === 'update_plan' && action.changes) {
+          // Update plan info (title, region, dates)
+          const changes = action.changes;
+          const sets: string[] = [];
+          const values: any[] = [];
+          for (const [key, val] of Object.entries(changes)) {
+            if (['title', 'region', 'start_date', 'end_date', 'country', 'country_code'].includes(key)) {
+              sets.push(`${key} = ?`);
+              values.push(val);
+            }
+          }
+          if (sets.length > 0) {
+            values.push(planId);
+            await context.env.DB.prepare(
+              `UPDATE plans SET ${sets.join(', ')} WHERE id = ?`
+            ).bind(...values).run();
+            results.push({ type: 'update_plan', success: true });
+          }
         }
       } catch (e) {
         console.error('Action failed:', action, e);

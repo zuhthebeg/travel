@@ -11,6 +11,7 @@ import { TravelMap, schedulesToMapPoints } from '../components/TravelMap'; // �
 import { TravelAssistantChat } from '../components/TravelAssistantChat'; // Import the new component
 import { TravelProgressBar } from '../components/TravelProgressBar';
 import ReviewSection from '../components/ReviewSection'; // Import ReviewSection
+import TripNotes from '../components/TripNotes'; // Import TripNotes
 import type { Schedule, Plan, Comment } from '../store/types';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import useBrowserNotifications from '../hooks/useBrowserNotifications'; // Import the new hook
@@ -116,6 +117,7 @@ export function PlanDetailPage() {
   const [showChatbot, setShowChatbot] = useState(false);
   const [pendingScrollIds, setPendingScrollIds] = useState<number[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('horizontal');
+  const [mainTab, setMainTab] = useState<'schedule' | 'notes'>('schedule');
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; city?: string } | null>(null);
   const viewModalRef = useRef<HTMLDialogElement>(null);
   const editModalRef = useRef<HTMLDialogElement>(null);
@@ -558,20 +560,44 @@ export function PlanDetailPage() {
           return null;
         })()}
 
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold">일정</h2>
-          <div className="flex items-center gap-4">
-            <div className="tabs tabs-boxed">
-              <a className={`tab ${viewMode === 'vertical' ? 'tab-active' : ''}`} onClick={() => setViewMode('vertical')}>목록</a>
-              <a className={`tab ${viewMode === 'horizontal' ? 'tab-active' : ''}`} onClick={() => setViewMode('horizontal')}>타임라인</a>
-            </div>
-            <Button variant="primary" onClick={() => setEditingSchedule({} as Schedule)}>
-              일정 추가
-            </Button>
-          </div>
+        {/* 메인 탭: 일정 / 메모 */}
+        <div className="tabs tabs-boxed mb-6 w-fit">
+          <a 
+            className={`tab gap-2 ${mainTab === 'schedule' ? 'tab-active' : ''}`} 
+            onClick={() => setMainTab('schedule')}
+          >
+            📅 일정
+          </a>
+          <a 
+            className={`tab gap-2 ${mainTab === 'notes' ? 'tab-active' : ''}`} 
+            onClick={() => setMainTab('notes')}
+          >
+            📝 메모
+          </a>
         </div>
 
-        <DragDropContext onDragEnd={onDragEnd}>
+        {/* 메모 탭 */}
+        {mainTab === 'notes' && selectedPlan && (
+          <TripNotes planId={selectedPlan.id} />
+        )}
+
+        {/* 일정 탭 */}
+        {mainTab === 'schedule' && (
+          <>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold">일정</h2>
+              <div className="flex items-center gap-4">
+                <div className="tabs tabs-boxed">
+                  <a className={`tab ${viewMode === 'vertical' ? 'tab-active' : ''}`} onClick={() => setViewMode('vertical')}>목록</a>
+                  <a className={`tab ${viewMode === 'horizontal' ? 'tab-active' : ''}`} onClick={() => setViewMode('horizontal')}>타임라인</a>
+                </div>
+                <Button variant="primary" onClick={() => setEditingSchedule({} as Schedule)}>
+                  일정 추가
+                </Button>
+              </div>
+            </div>
+
+            <DragDropContext onDragEnd={onDragEnd}>
           {schedules.length === 0 ? (
             <Card>
               <Card.Body className="text-center py-12" centered>
@@ -650,6 +676,8 @@ export function PlanDetailPage() {
             </div>
           )}
         </DragDropContext>
+          </>
+        )}
 
         {/* 일정 상세보기 모달 */}
         {viewingSchedule && (

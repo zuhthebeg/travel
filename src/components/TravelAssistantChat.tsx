@@ -397,9 +397,35 @@ export function TravelAssistantChat({
       <div className="flex-grow overflow-y-auto p-6">
         <div className="flex flex-col space-y-4">
           {messages.length === 0 && (
-            <div className="chat chat-start">
-              <div className="chat-bubble chat-bubble-info">
-                안녕하세요! 무엇을 도와드릴까요? 일정에 대해 궁금한 점을 물어보세요.
+            <div className="space-y-4">
+              <div className="chat chat-start">
+                <div className="chat-bubble chat-bubble-info">
+                  안녕하세요! 일정 수정이나 여행 정보 변경을 도와드릴게요.
+                </div>
+              </div>
+              <div className="px-2">
+                <p className="text-xs text-base-content/60 mb-2">💡 이런 것들을 해볼 수 있어요:</p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    '일정 모두 10일 뒤로 미뤄줘',
+                    '이동 일정은 다 지워줘',
+                    '하루에 주요 일정 2개만 남겨줘',
+                    '여행 제목 바꿔줘',
+                    '첫째날 일정 추천해줘',
+                    '비 오면 대안 추가해줘',
+                  ].map((example, i) => (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        setInput(example);
+                        inputRef.current?.focus();
+                      }}
+                      className="badge badge-outline badge-sm hover:badge-primary cursor-pointer transition-colors py-3"
+                    >
+                      {example}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}

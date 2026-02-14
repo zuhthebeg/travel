@@ -64,3 +64,20 @@ CREATE INDEX IF NOT EXISTS idx_plans_is_public ON plans(is_public);
 CREATE INDEX IF NOT EXISTS idx_schedules_plan_id ON schedules(plan_id);
 CREATE INDEX IF NOT EXISTS idx_schedules_date ON schedules(date);
 CREATE INDEX IF NOT EXISTS idx_conversations_plan_id ON conversations(plan_id);
+
+-- 여행 메모 테이블 (Trip Notes)
+CREATE TABLE IF NOT EXISTS trip_notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    plan_id INTEGER NOT NULL,
+    category TEXT NOT NULL, -- reservation, budget, packing, safety, contact, memo
+    content TEXT NOT NULL,
+    is_checklist INTEGER DEFAULT 0,
+    checked INTEGER DEFAULT 0,
+    sort_order INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (plan_id) REFERENCES plans(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_trip_notes_plan_id ON trip_notes(plan_id);
+CREATE INDEX IF NOT EXISTS idx_trip_notes_category ON trip_notes(plan_id, category);

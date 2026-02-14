@@ -230,7 +230,7 @@ export function CreatePlanPage() {
 
     } catch (error) {
       console.error('Failed to parse plan:', error);
-      alert('일정 파싱에 실패했습니다. 다시 시도해주세요.');
+      // Alert removed - if plan was created, user is already navigated
     } finally {
       setIsGenerating(false);
     }
