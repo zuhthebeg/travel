@@ -581,10 +581,14 @@ export function PlanDetailPage() {
                                   });
                                   const data = await res.json();
                                   if (data.success) {
-                                    // 결과 저장해서 미보정 목록에 표시
                                     const failedItems = (data.results || []).filter((r: any) => r.status === 'not_found');
+                                    const skipped = (data.results || []).filter((r: any) => r.status === 'skipped').length;
+                                    const updated = data.updated || 0;
+                                    // 먼저 데이터 리로드
+                                    await loadPlanDetail(selectedPlan.id);
+                                    // 리로드 후 결과 표시 (state가 리셋되지 않도록)
                                     setGeocodeFailed(failedItems);
-                                    loadPlanDetail(selectedPlan.id);
+                                    alert(`📍 좌표 보정 완료!\n✅ 보정: ${updated}개\n❌ 실패: ${failedItems.length}개${skipped > 0 ? `\n⏭ 건너뜀: ${skipped}개` : ''}`);
                                   }
                                 } catch (e) {
                                   alert('좌표 보정 실패');
@@ -1141,6 +1145,23 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
 
     setSaveStatus('saving');
     try {
+      // 좌표가 없고 장소명이 있으면 자동 geocode 시도
+      let { latitude, longitude } = formData;
+      if (!latitude && !longitude && formData.place && formData.place.trim()) {
+        try {
+          const searchQuery = planRegion ? `${formData.place}, ${planRegion}` : formData.place;
+          const geoRes = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(searchQuery)}&limit=1`);
+          if (geoRes.ok) {
+            const geoData = await geoRes.json();
+            if (geoData.features?.length > 0) {
+              const [lng, lat] = geoData.features[0].geometry.coordinates;
+              latitude = lat;
+              longitude = lng;
+            }
+          }
+        } catch { /* geocode 실패해도 저장은 진행 */ }
+      }
+
       const savedSchedule = schedule?.id
         ? await schedulesAPI.update(schedule.id, {
             date: formData.date,
@@ -1150,8 +1171,8 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
             memo: formData.memo || undefined,
             plan_b: formData.plan_b || undefined,
             plan_c: formData.plan_c || undefined,
-            latitude: formData.latitude ?? undefined,
-            longitude: formData.longitude ?? undefined,
+            latitude: latitude ?? undefined,
+            longitude: longitude ?? undefined,
           })
         : await schedulesAPI.create({
             plan_id: planId,
@@ -1162,8 +1183,8 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
             memo: formData.memo || undefined,
             plan_b: formData.plan_b || undefined,
             plan_c: formData.plan_c || undefined,
-            latitude: formData.latitude ?? undefined,
-            longitude: formData.longitude ?? undefined,
+            latitude: latitude ?? undefined,
+            longitude: longitude ?? undefined,
           });
 
       onSave(savedSchedule);
@@ -1828,10 +1849,8 @@ function PlanEditModal({ modalRef, plan, onClose, onSave, onDelete }: PlanEditMo
   };
 
   const handleDelete = () => {
-    if (confirm('이 여행을 삭제하시겠습니까? 모든 일정이 함께 삭제됩니다.')) {
-      onDelete();
-      onClose();
-    }
+    onDelete();
+    onClose();
   };
 
   return (
