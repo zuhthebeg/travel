@@ -1,7 +1,7 @@
 // /api/plans/:id - 특정 여행 계획 조회, 수정, 삭제
 
-import type { Env, UpdatePlanRequest } from '../../types';
-import { jsonResponse, errorResponse } from '../../types';
+import type { Env, UpdatePlanRequest } from '../../../types';
+import { jsonResponse, errorResponse } from '../../../types';
 
 export async function onRequestGet(context: {
   env: Env;

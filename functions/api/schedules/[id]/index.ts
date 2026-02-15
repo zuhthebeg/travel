@@ -1,7 +1,7 @@
 // /api/schedules/:id - 특정 일정 조회, 수정, 삭제
 
-import type { Env, UpdateScheduleRequest } from '../../types';
-import { jsonResponse, errorResponse } from '../../types';
+import type { Env, UpdateScheduleRequest } from '../../../types';
+import { jsonResponse, errorResponse } from '../../../types';
 
 export async function onRequestGet(context: {
   env: Env;

@@ -148,31 +148,28 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       const placeEn = schedule.place_en as string | null;
       let coords: { lat: number; lng: number } | null = null;
       
-      // 1차: place_en (영어) → 가장 정확
+      // 1차: place_en (영어) 있으면 바로 사용
       if (placeEn) {
-        coords = await geocodePhoton(regionContext ? `${placeEn}, ${regionContext}` : placeEn);
-        if (!coords) coords = await geocodePhoton(placeEn);
+        coords = await geocodePhoton(placeEn);
       }
-      // 2차: place 직접 검색 (한국 지명은 Photon이 잘 찾음)
-      if (!coords && regionContext) {
-        coords = await geocodePhoton(`${place}, ${regionContext}`);
-      }
-      if (!coords) {
-        coords = await geocodePhoton(place);
-      }
-      // 3차: 한국어면 영어로 번역 후 재검색
+      
+      // 2차: 한국어면 영어로 번역 후 검색 (가장 정확)
       if (!coords && hasKorean(place)) {
         const english = await translateToEnglish(place);
         if (english) {
-          coords = await geocodePhoton(regionContext ? `${english}, ${regionContext}` : english);
-          if (!coords) coords = await geocodePhoton(english);
-          // 번역 성공하면 place_en도 저장
+          coords = await geocodePhoton(english);
+          // 번역 성공하면 place_en 저장
           if (coords) {
             await context.env.DB.prepare(
               `UPDATE schedules SET place_en = ? WHERE id = ? AND place_en IS NULL`
             ).bind(english, schedule.id).run();
           }
         }
+      }
+      
+      // 3차: 원본으로 직접 검색
+      if (!coords) {
+        coords = await geocodePhoton(place);
       }
 
       if (coords) {
