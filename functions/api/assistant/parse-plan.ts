@@ -119,11 +119,12 @@ CRITICAL DATE RULES:
 SCHEDULE GENERATION RULES:
 1. If input contains DETAILED itinerary (times, places, activities), parse it exactly as given
 2. If input is MINIMAL (just "부산 3일"), generate reasonable schedules:
-   - 2-3 activities per day
+   - Maximum 3 schedules per day (STRICT LIMIT)
    - Morning (09:00-10:00), Afternoon (14:00-15:00), Evening (18:00-19:00)
    - Use REAL famous places for the destination (search your knowledge)
 3. ALL text in ${outputLang}
-4. IMPORTANT - place field MUST include region/city for disambiguation:
+4. Do NOT include obvious/filler activities: hotel breakfast, hotel check-in/out, resort dinner, watching movies at hotel, resting, packing, etc. Only include activities worth planning.
+5. IMPORTANT - place field MUST include region/city for disambiguation:
    - ❌ Bad: "디즈니랜드" (ambiguous - could be any country)
    - ✅ Good: "디즈니랜드 캘리포니아, 애너하임" or "Disneyland California, Anaheim"
    - ❌ Bad: "유니버설 스튜디오" (ambiguous)

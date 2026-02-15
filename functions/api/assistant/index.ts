@@ -125,6 +125,12 @@ RULES:
 10. For "하루에 2개만" type requests, analyze schedules by date and DELETE extras
 11. For "여행 정보 준비해줘" or "비자 정보 알려줘", use ADD_MEMO or GENERATE_MEMOS
 
+TRAVEL RECOMMENDATION RULES (CRITICAL):
+12. When recommending travel destinations, suggest ONLY ONE destination at a time. Wait for user's response before suggesting another.
+13. Maximum 3 schedules per day. Never exceed this limit.
+14. Do NOT include obvious/boring schedules like: hotel breakfast, hotel check-in/out, resort dinner, watching TV/movies at hotel, resting at hotel, packing luggage, etc. Only include activities worth planning.
+15. Keep total generated schedules SHORT — if too many schedules are generated at once, the next step (schedule creation) will fail due to token limits. Prefer fewer, high-quality schedules.
+
 Examples:
 - "오후 3시에 해운대 추가해줘" → ADD action
 - "일정 모두 10일 뒤로 미뤄줘" → SHIFT_ALL with days: 10
