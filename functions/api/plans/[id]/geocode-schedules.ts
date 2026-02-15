@@ -8,7 +8,6 @@
 
 interface Env {
   DB: D1Database;
-  GOOGLE_MAPS_API_KEY?: string;
 }
 
 const corsHeaders = {
@@ -70,27 +69,26 @@ function isGenericPlace(place: string): boolean {
   return GENERIC_PLACE_NAMES.some(g => normalized === g || normalized.startsWith(g + ' '));
 }
 
-// Geocode using Google Maps API (best for Korean text)
-async function geocodeGoogle(query: string, apiKey: string, regionBias?: string | null): Promise<{ lat: number; lng: number } | null> {
+// 한글 포함 여부 체크
+function hasKorean(text: string): boolean {
+  return /[\uAC00-\uD7AF]/.test(text);
+}
+
+// MyMemory 무료 번역 API (한글 → 영어)
+async function translateToEnglish(text: string): Promise<string | null> {
   try {
-    let url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${apiKey}&language=ko`;
-    if (regionBias) {
-      url += `&region=${regionBias}`;
-    }
-    const res = await fetch(url);
+    const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=ko|en`);
     if (!res.ok) return null;
     const data = await res.json() as any;
-    if (data.status === 'OK' && data.results?.length > 0) {
-      const loc = data.results[0].geometry.location;
-      return { lat: loc.lat, lng: loc.lng };
-    }
+    const translated = data.responseData?.translatedText;
+    if (translated && translated !== text) return translated;
   } catch (e) {
-    console.error('Google geocode error:', e);
+    console.error('Translation error:', e);
   }
   return null;
 }
 
-// Geocode using Photon (free fallback)
+// Photon 지오코딩 (무료)
 async function geocodePhoton(query: string): Promise<{ lat: number; lng: number } | null> {
   try {
     const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1`);
@@ -106,16 +104,21 @@ async function geocodePhoton(query: string): Promise<{ lat: number; lng: number 
   return null;
 }
 
-// Geocode with fallback chain: Google → Photon
-async function geocode(query: string, countryCode?: string | null, googleApiKey?: string): Promise<{ lat: number; lng: number } | null> {
-  // 1st: Google (handles Korean perfectly)
-  if (googleApiKey) {
-    const result = await geocodeGoogle(query, googleApiKey, countryCode);
-    if (result) return result;
+// 지오코딩: 한글이면 번역 후 Photon, 아니면 바로 Photon
+async function geocode(query: string): Promise<{ lat: number; lng: number } | null> {
+  // 1차: 원본 그대로 Photon 검색 (한국 지명은 Photon이 잘 찾음)
+  const direct = await geocodePhoton(query);
+  if (direct) return direct;
+
+  // 2차: 한글이 포함되어 있으면 영어로 번역 후 재검색
+  if (hasKorean(query)) {
+    const english = await translateToEnglish(query);
+    if (english) {
+      const translated = await geocodePhoton(english);
+      if (translated) return translated;
+    }
   }
-  // 2nd: Photon (free, good for English)
-  const result = await geocodePhoton(query);
-  if (result) return result;
+
   return null;
 }
 
@@ -160,28 +163,14 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         continue;
       }
       
-      // Build search strategies - ONLY use country-filtered searches for safety
-      const searchStrategies: { query: string; useCountry: boolean }[] = [
-        { query: `${place}, ${regionContext}`, useCountry: true },   // place + region + country
-        { query: place, useCountry: true },                           // just place + country
-      ];
-      
-      // Only add global fallback if country code is not found (unknown region)
-      if (!countryCode) {
-        searchStrategies.push(
-          { query: `${place}, ${regionContext}`, useCountry: false },   // place + region (no country filter)
-          { query: place, useCountry: false },                          // just place (global)
-        );
-      }
-
+      // 검색 전략: place+region → place만 (번역은 geocode 내부에서 자동 처리)
       let coords: { lat: number; lng: number } | null = null;
-      const googleKey = context.env.GOOGLE_MAPS_API_KEY;
       
-      for (const strategy of searchStrategies) {
-        coords = await geocode(strategy.query, strategy.useCountry ? countryCode : null, googleKey);
-        if (coords) break;
-        // Rate limit: wait 200ms between requests (for free APIs)
-        if (!googleKey) await new Promise(r => setTimeout(r, 200));
+      if (regionContext) {
+        coords = await geocode(`${place}, ${regionContext}`);
+      }
+      if (!coords) {
+        coords = await geocode(place);
       }
 
       if (coords) {

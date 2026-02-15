@@ -4,7 +4,6 @@ export interface Env {
   DB: D1Database;
   CACHE?: KVNamespace;
   OPENAI_API_KEY?: string;
-  GOOGLE_MAPS_API_KEY?: string;
 }
 
 // 데이터베이스 모델 타입
