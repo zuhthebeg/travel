@@ -8,6 +8,7 @@
 
 interface Env {
   DB: D1Database;
+  GOOGLE_MAPS_API_KEY?: string;
 }
 
 const corsHeaders = {
@@ -69,30 +70,52 @@ function isGenericPlace(place: string): boolean {
   return GENERIC_PLACE_NAMES.some(g => normalized === g || normalized.startsWith(g + ' '));
 }
 
-// Geocode using Nominatim
-async function geocode(query: string, countryCode?: string | null): Promise<{ lat: number; lng: number } | null> {
+// Geocode using Google Maps API (best for Korean text)
+async function geocodeGoogle(query: string, apiKey: string, regionBias?: string | null): Promise<{ lat: number; lng: number } | null> {
   try {
-    let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
-    if (countryCode) {
-      url += `&countrycodes=${countryCode}`;
+    let url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${apiKey}&language=ko`;
+    if (regionBias) {
+      url += `&region=${regionBias}`;
     }
-    
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'TravelApp/1.0' }
-    });
-    
+    const res = await fetch(url);
     if (!res.ok) return null;
-    
-    const data = await res.json() as any[];
-    if (data.length > 0) {
-      return {
-        lat: parseFloat(data[0].lat),
-        lng: parseFloat(data[0].lon),
-      };
+    const data = await res.json() as any;
+    if (data.status === 'OK' && data.results?.length > 0) {
+      const loc = data.results[0].geometry.location;
+      return { lat: loc.lat, lng: loc.lng };
     }
   } catch (e) {
-    console.error('Geocode error:', e);
+    console.error('Google geocode error:', e);
   }
+  return null;
+}
+
+// Geocode using Photon (free fallback)
+async function geocodePhoton(query: string): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1`);
+    if (!res.ok) return null;
+    const data = await res.json() as any;
+    if (data.features?.length > 0) {
+      const [lng, lat] = data.features[0].geometry.coordinates;
+      return { lat, lng };
+    }
+  } catch (e) {
+    console.error('Photon geocode error:', e);
+  }
+  return null;
+}
+
+// Geocode with fallback chain: Google → Photon
+async function geocode(query: string, countryCode?: string | null, googleApiKey?: string): Promise<{ lat: number; lng: number } | null> {
+  // 1st: Google (handles Korean perfectly)
+  if (googleApiKey) {
+    const result = await geocodeGoogle(query, googleApiKey, countryCode);
+    if (result) return result;
+  }
+  // 2nd: Photon (free, good for English)
+  const result = await geocodePhoton(query);
+  if (result) return result;
   return null;
 }
 
@@ -152,12 +175,13 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       }
 
       let coords: { lat: number; lng: number } | null = null;
+      const googleKey = context.env.GOOGLE_MAPS_API_KEY;
       
       for (const strategy of searchStrategies) {
-        coords = await geocode(strategy.query, strategy.useCountry ? countryCode : null);
+        coords = await geocode(strategy.query, strategy.useCountry ? countryCode : null, googleKey);
         if (coords) break;
-        // Rate limit: wait 200ms between requests
-        await new Promise(r => setTimeout(r, 200));
+        // Rate limit: wait 200ms between requests (for free APIs)
+        if (!googleKey) await new Promise(r => setTimeout(r, 200));
       }
 
       if (coords) {
