@@ -21,6 +21,11 @@ async function apiRequest<T>(
     throw new Error(error.error || `HTTP error! status: ${response.status}`);
   }
 
+  // 204 No Content 등 빈 응답 처리
+  if (response.status === 204 || response.headers.get('content-length') === '0') {
+    return undefined as T;
+  }
+
   return response.json();
 }
 
