@@ -302,10 +302,26 @@ ${text}`;
     }
   };
 
-  // AI 답변을 텍스트 입력으로 옮기기
+  // AI 답변을 텍스트 입력으로 옮기기 (불필요한 멘트 제거)
   const transferToTextInput = (content: string) => {
-    setPastedPlan(content);
-    // 스크롤 to text input
+    const lines = content.split('\n');
+    const filtered = lines.filter(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return true; // 빈 줄 유지
+      // 인사/안내 멘트 패턴 제거
+      const fillerPatterns = [
+        /^.{0,5}(일정을?\s*(짜|만들어|준비)|여행\s*일정을?\s*(짜|만들어))/,
+        /추가\s*질문|다른\s*요청|말씀해\s*주세요|도움이\s*되|즐거운\s*여행|좋은\s*여행/,
+        /^(안녕|네[,!]|좋아요|알겠|물론|여기|아래)/,
+        /드릴게요[!.]?\s*$/,
+        /참고해\s*주세요|참고하세요|유의하세요/,
+        /궁금한\s*(점|것)|문의|연락/,
+      ];
+      return !fillerPatterns.some(p => p.test(trimmed));
+    });
+    // 앞뒤 빈 줄 제거
+    const result = filtered.join('\n').trim();
+    setPastedPlan(result);
     document.getElementById('text-input-section')?.scrollIntoView({ behavior: 'smooth' });
   };
 
