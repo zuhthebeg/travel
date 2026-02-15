@@ -81,3 +81,20 @@ CREATE TABLE IF NOT EXISTS trip_notes (
 
 CREATE INDEX IF NOT EXISTS idx_trip_notes_plan_id ON trip_notes(plan_id);
 CREATE INDEX IF NOT EXISTS idx_trip_notes_category ON trip_notes(plan_id, category);
+
+-- 여행 정보 메모 테이블 (Travel Memos - 비자, 시차, 날씨, 환율, 비상연락처 등)
+CREATE TABLE IF NOT EXISTS travel_memos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    plan_id INTEGER NOT NULL,
+    category TEXT NOT NULL, -- visa, timezone, weather, currency, emergency, accommodation, transportation, custom
+    title TEXT NOT NULL,
+    content TEXT,
+    icon TEXT, -- emoji icon
+    order_index INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (plan_id) REFERENCES plans(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_travel_memos_plan_id ON travel_memos(plan_id);
+CREATE INDEX IF NOT EXISTS idx_travel_memos_category ON travel_memos(plan_id, category);

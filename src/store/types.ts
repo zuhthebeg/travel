@@ -63,3 +63,25 @@ export interface ReviewStats {
   totalReviews: number;
   averageRating: number;
 }
+
+export type TravelMemoCategory = 
+  | 'visa' 
+  | 'timezone' 
+  | 'weather' 
+  | 'currency' 
+  | 'emergency' 
+  | 'accommodation' 
+  | 'transportation' 
+  | 'custom';
+
+export interface TravelMemo {
+  id: number;
+  plan_id: number;
+  category: TravelMemoCategory;
+  title: string;
+  content: string | null;
+  icon: string | null;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}

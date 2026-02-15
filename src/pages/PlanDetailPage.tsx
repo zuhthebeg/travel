@@ -12,6 +12,7 @@ import { TravelAssistantChat } from '../components/TravelAssistantChat'; // Impo
 import { TravelProgressBar } from '../components/TravelProgressBar';
 import ReviewSection from '../components/ReviewSection'; // Import ReviewSection
 import TripNotes from '../components/TripNotes'; // Import TripNotes
+import { TravelMemoList } from '../components/travel/TravelMemoList';
 import type { Schedule, Plan, Comment } from '../store/types';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import useBrowserNotifications from '../hooks/useBrowserNotifications'; // Import the new hook
@@ -549,9 +550,41 @@ export function PlanDetailPage() {
                       height="350px"
                       className="mt-2"
                     />
-                    <p className="text-sm text-base-content/60 mt-2 text-center flex items-center justify-center gap-1">
-                      <MapPin className="w-4 h-4" /> 마커를 클릭하면 상세 정보를 볼 수 있습니다
-                    </p>
+                    <div className="flex items-center justify-between mt-2">
+                      <p className="text-sm text-base-content/60 flex items-center gap-1">
+                        <MapPin className="w-4 h-4" /> 마커를 클릭하면 상세 정보를 볼 수 있습니다
+                      </p>
+                      <button
+                        onClick={async () => {
+                          if (!selectedPlan) return;
+                          const btn = document.activeElement as HTMLButtonElement;
+                          btn.disabled = true;
+                          btn.textContent = '보정 중...';
+                          try {
+                            const res = await fetch(`/api/plans/${selectedPlan.id}/geocode-schedules`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ mode: 'all' }),
+                            });
+                            const data = await res.json();
+                            if (data.success) {
+                              alert(`좌표 보정 완료!\n업데이트: ${data.updated}개\n실패: ${data.failed}개`);
+                              loadPlanDetail(selectedPlan.id);
+                            } else {
+                              alert('좌표 보정 실패: ' + (data.error || '알 수 없는 오류'));
+                            }
+                          } catch (e) {
+                            alert('좌표 보정 실패');
+                          } finally {
+                            btn.disabled = false;
+                            btn.textContent = '📍 좌표 보정';
+                          }
+                        }}
+                        className="btn btn-xs btn-ghost"
+                      >
+                        📍 좌표 보정
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -578,7 +611,13 @@ export function PlanDetailPage() {
 
         {/* 메모 탭 */}
         {mainTab === 'notes' && selectedPlan && (
-          <TripNotes planId={selectedPlan.id} />
+          <div className="space-y-6">
+            {/* 여행 정보 (비자, 시차, 환율 등) */}
+            <TravelMemoList planId={selectedPlan.id} planRegion={selectedPlan.region} />
+            
+            {/* 기존 메모/체크리스트 */}
+            <TripNotes planId={selectedPlan.id} />
+          </div>
         )}
 
         {/* 일정 탭 */}
@@ -873,7 +912,31 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
   const [showPlaceResults, setShowPlaceResults] = useState(false);
   const placeSearchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 장소 검색 함수
+  // Photon 결과 파싱
+  const parsePhotonResults = (features: any[]) => {
+    return features.map((f: any, idx: number) => {
+      const props = f.properties;
+      const [lng, lat] = f.geometry.coordinates;
+      const parts: string[] = [];
+      if (props.name) parts.push(props.name);
+      if (props.city && props.city !== props.name) parts.push(props.city);
+      if (props.state && props.state !== props.city) parts.push(props.state);
+      if (props.country) parts.push(props.country);
+      return { id: idx, name: parts.join(', '), lat, lng };
+    });
+  };
+
+  // Nominatim 결과 파싱
+  const parseNominatimResults = (data: any[]) => {
+    return data.map((item: any, idx: number) => ({
+      id: idx + 100,
+      name: item.display_name,
+      lat: parseFloat(item.lat),
+      lng: parseFloat(item.lon),
+    }));
+  };
+
+  // 장소 검색 함수 (Photon → Nominatim fallback)
   const searchPlace = async (query: string) => {
     if (!query.trim() || query.length < 2) {
       setPlaceResults([]);
@@ -882,12 +945,32 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
 
     setIsSearchingPlace(true);
     try {
-      // planRegion 추가해서 더 정확한 검색
       const searchQuery = planRegion ? `${query}, ${planRegion}` : query;
-      const response = await fetch(`/api/geocode?q=${encodeURIComponent(searchQuery)}&limit=5`);
-      if (response.ok) {
-        const data = await response.json();
-        setPlaceResults(data.places || []);
+      
+      // 1차: Photon API
+      const photonRes = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(searchQuery)}&limit=7`);
+      
+      if (photonRes.ok) {
+        const photonData = await photonRes.json();
+        const places = parsePhotonResults(photonData.features || []);
+        
+        if (places.length > 0) {
+          setPlaceResults(places);
+          setShowPlaceResults(true);
+          return;
+        }
+      }
+
+      // 2차: Nominatim fallback (한글 상호명 등)
+      const nomRes = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=7&accept-language=ko`,
+        { headers: { 'User-Agent': 'TravelApp/1.0' } }
+      );
+      
+      if (nomRes.ok) {
+        const nomData = await nomRes.json();
+        const places = parseNominatimResults(nomData);
+        setPlaceResults(places);
         setShowPlaceResults(true);
       }
     } catch (error) {

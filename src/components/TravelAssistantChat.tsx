@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from './Button';
 import { Loading } from './Loading';
-import type { Schedule } from '../store/types';
+import type { Schedule, TravelMemo } from '../store/types';
 import useSpeechRecognition from '../hooks/useSpeechRecognition'; // Import the hook
 
 interface TravelAssistantChatProps {
@@ -11,7 +11,9 @@ interface TravelAssistantChatProps {
   planStartDate: string;
   planEndDate: string;
   schedules: Schedule[];
+  memos?: TravelMemo[]; // Travel memos
   onScheduleChange?: (modifiedIds?: number[]) => void; // Callback when schedules are modified
+  onMemoChange?: () => void; // Callback when memos are modified
 }
 
 interface Message {
@@ -26,7 +28,9 @@ export function TravelAssistantChat({
   planStartDate,
   planEndDate,
   schedules,
+  memos,
   onScheduleChange,
+  onMemoChange,
 }: TravelAssistantChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -339,6 +343,7 @@ export function TravelAssistantChat({
           planStartDate,
           planEndDate,
           schedules,
+          memos, // Include travel memos
           systemPrompt, // Pass the systemPrompt to the backend
           image: currentImage, // Include image if present
         }),
@@ -355,6 +360,11 @@ export function TravelAssistantChat({
       // If schedules were modified, notify parent to reload with modified IDs
       if (data.hasChanges && onScheduleChange) {
         onScheduleChange(data.modifiedScheduleIds || []);
+      }
+
+      // If memos were modified, notify parent to reload
+      if (data.hasMemoChanges && onMemoChange) {
+        onMemoChange();
       }
 
       // Stop STT again in case it was restarted

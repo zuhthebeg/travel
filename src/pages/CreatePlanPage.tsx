@@ -487,6 +487,16 @@ ${text}`;
               value={pastedPlan}
               onChange={(e) => setPastedPlan(e.target.value)}
             />
+            <div className="flex justify-between items-center mt-1 text-xs text-base-content/60">
+              <span>
+                {pastedPlan.length > 4000 
+                  ? `📦 ${pastedPlan.length.toLocaleString()}자 - 여러 번 나눠서 처리됩니다` 
+                  : `${pastedPlan.length.toLocaleString()}자`}
+              </span>
+              {pastedPlan.length > 10000 && (
+                <span className="text-warning">⚠️ 텍스트가 길어서 처리에 시간이 걸릴 수 있어요</span>
+              )}
+            </div>
             <Card.Actions className="justify-end mt-4">
               <Button 
                 onClick={handleParsePlan} 

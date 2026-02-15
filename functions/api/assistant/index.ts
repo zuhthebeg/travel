@@ -1,4 +1,4 @@
-import { callOpenAI, callOpenAIWithVision, type OpenAIMessage, type OpenAIContentPart } from './assistant/_common';
+import { callOpenAI, callOpenAIWithVision, type OpenAIMessage, type OpenAIContentPart } from './_common';
 
 interface Env {
   OPENAI_API_KEY: string;
@@ -18,7 +18,7 @@ export const onRequestOptions: PagesFunction = async () => {
 };
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
-  const { message, history, planId, planTitle, planRegion, planStartDate, planEndDate, schedules, userLang, image } = await context.request.json<{
+  const { message, history, planId, planTitle, planRegion, planStartDate, planEndDate, schedules, memos, userLang, image } = await context.request.json<{
     message: string;
     history: any[];
     planId: number;
@@ -27,6 +27,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     planStartDate: string;
     planEndDate: string;
     schedules: any[];
+    memos?: any[]; // Travel memos
     userLang?: string;
     image?: string; // base64 data URL
   }>();
@@ -58,6 +59,12 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     .map(s => `[ID:${s.id}] ${s.date}${s.time ? ' ' + s.time : ''}: ${s.title}${s.place ? ' @ ' + s.place : ''}`)
     .join('\n');
 
+  // Travel memo categories
+  const MEMO_CATEGORIES = ['visa', 'timezone', 'weather', 'currency', 'emergency', 'accommodation', 'transportation', 'custom'];
+  const memoSummary = (memos || [])
+    .map(m => `[ID:${m.id}] ${m.category}: ${m.title}${m.content ? ' - ' + m.content.substring(0, 50) + (m.content.length > 50 ? '...' : '') : ''}`)
+    .join('\n');
+
   const imageInstructions = image ? `
 IMAGE ANALYSIS:
 When the user sends an image, analyze it in the context of their travel:
@@ -68,7 +75,7 @@ When the user sends an image, analyze it in the context of their travel:
 - If it's a map/directions, provide guidance
 - Can also add the location as a schedule if user asks` : '';
 
-  const systemPrompt = `You are a travel assistant that can CHAT, ANALYZE IMAGES, MODIFY schedules, and UPDATE plan info.
+  const systemPrompt = `You are a travel assistant that can CHAT, ANALYZE IMAGES, MODIFY schedules, UPDATE plan info, and MANAGE travel memos.
 
 TRAVEL PLAN:
 - Plan ID: ${planId}
@@ -77,6 +84,8 @@ TRAVEL PLAN:
 - Dates: ${planStartDate} to ${planEndDate}
 - Schedules:
 ${scheduleSummary || '(No schedules)'}
+- Travel Memos:
+${memoSummary || '(No memos)'}
 ${imageInstructions}
 
 RESPONSE FORMAT:
@@ -87,7 +96,8 @@ Always respond with JSON:
 }
 
 SCHEDULE ACTIONS:
-- ADD: {"type": "add", "schedule": {"date": "YYYY-MM-DD", "time": "HH:MM", "title": "...", "place": "...", "memo": ""}}
+- ADD: {"type": "add", "schedule": {"date": "YYYY-MM-DD", "time": "HH:MM", "title": "...", "place": "장소명, 도시 (예: 디즈니랜드, 애너하임)", "memo": ""}}
+  * place MUST include city/region for geocoding accuracy (e.g., "Disneyland, Anaheim" not just "Disneyland")
 - UPDATE: {"type": "update", "id": <schedule_id>, "changes": {"title": "...", "time": "...", "date": "...", ...}}
 - DELETE: {"type": "delete", "id": <schedule_id>}
 - SHIFT_ALL: {"type": "shift_all", "days": <number>} - Move ALL schedules by N days (positive=future, negative=past)
@@ -96,25 +106,32 @@ SCHEDULE ACTIONS:
 PLAN INFO ACTIONS:
 - UPDATE_PLAN: {"type": "update_plan", "changes": {"title": "...", "region": "...", "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD"}}
 
+TRAVEL MEMO ACTIONS (for visa, timezone, weather, currency, emergency, accommodation, transportation, custom):
+- ADD_MEMO: {"type": "add_memo", "memo": {"category": "visa|timezone|weather|currency|emergency|accommodation|transportation|custom", "title": "...", "content": "...", "icon": "🛂|🕐|🌤️|💱|🆘|🏨|🚗|📝"}}
+- UPDATE_MEMO: {"type": "update_memo", "id": <memo_id>, "changes": {"title": "...", "content": "...", "icon": "..."}}
+- DELETE_MEMO: {"type": "delete_memo", "id": <memo_id>}
+- GENERATE_MEMOS: {"type": "generate_memos"} - Auto-generate travel memos for the destination (visa, timezone, currency, weather, emergency info)
+
 RULES:
 1. For normal chat (questions, suggestions, image analysis), just reply with empty actions: []
 2. For modifications, include appropriate actions
 3. Always confirm what you're doing in the reply
-4. Use schedule IDs from the list above when targeting specific schedules
+4. Use schedule/memo IDs from the list above when targeting specific items
 5. Reply in ${outputLang}
 6. Be friendly and helpful!
 7. Keep responses concise (1-3 sentences) for voice readability
 8. For bulk operations like "10일 뒤로 미뤄줘", use SHIFT_ALL action
 9. For "이동 일정 지워줘" type requests, use DELETE_MATCHING with transport-related keywords
-10. For "하루에 2개만" type requests, analyze schedules by date and DELETE extras (keep important ones)
+10. For "하루에 2개만" type requests, analyze schedules by date and DELETE extras
+11. For "여행 정보 준비해줘" or "비자 정보 알려줘", use ADD_MEMO or GENERATE_MEMOS
 
 Examples:
 - "오후 3시에 해운대 추가해줘" → ADD action
 - "일정 모두 10일 뒤로 미뤄줘" → SHIFT_ALL with days: 10
 - "이동 일정 다 지워줘" → DELETE_MATCHING with pattern for transport keywords
-- "하루에 주요 일정 2개만 남겨줘" → Multiple DELETE actions for excess schedules per day
 - "여행 제목 바꿔줘: 부산 여행" → UPDATE_PLAN with title change
-- "날짜를 3월 1일부터로 바꿔줘" → UPDATE_PLAN with date changes
+- "비자 정보 추가해줘" → ADD_MEMO with category: visa
+- "여행 정보 자동으로 채워줘" → GENERATE_MEMOS (creates visa, timezone, currency, weather, emergency memos)
 - "부산 맛집 추천해줘" → Just reply, no actions`;
 
   const messages: OpenAIMessage[] = [{ role: 'system', content: systemPrompt }];
@@ -247,6 +264,41 @@ Examples:
             ).bind(...values).run();
             results.push({ type: 'update_plan', success: true });
           }
+        } else if (action.type === 'add_memo' && action.memo) {
+          // Add travel memo
+          const m = action.memo;
+          const result = await context.env.DB.prepare(
+            `INSERT INTO travel_memos (plan_id, category, title, content, icon, order_index)
+             VALUES (?, ?, ?, ?, ?, 0)`
+          ).bind(planId, m.category, m.title, m.content || null, m.icon || null).run();
+          results.push({ type: 'add_memo', success: true, id: result.meta?.last_row_id });
+        } else if (action.type === 'update_memo' && action.id) {
+          // Update travel memo
+          const changes = action.changes || {};
+          const sets: string[] = [];
+          const values: any[] = [];
+          for (const [key, val] of Object.entries(changes)) {
+            if (['title', 'content', 'icon', 'category'].includes(key)) {
+              sets.push(`${key} = ?`);
+              values.push(val);
+            }
+          }
+          if (sets.length > 0) {
+            values.push(action.id);
+            await context.env.DB.prepare(
+              `UPDATE travel_memos SET ${sets.join(', ')} WHERE id = ?`
+            ).bind(...values).run();
+            results.push({ type: 'update_memo', success: true, id: action.id });
+          }
+        } else if (action.type === 'delete_memo' && action.id) {
+          // Delete travel memo
+          await context.env.DB.prepare('DELETE FROM travel_memos WHERE id = ?').bind(action.id).run();
+          results.push({ type: 'delete_memo', success: true, id: action.id });
+        } else if (action.type === 'generate_memos') {
+          // Auto-generate travel memos for destination
+          // This is handled by creating multiple ADD_MEMO actions in the AI response
+          // The AI should generate multiple add_memo actions instead
+          results.push({ type: 'generate_memos', success: true, note: 'AI should generate individual add_memo actions' });
         }
       } catch (e) {
         console.error('Action failed:', action, e);
@@ -256,13 +308,19 @@ Examples:
 
     // Collect modified schedule IDs for scroll/highlight
     const modifiedIds = results
-      .filter(r => r.success && r.id)
+      .filter(r => r.success && r.id && ['add', 'update', 'delete'].includes(r.type))
       .map(r => r.id);
+
+    // Check if any memo actions were performed
+    const hasMemoChanges = results.some(r => 
+      r.success && ['add_memo', 'update_memo', 'delete_memo', 'generate_memos'].includes(r.type)
+    );
 
     return new Response(JSON.stringify({ 
       reply, 
       actions: results,
       hasChanges: results.length > 0,
+      hasMemoChanges,
       modifiedScheduleIds: modifiedIds
     }), {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
