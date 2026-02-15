@@ -5,7 +5,7 @@ import { formatDate } from '../lib/utils';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { GlobalNav } from '../components/GlobalNav';
-import { Loading, LoadingOverlay } from '../components/Loading';
+import { Loading } from '../components/Loading';
 import useSpeechRecognition from '../hooks/useSpeechRecognition';
 import useBrowserNotifications from '../hooks/useBrowserNotifications';
 import { Sparkles, MapPin, Clock, ChevronDown, ArrowRight, MessageCircle, FileText } from 'lucide-react';
@@ -43,6 +43,7 @@ export function CreatePlanPage() {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; city?: string } | null>(null);
   const [showManualForm, setShowManualForm] = useState(false);
+  const [progressInfo, setProgressInfo] = useState<{ current: number; total: number } | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -208,6 +209,7 @@ export function CreatePlanPage() {
           }
         }
 
+        setProgressInfo({ current: 0, total: schedules.length });
         for (const schedule of schedules) {
           try {
             // 해당 날짜의 대표 좌표 사용 (개별 geocode 안 함)
@@ -226,10 +228,12 @@ export function CreatePlanPage() {
               longitude: finalCoords?.lng,
             });
             createdSchedulesCount++;
+            setProgressInfo({ current: createdSchedulesCount, total: schedules.length });
           } catch (scheduleError) {
             console.error('Failed to create schedule:', scheduleError);
           }
         }
+        setProgressInfo(null);
       }
 
       navigate(`/plan/${newPlan.id}`);
@@ -317,6 +321,20 @@ ${text}`;
     return patterns.some(p => p.test(text));
   };
 
+  // AI 답변에서 여행지 후보 추출 (1. 제주도 - ... / 2. 부산 - ... 형태)
+  const extractCandidates = (text: string): string[] => {
+    const lines = text.split('\n');
+    const candidates: string[] = [];
+    for (const line of lines) {
+      // "1. 제주도", "- 제주도:", "① 제주도", "**제주도**" 등
+      const match = line.match(/^(?:\d+[\.\)]\s*|[-•]\s*|[①②③④⑤]\s*)\*{0,2}(.+?)\*{0,2}(?:\s*[-:–]|$)/);
+      if (match && match[1].trim().length > 1 && match[1].trim().length < 30) {
+        candidates.push(match[1].trim());
+      }
+    }
+    return candidates;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -350,7 +368,35 @@ ${text}`;
     <div className="min-h-screen bg-base-200">
       <GlobalNav />
       
-      {(isLoading || isGenerating || isUploading) && <LoadingOverlay />}
+      {/* 프로그레스 오버레이 */}
+      {(isLoading || isGenerating || isUploading) && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-base-100 p-6 rounded-lg shadow-xl w-80">
+            {progressInfo ? (
+              <>
+                <p className="text-center font-medium mb-3">
+                  📝 일정 등록 중 ({progressInfo.current}/{progressInfo.total})
+                </p>
+                <progress 
+                  className="progress progress-primary w-full" 
+                  value={progressInfo.current} 
+                  max={progressInfo.total}
+                />
+                <p className="text-center text-sm text-base-content/60 mt-2">
+                  {Math.round((progressInfo.current / progressInfo.total) * 100)}%
+                </p>
+              </>
+            ) : (
+              <div className="flex flex-col items-center gap-3">
+                <Loading />
+                <p className="font-medium">
+                  {isGenerating ? 'AI가 일정을 분석 중...' : isUploading ? '업로드 중...' : '처리 중...'}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <main className="container mx-auto px-4 py-6 max-w-4xl">
         {/* Header */}
@@ -419,16 +465,36 @@ ${text}`;
                       <div className={`chat-bubble ${msg.role === 'user' ? 'chat-bubble-primary' : ''}`}>
                         <div className="whitespace-pre-wrap">{msg.content}</div>
                         
-                        {/* AI 답변에 여행 일정 포맷이 있으면 "옮기기" 버튼 */}
-                        {msg.role === 'assistant' && looksLikeTravelPlan(msg.content) && (
-                          <button
-                            className="btn btn-xs btn-secondary mt-2 gap-1"
-                            onClick={() => transferToTextInput(msg.content)}
-                          >
-                            <ArrowRight className="w-3 h-3" />
-                            일정으로 옮기기
-                          </button>
-                        )}
+                        {msg.role === 'assistant' && (() => {
+                          const candidates = extractCandidates(msg.content);
+                          const hasItinerary = looksLikeTravelPlan(msg.content);
+                          if (candidates.length === 0 && !hasItinerary) return null;
+                          return (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {/* 후보 여행지별 버튼 */}
+                              {candidates.map((c, i) => (
+                                <button
+                                  key={i}
+                                  className="btn btn-xs btn-primary gap-1"
+                                  onClick={() => handleSendMessage(`${c} 여행 일정 만들어줘`)}
+                                  disabled={isChatLoading}
+                                >
+                                  ✈️ {c}
+                                </button>
+                              ))}
+                              {/* 일정 포맷이면 통째로 옮기기 */}
+                              {hasItinerary && (
+                                <button
+                                  className="btn btn-xs btn-secondary gap-1"
+                                  onClick={() => transferToTextInput(msg.content)}
+                                >
+                                  <ArrowRight className="w-3 h-3" />
+                                  일정으로 옮기기
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   ))}
