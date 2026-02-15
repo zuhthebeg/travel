@@ -32,8 +32,9 @@ export function MainPage() {
   const [selectedCountries, setSelectedCountries] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    setSelectedCountries(new Set());
     loadPublicPlans();
-  }, []);
+  }, [currentUser]);
 
   const loadPublicPlans = async () => {
     try {
