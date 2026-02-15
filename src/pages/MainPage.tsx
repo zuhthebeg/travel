@@ -433,8 +433,8 @@ export function MainPage() {
           </div>
         )}
 
-        {/* 최신 여행 카드 (가로 스크롤) - 로그인 사용자만 */}
-        {currentUser && !isLoading && sortedPlans.length > 0 && (
+        {/* 최신 여행 카드 (가로 스크롤) */}
+        {!isLoading && sortedPlans.length > 0 && (
           <div className="mb-8">
             <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
               <Calendar className="w-5 h-5" /> 최신 여행
