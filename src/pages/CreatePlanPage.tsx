@@ -338,12 +338,19 @@ ${text}`;
   };
 
   // AI 답변에서 여행지 후보 추출 (1. 제주도 - ... / 2. 부산 - ... 형태)
+  // 일정 포맷(시간, 일차 등)이 포함된 답변에서는 추출하지 않음
   const extractCandidates = (text: string): string[] => {
+    // 일정 포맷이 포함된 텍스트면 후보 추출 안 함
+    if (looksLikeTravelPlan(text)) return [];
+    
     const lines = text.split('\n');
     const candidates: string[] = [];
     for (const line of lines) {
-      // "1. 제주도", "- 제주도:", "① 제주도", "**제주도**" 등
-      const match = line.match(/^(?:\d+[\.\)]\s*|[-•]\s*|[①②③④⑤]\s*)\*{0,2}(.+?)\*{0,2}(?:\s*[-:–]|$)/);
+      const trimmed = line.trim();
+      // 시간 패턴 포함된 줄 스킵 (10:00, 오전, 오후 등)
+      if (/\d{1,2}:\d{2}|오전|오후|저녁|아침/.test(trimmed)) continue;
+      // "1. 제주도", "① 제주도" 등 (- 는 일정에서도 쓰이므로 번호 있는 것만)
+      const match = trimmed.match(/^(?:\d+[\.\)]\s*|[①②③④⑤]\s*)\*{0,2}(.+?)\*{0,2}(?:\s*[-:–]|$)/);
       if (match && match[1].trim().length > 1 && match[1].trim().length < 30) {
         candidates.push(match[1].trim());
       }

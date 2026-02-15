@@ -584,9 +584,11 @@ export function PlanDetailPage() {
                                     const failedItems = (data.results || []).filter((r: any) => r.status === 'not_found');
                                     const skipped = (data.results || []).filter((r: any) => r.status === 'skipped').length;
                                     const updated = data.updated || 0;
-                                    // 먼저 데이터 리로드
-                                    await loadPlanDetail(selectedPlan.id);
-                                    // 리로드 후 결과 표시 (state가 리셋되지 않도록)
+                                    // 스케줄만 다시 로드 (전체 로딩 없이)
+                                    try {
+                                      const freshData = await plansAPI.getById(selectedPlan.id);
+                                      setSchedules(sortSchedulesByDateTime(freshData.schedules));
+                                    } catch {}
                                     setGeocodeFailed(failedItems);
                                     alert(`📍 좌표 보정 완료!\n✅ 보정: ${updated}개\n❌ 실패: ${failedItems.length}개${skipped > 0 ? `\n⏭ 건너뜀: ${skipped}개` : ''}`);
                                   }
@@ -644,7 +646,10 @@ export function PlanDetailPage() {
                                         const data = await res.json();
                                         const stillFailed = (data.results || []).filter((r: any) => r.status === 'not_found');
                                         setGeocodeFailed(stillFailed);
-                                        loadPlanDetail(selectedPlan!.id);
+                                        try {
+                                          const freshData = await plansAPI.getById(selectedPlan!.id);
+                                          setSchedules(sortSchedulesByDateTime(freshData.schedules));
+                                        } catch {}
                                       } catch {
                                         alert('업데이트 실패');
                                       } finally {
