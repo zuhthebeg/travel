@@ -119,6 +119,7 @@ export function PlanDetailPage() {
   const [pendingScrollIds, setPendingScrollIds] = useState<number[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('horizontal');
   const [mainTab, setMainTab] = useState<'schedule' | 'notes'>('schedule');
+  const [geocodeFailed, setGeocodeFailed] = useState<any[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; city?: string } | null>(null);
   const viewModalRef = useRef<HTMLDialogElement>(null);
   const editModalRef = useRef<HTMLDialogElement>(null);
@@ -550,41 +551,112 @@ export function PlanDetailPage() {
                       height="350px"
                       className="mt-2"
                     />
-                    <div className="flex items-center justify-between mt-2">
-                      <p className="text-sm text-base-content/60 flex items-center gap-1">
-                        <MapPin className="w-4 h-4" /> 마커를 클릭하면 상세 정보를 볼 수 있습니다
-                      </p>
-                      <button
-                        onClick={async () => {
-                          if (!selectedPlan) return;
-                          const btn = document.activeElement as HTMLButtonElement;
-                          btn.disabled = true;
-                          btn.textContent = '보정 중...';
-                          try {
-                            const res = await fetch(`/api/plans/${selectedPlan.id}/geocode-schedules`, {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ mode: 'all' }),
-                            });
-                            const data = await res.json();
-                            if (data.success) {
-                              alert(`좌표 보정 완료!\n업데이트: ${data.updated}개\n실패: ${data.failed}개`);
-                              loadPlanDetail(selectedPlan.id);
-                            } else {
-                              alert('좌표 보정 실패: ' + (data.error || '알 수 없는 오류'));
-                            }
-                          } catch (e) {
-                            alert('좌표 보정 실패');
-                          } finally {
-                            btn.disabled = false;
-                            btn.textContent = '📍 좌표 보정';
-                          }
-                        }}
-                        className="btn btn-xs btn-ghost"
-                      >
-                        📍 좌표 보정
-                      </button>
-                    </div>
+                    {/* 좌표 상태 + 보정 UI */}
+                    {(() => {
+                      const withCoords = schedules.filter(s => s.latitude && s.longitude).length;
+                      const missingCoords = schedules.filter(s => s.place && s.place.trim() && (!s.latitude || !s.longitude));
+
+                      return (
+                        <div className="mt-3 space-y-2">
+                          {/* 좌표 상태 요약 */}
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm text-base-content/60 flex items-center gap-1">
+                              <MapPin className="w-4 h-4" />
+                              📍 {withCoords}/{schedules.length}개 좌표
+                              {missingCoords.length > 0 && (
+                                <span className="text-warning"> · {missingCoords.length}개 미보정</span>
+                              )}
+                            </p>
+                            <button
+                              onClick={async () => {
+                                if (!selectedPlan) return;
+                                const btn = document.activeElement as HTMLButtonElement;
+                                btn.disabled = true;
+                                btn.textContent = '보정 중...';
+                                try {
+                                  const res = await fetch(`/api/plans/${selectedPlan.id}/geocode-schedules`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ mode: 'missing' }),
+                                  });
+                                  const data = await res.json();
+                                  if (data.success) {
+                                    // 결과 저장해서 미보정 목록에 표시
+                                    const failedItems = (data.results || []).filter((r: any) => r.status === 'not_found');
+                                    setGeocodeFailed(failedItems);
+                                    loadPlanDetail(selectedPlan.id);
+                                  }
+                                } catch (e) {
+                                  alert('좌표 보정 실패');
+                                } finally {
+                                  btn.disabled = false;
+                                  btn.textContent = '📍 좌표 보정';
+                                }
+                              }}
+                              className="btn btn-xs btn-primary"
+                            >
+                              📍 좌표 보정
+                            </button>
+                          </div>
+
+                          {/* 보정 안내 메시지 */}
+                          {missingCoords.length > 0 && geocodeFailed.length === 0 && (
+                            <div className="alert alert-warning py-2 text-sm">
+                              <span>📍 좌표가 없는 일정이 {missingCoords.length}개 있어요. 위 버튼으로 보정해주세요!</span>
+                            </div>
+                          )}
+
+                          {/* 보정 결과: 미보정 장소 수정 UI */}
+                          {geocodeFailed.length > 0 && (
+                            <div className="bg-base-200 rounded-lg p-3 space-y-2">
+                              <p className="text-sm font-medium text-warning">
+                                ⚠️ {geocodeFailed.length}개 장소를 찾지 못했어요. 장소명을 수정해서 다시 시도해보세요:
+                              </p>
+                              {geocodeFailed.map((item: any) => (
+                                <div key={item.id} className="flex items-center gap-2">
+                                  <input
+                                    type="text"
+                                    defaultValue={item.place}
+                                    className="input input-sm input-bordered flex-1"
+                                    onKeyDown={async (e) => {
+                                      if (e.key !== 'Enter') return;
+                                      const input = e.currentTarget;
+                                      const newPlace = input.value.trim();
+                                      if (!newPlace) return;
+                                      input.disabled = true;
+                                      try {
+                                        // 장소명 업데이트
+                                        await fetch(`/api/schedules/${item.id}`, {
+                                          method: 'PUT',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ place: newPlace }),
+                                        });
+                                        // 해당 일정만 재검색
+                                        const res = await fetch(`/api/plans/${selectedPlan!.id}/geocode-schedules`, {
+                                          method: 'POST',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ mode: 'missing' }),
+                                        });
+                                        const data = await res.json();
+                                        const stillFailed = (data.results || []).filter((r: any) => r.status === 'not_found');
+                                        setGeocodeFailed(stillFailed);
+                                        loadPlanDetail(selectedPlan!.id);
+                                      } catch {
+                                        alert('업데이트 실패');
+                                      } finally {
+                                        input.disabled = false;
+                                      }
+                                    }}
+                                    placeholder="장소명, 도시 (예: 에펠탑, 파리)"
+                                  />
+                                  <span className="text-xs text-base-content/40">Enter로 재검색</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
