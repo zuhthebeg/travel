@@ -69,25 +69,6 @@ function isGenericPlace(place: string): boolean {
   return GENERIC_PLACE_NAMES.some(g => normalized === g || normalized.startsWith(g + ' '));
 }
 
-// 한글 포함 여부 체크
-function hasKorean(text: string): boolean {
-  return /[\uAC00-\uD7AF]/.test(text);
-}
-
-// MyMemory 무료 번역 API (한글 → 영어)
-async function translateToEnglish(text: string): Promise<string | null> {
-  try {
-    const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=ko|en`);
-    if (!res.ok) return null;
-    const data = await res.json() as any;
-    const translated = data.responseData?.translatedText;
-    if (translated && translated !== text) return translated;
-  } catch (e) {
-    console.error('Translation error:', e);
-  }
-  return null;
-}
-
 // Photon 지오코딩 (무료)
 async function geocodePhoton(query: string): Promise<{ lat: number; lng: number } | null> {
   try {
@@ -101,24 +82,6 @@ async function geocodePhoton(query: string): Promise<{ lat: number; lng: number 
   } catch (e) {
     console.error('Photon geocode error:', e);
   }
-  return null;
-}
-
-// 지오코딩: 한글이면 번역 후 Photon, 아니면 바로 Photon
-async function geocode(query: string): Promise<{ lat: number; lng: number } | null> {
-  // 1차: 원본 그대로 Photon 검색 (한국 지명은 Photon이 잘 찾음)
-  const direct = await geocodePhoton(query);
-  if (direct) return direct;
-
-  // 2차: 한글이 포함되어 있으면 영어로 번역 후 재검색
-  if (hasKorean(query)) {
-    const english = await translateToEnglish(query);
-    if (english) {
-      const translated = await geocodePhoton(english);
-      if (translated) return translated;
-    }
-  }
-
   return null;
 }
 
@@ -163,20 +126,20 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         continue;
       }
       
-      // place_en이 있으면 영어로 먼저 검색 (가장 정확)
       const placeEn = schedule.place_en as string | null;
       let coords: { lat: number; lng: number } | null = null;
       
+      // 1차: place_en (영어) → 가장 정확
       if (placeEn) {
         coords = await geocodePhoton(regionContext ? `${placeEn}, ${regionContext}` : placeEn);
         if (!coords) coords = await geocodePhoton(placeEn);
       }
-      // place_en 없거나 실패하면 한글로 시도 (번역 포함)
+      // 2차: place (한글) — 한국 지명은 Photon이 잘 찾음
       if (!coords && regionContext) {
-        coords = await geocode(`${place}, ${regionContext}`);
+        coords = await geocodePhoton(`${place}, ${regionContext}`);
       }
       if (!coords) {
-        coords = await geocode(place);
+        coords = await geocodePhoton(place);
       }
 
       if (coords) {

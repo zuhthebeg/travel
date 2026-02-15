@@ -1150,21 +1150,8 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
 
     setSaveStatus('saving');
     try {
-      // 좌표가 없고 장소명이 있으면 서버 geocode API 사용 (번역+Photon)
-      let { latitude, longitude } = formData;
-      if (!latitude && !longitude && formData.place && formData.place.trim()) {
-        try {
-          const searchQuery = planRegion ? `${formData.place}, ${planRegion}` : formData.place;
-          const geoRes = await fetch(`/api/geocode?q=${encodeURIComponent(searchQuery)}&limit=1`);
-          if (geoRes.ok) {
-            const geoData = await geoRes.json();
-            if (geoData.places?.length > 0) {
-              latitude = geoData.places[0].lat;
-              longitude = geoData.places[0].lng;
-            }
-          }
-        } catch { /* geocode 실패해도 저장은 진행 */ }
-      }
+      // 좌표는 자동완성 선택 시에만 갱신됨 (formData에 이미 반영)
+      const { latitude, longitude } = formData;
 
       const savedSchedule = schedule?.id
         ? await schedulesAPI.update(schedule.id, {

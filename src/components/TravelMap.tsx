@@ -205,7 +205,14 @@ export function schedulesToMapPoints(schedules: Array<{
   longitude?: number | null;
 }>): MapPoint[] {
   return schedules
-    .filter(s => s.latitude != null && s.longitude != null)
+    .filter(s => {
+      if (s.latitude == null || s.longitude == null) return false;
+      // 유효 범위: 위도 -90~90, 경도 -180~180, (0,0)은 제외 (잘못된 좌표)
+      const lat = s.latitude, lng = s.longitude;
+      if (lat === 0 && lng === 0) return false;
+      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return false;
+      return true;
+    })
     .map(s => ({
       id: s.id,
       lat: s.latitude!,
