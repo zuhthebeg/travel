@@ -69,6 +69,25 @@ function isGenericPlace(place: string): boolean {
   return GENERIC_PLACE_NAMES.some(g => normalized === g || normalized.startsWith(g + ' '));
 }
 
+// 한국어 감지
+function hasKorean(text: string): boolean {
+  return /[\uAC00-\uD7AF]/.test(text);
+}
+
+// MyMemory 번역 API (무료, 키 불필요)
+async function translateToEnglish(text: string): Promise<string | null> {
+  try {
+    const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=ko|en`);
+    if (!res.ok) return null;
+    const data = await res.json() as any;
+    const translated = data.responseData?.translatedText;
+    if (translated && translated !== text) return translated;
+  } catch (e) {
+    console.error('Translation error:', e);
+  }
+  return null;
+}
+
 // Photon 지오코딩 (무료)
 async function geocodePhoton(query: string): Promise<{ lat: number; lng: number } | null> {
   try {
@@ -134,12 +153,26 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         coords = await geocodePhoton(regionContext ? `${placeEn}, ${regionContext}` : placeEn);
         if (!coords) coords = await geocodePhoton(placeEn);
       }
-      // 2차: place (한글) — 한국 지명은 Photon이 잘 찾음
+      // 2차: place 직접 검색 (한국 지명은 Photon이 잘 찾음)
       if (!coords && regionContext) {
         coords = await geocodePhoton(`${place}, ${regionContext}`);
       }
       if (!coords) {
         coords = await geocodePhoton(place);
+      }
+      // 3차: 한국어면 영어로 번역 후 재검색
+      if (!coords && hasKorean(place)) {
+        const english = await translateToEnglish(place);
+        if (english) {
+          coords = await geocodePhoton(regionContext ? `${english}, ${regionContext}` : english);
+          if (!coords) coords = await geocodePhoton(english);
+          // 번역 성공하면 place_en도 저장
+          if (coords) {
+            await context.env.DB.prepare(
+              `UPDATE schedules SET place_en = ? WHERE id = ? AND place_en IS NULL`
+            ).bind(english, schedule.id).run();
+          }
+        }
       }
 
       if (coords) {

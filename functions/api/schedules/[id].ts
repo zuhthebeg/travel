@@ -81,6 +81,18 @@ export async function onRequestPut(context: {
       updates.push('review = ?');
       values.push(body.review);
     }
+    if ((body as any).latitude !== undefined) {
+      updates.push('latitude = ?');
+      values.push((body as any).latitude);
+    }
+    if ((body as any).longitude !== undefined) {
+      updates.push('longitude = ?');
+      values.push((body as any).longitude);
+    }
+    if ((body as any).place_en !== undefined) {
+      updates.push('place_en = ?');
+      values.push((body as any).place_en);
+    }
 
     if (updates.length === 0) {
       return errorResponse('No fields to update');
