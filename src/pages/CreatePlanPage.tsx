@@ -91,9 +91,10 @@ export function CreatePlanPage() {
     }
   }, []);
 
-  // 현재 시간 포맷
+  // 현재 시간 포맷 (브라우저 시간대 사용)
   const getCurrentTimeContext = () => {
     const now = new Date();
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     return {
       dateTime: now.toLocaleString('ko-KR', {
         year: 'numeric',
@@ -102,8 +103,10 @@ export function CreatePlanPage() {
         hour: '2-digit',
         minute: '2-digit',
         weekday: 'long',
-        timeZone: 'Asia/Seoul'
+        timeZone: tz
       }),
+      timezone: tz,
+      isoNow: now.toISOString(),
       season: (() => {
         const month = now.getMonth() + 1;
         if (month >= 3 && month <= 5) return '봄';
@@ -154,7 +157,7 @@ export function CreatePlanPage() {
 
     setIsGenerating(true);
     try {
-      const { dateTime } = getCurrentTimeContext();
+      const { dateTime, timezone, isoNow } = getCurrentTimeContext();
 
       const response = await fetch('/api/assistant/parse-plan', {
         method: 'POST',
@@ -162,6 +165,8 @@ export function CreatePlanPage() {
         body: JSON.stringify({
           text: pastedPlan,
           currentTime: dateTime,
+          timezone,
+          isoNow,
           userLocation,
         }),
       });

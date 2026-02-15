@@ -58,9 +58,11 @@ function groupChunks(chunks: string[], maxChars: number = 3000): string[][] {
 }
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
-  const { text, currentTime, userLocation } = await context.request.json<{
+  const { text, currentTime, timezone, isoNow, userLocation } = await context.request.json<{
     text: string;
     currentTime?: string;
+    timezone?: string;
+    isoNow?: string;
     userLocation?: { lat: number; lng: number; city?: string };
   }>();
 
@@ -88,10 +90,14 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   };
   const outputLang = detectLanguage(text);
 
-  // Get tomorrow as default start
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const defaultStart = tomorrow.toISOString().split('T')[0];
+  // Get tomorrow in user's timezone as default start
+  const userTz = timezone || 'Asia/Seoul';
+  const nowInUserTz = new Date(isoNow || new Date().toISOString());
+  // Format tomorrow in user timezone
+  const tomorrowDate = new Date(nowInUserTz);
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const defaultStart = tomorrowDate.toLocaleDateString('sv-SE', { timeZone: userTz }); // sv-SE gives YYYY-MM-DD
+  const todayStr = nowInUserTz.toLocaleDateString('sv-SE', { timeZone: userTz });
 
   const systemPrompt = `You are a travel plan parser. Parse user input and extract travel information.
 
@@ -112,9 +118,23 @@ TITLE RULES (CRITICAL):
 
 CRITICAL DATE RULES:
 1. If user specifies exact dates, use EXACTLY those dates
-2. If user says "3일" or "3박4일" without dates, start from ${defaultStart}
-3. NEVER change or ignore user-specified dates
-4. Dates must be logical (end >= start)
+2. If user says "3일" or "3박4일" without dates, start from TOMORROW (${defaultStart}), NOT today (${todayStr})
+3. If user explicitly says "오늘부터" or "today" or "당장", start from today (${todayStr}) with times starting 1-2 hours from now
+4. NEVER change or ignore user-specified dates
+5. Dates must be logical (end >= start)
+6. User's timezone: ${userTz}
+
+REALISTIC SCHEDULING RULES (CRITICAL):
+1. Do NOT spread across too many cities in a short trip
+   - 1-2 day trip: stay in ONE city
+   - 3-4 day trip: max 1-2 cities (with travel day between)
+   - 5-7 day trip: max 2-3 cities
+   - 8+ days: reasonable city-per-day ratio
+2. Moving between cities takes half a day minimum. Account for this.
+3. For "대만 3일" → focus on ONE city (e.g., Taipei only), NOT Taipei+Taichung+Tainan
+4. For "일본 5일" → max 2 cities (e.g., Tokyo+Osaka with travel day)
+5. 2-3 real activities per day max. No filler (breakfast, check-in, rest, packing)
+6. Morning/afternoon/evening rhythm, not hour-by-hour micromanagement
 
 SCHEDULE GENERATION RULES:
 1. If input contains DETAILED itinerary (times, places, activities), parse it exactly as given
@@ -143,7 +163,9 @@ Schedule format:
 }`;
 
   const userPrompt = `Current time: ${currentTime || new Date().toISOString()}
-Default start date if not specified: ${defaultStart}
+User timezone: ${userTz}
+Today: ${todayStr}
+Default start date (tomorrow): ${defaultStart}
 
 Parse this travel plan:
 ---
