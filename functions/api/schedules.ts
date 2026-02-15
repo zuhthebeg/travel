@@ -46,8 +46,8 @@ export async function onRequestPost(context: { env: Env; request: Request }): Pr
     const placeToSave = body.place;
 
     const result = await env.DB.prepare(
-      `INSERT INTO schedules (plan_id, date, time, title, place, memo, plan_b, plan_c, order_index, latitude, longitude)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO schedules (plan_id, date, time, title, place, place_en, memo, plan_b, plan_c, order_index, latitude, longitude)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
       .bind(
         body.plan_id,
@@ -55,6 +55,7 @@ export async function onRequestPost(context: { env: Env; request: Request }): Pr
         body.time || null,
         titleToSave,
         placeToSave || null,
+        body.place_en || null,
         body.memo || null,
         body.plan_b || null,
         body.plan_c || null,
@@ -113,6 +114,10 @@ export async function onRequestPut(context: { env: Env; request: Request }): Pro
       const placeValue = body.place; // No need to stringify
       console.log('onRequestPut - placeValue:', placeValue, 'typeof placeValue:', typeof placeValue); // Debug log
       valuesToUpdate.push(placeValue);
+    }
+    if (body.place_en !== undefined) {
+      fieldsToUpdate.push('place_en = ?');
+      valuesToUpdate.push(body.place_en || null);
     }
     if (body.memo !== undefined) {
       fieldsToUpdate.push('memo = ?');

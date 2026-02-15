@@ -136,7 +136,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     const countryCode = getCountryCode(regionContext);
 
     // Get schedules to geocode
-    let query = `SELECT id, place, title, latitude, longitude FROM schedules WHERE plan_id = ?`;
+    let query = `SELECT id, place, place_en, title, latitude, longitude FROM schedules WHERE plan_id = ?`;
     if (mode === 'missing') {
       query += ` AND (latitude IS NULL OR longitude IS NULL)`;
     }
@@ -163,10 +163,16 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         continue;
       }
       
-      // 검색 전략: place+region → place만 (번역은 geocode 내부에서 자동 처리)
+      // place_en이 있으면 영어로 먼저 검색 (가장 정확)
+      const placeEn = schedule.place_en as string | null;
       let coords: { lat: number; lng: number } | null = null;
       
-      if (regionContext) {
+      if (placeEn) {
+        coords = await geocodePhoton(regionContext ? `${placeEn}, ${regionContext}` : placeEn);
+        if (!coords) coords = await geocodePhoton(placeEn);
+      }
+      // place_en 없거나 실패하면 한글로 시도 (번역 포함)
+      if (!coords && regionContext) {
         coords = await geocode(`${place}, ${regionContext}`);
       }
       if (!coords) {

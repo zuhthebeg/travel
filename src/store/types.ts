@@ -22,6 +22,7 @@ export interface Schedule {
   time: string | null;
   title: string; // Simplified to single language
   place: string | null; // Simplified to single language
+  place_en: string | null; // English place name for geocoding
   memo: string | null;
   plan_b: string | null;
   plan_c: string | null;

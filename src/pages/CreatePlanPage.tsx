@@ -221,6 +221,7 @@ export function CreatePlanPage() {
               time: schedule.time || undefined,
               title: schedule.title || '일정',
               place: schedule.place || undefined,
+              place_en: schedule.place_en || undefined,
               memo: schedule.memo || undefined,
               plan_b: schedule.plan_b || undefined,
               plan_c: schedule.plan_c || undefined,

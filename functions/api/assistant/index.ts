@@ -96,8 +96,9 @@ Always respond with JSON:
 }
 
 SCHEDULE ACTIONS:
-- ADD: {"type": "add", "schedule": {"date": "YYYY-MM-DD", "time": "HH:MM", "title": "...", "place": "장소명, 도시 (예: 디즈니랜드, 애너하임)", "memo": ""}}
-  * place MUST include city/region for geocoding accuracy (e.g., "Disneyland, Anaheim" not just "Disneyland")
+- ADD: {"type": "add", "schedule": {"date": "YYYY-MM-DD", "time": "HH:MM", "title": "...", "place": "장소명, 도시", "place_en": "Place Name, City (English)", "memo": ""}}
+  * place: Korean display name (e.g., "디즈니랜드, 애너하임")
+  * place_en: ALWAYS include English translation for geocoding (e.g., "Disneyland, Anaheim")
 - UPDATE: {"type": "update", "id": <schedule_id>, "changes": {"title": "...", "time": "...", "date": "...", ...}}
 - DELETE: {"type": "delete", "id": <schedule_id>}
 - SHIFT_ALL: {"type": "shift_all", "days": <number>} - Move ALL schedules by N days (positive=future, negative=past)
@@ -201,16 +202,16 @@ Examples:
         if (action.type === 'add' && action.schedule) {
           const s = action.schedule;
           const result = await context.env.DB.prepare(
-            `INSERT INTO schedules (plan_id, date, time, title, place, memo, plan_b, plan_c, order_index)
-             VALUES (?, ?, ?, ?, ?, ?, '', '', 0)`
-          ).bind(planId, s.date, s.time || null, s.title, s.place || null, s.memo || null).run();
+            `INSERT INTO schedules (plan_id, date, time, title, place, place_en, memo, plan_b, plan_c, order_index)
+             VALUES (?, ?, ?, ?, ?, ?, ?, '', '', 0)`
+          ).bind(planId, s.date, s.time || null, s.title, s.place || null, s.place_en || null, s.memo || null).run();
           results.push({ type: 'add', success: true, id: result.meta?.last_row_id });
         } else if (action.type === 'update' && action.id) {
           const changes = action.changes || {};
           const sets: string[] = [];
           const values: any[] = [];
           for (const [key, val] of Object.entries(changes)) {
-            if (['title', 'place', 'memo', 'time', 'date', 'plan_b', 'plan_c'].includes(key)) {
+            if (['title', 'place', 'place_en', 'memo', 'time', 'date', 'plan_b', 'plan_c'].includes(key)) {
               sets.push(`${key} = ?`);
               values.push(val);
             }

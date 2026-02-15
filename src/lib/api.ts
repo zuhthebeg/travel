@@ -112,6 +112,7 @@ export const schedulesAPI = {
     time?: string;
     title: string; // Simplified
     place?: string | null; // Simplified
+    place_en?: string | null;
     memo?: string;
     plan_b?: string;
     plan_c?: string;
@@ -134,6 +135,7 @@ export const schedulesAPI = {
       time?: string;
       title?: string; // Simplified
       place?: string | null; // Simplified
+      place_en?: string | null;
       memo?: string;
       plan_b?: string;
       plan_c?: string;

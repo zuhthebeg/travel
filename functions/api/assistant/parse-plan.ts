@@ -135,7 +135,8 @@ Schedule format:
   "date": "YYYY-MM-DD",
   "time": "HH:MM",
   "title": "활동명",
-  "place": "장소명, 도시/지역 (예: 에펠탑, 파리 / 디즈니랜드 캘리포니아, 애너하임)",
+  "place": "장소명, 도시/지역 (한국어)",
+  "place_en": "Place Name, City/Region (ALWAYS English, for geocoding)",
   "memo": "",
   "plan_b": "",
   "plan_c": ""
