@@ -10,7 +10,7 @@ import { Loading } from '../components/Loading';
 import { TravelMap, schedulesToMapPoints } from '../components/TravelMap'; // 여행 동선 지도
 import { TravelAssistantChat } from '../components/TravelAssistantChat'; // Import the new component
 import { TravelProgressBar } from '../components/TravelProgressBar';
-import ReviewSection from '../components/ReviewSection'; // Import ReviewSection
+// ReviewSection removed — merged into MomentSection
 import MomentSection from '../components/MomentSection'; // Album - 순간 기록
 import TripNotes from '../components/TripNotes'; // Import TripNotes
 import MemberAvatars from '../components/MemberAvatars';
@@ -1545,10 +1545,11 @@ interface ScheduleDetailModalProps {
   planRegion?: string | null;
 }
 
-function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, onUpdate, userLocation, planRegion }: ScheduleDetailModalProps) {
-  const [rating, setRating] = useState<number>(schedule.rating || 0);
-  const [review, setReview] = useState<string>(schedule.review || '');
-  const [isSaving, setIsSaving] = useState(false);
+function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, onUpdate: _onUpdate, userLocation, planRegion }: ScheduleDetailModalProps) {
+  // schedule-level rating/review → moments로 통합됨
+
+  // Tab state
+  const [detailTab, setDetailTab] = useState<'moments' | 'comments'>('moments');
 
   // Comments state
   const [comments, setComments] = useState<Comment[]>([]);
@@ -1649,20 +1650,6 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
     return scheduleDateTime.getTime() < now.getTime();
   }, [schedule.date, schedule.time]);
 
-  const handleSaveRating = async () => {
-    setIsSaving(true);
-    try {
-      await schedulesAPI.update(schedule.id, { rating, review });
-      onUpdate(schedule.id, { rating, review });
-      alert('평점과 리뷰가 저장되었습니다.');
-    } catch (error) {
-      console.error('Failed to save rating:', error);
-      alert('저장에 실패했습니다.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   return (
     <dialog ref={modalRef} className="modal modal-bottom sm:modal-middle">
       <div className="modal-box max-w-2xl">
@@ -1742,127 +1729,104 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
             </>
           )}
 
-          {/* Rating and Review - Only for past schedules */}
-          {isPast && (
-            <>
-              <div className="divider">평점 및 리뷰</div>
-              <div className="space-y-3">
-                <div>
-                  <div className="font-semibold text-sm text-base-content/70 mb-2">평점</div>
-                  <div className="flex gap-2">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => setRating(star)}
-                        className={`text-3xl transition-all ${
-                          star <= rating ? 'text-warning' : 'text-base-300'
-                        }`}
-                      >
-                        ★
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <div className="font-semibold text-sm text-base-content/70 mb-2">리뷰</div>
-                  <textarea
-                    value={review}
-                    onChange={(e) => setReview(e.target.value)}
-                    placeholder="이 일정에 대한 리뷰를 작성해주세요..."
-                    rows={4}
-                    className="textarea textarea-bordered w-full"
-                  />
-                </div>
-                {(rating !== schedule.rating || review !== schedule.review) && (
-                  <Button
-                    variant="secondary"
-                    onClick={handleSaveRating}
-                    disabled={isSaving}
-                  >
-                    {isSaving ? '저장 중...' : '평점 및 리뷰 저장'}
-                  </Button>
-                )}
-              </div>
-            </>
-          )}
-
-          {/* Comments Section */}
-          <div className="divider">댓글</div>
-          <div className="space-y-4">
-            {/* Comment Form */}
-            <div className="bg-base-200 p-4 rounded-lg space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <input
-                  type="text"
-                  value={authorName}
-                  onChange={(e) => setAuthorName(e.target.value)}
-                  placeholder="이름 (선택, 비워두면 익명)"
-                  className="input input-bordered input-sm"
-                />
-              </div>
-              <textarea
-                value={commentContent}
-                onChange={(e) => setCommentContent(e.target.value)}
-                placeholder="댓글을 입력하세요..."
-                rows={2}
-                className="textarea textarea-bordered w-full"
-              />
-              <div className="flex justify-end">
-                <Button
-                  size="sm"
-                  variant="primary"
-                  onClick={handleSubmitComment}
-                  disabled={isSubmittingComment || !commentContent.trim()}
-                >
-                  {isSubmittingComment ? '작성 중...' : '댓글 작성'}
-                </Button>
-              </div>
+          {/* 탭: 기록 | 댓글 */}
+          <div className="mt-4">
+            <div className="flex border-b border-base-300">
+              <button
+                onClick={() => setDetailTab('moments')}
+                className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                  detailTab === 'moments'
+                    ? 'border-orange-500 text-orange-600'
+                    : 'border-transparent text-base-content/50 hover:text-base-content/80'
+                }`}
+              >
+                📸 기록
+              </button>
+              <button
+                onClick={() => setDetailTab('comments')}
+                className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                  detailTab === 'comments'
+                    ? 'border-orange-500 text-orange-600'
+                    : 'border-transparent text-base-content/50 hover:text-base-content/80'
+                }`}
+              >
+                💬 댓글 {comments.length > 0 && `(${comments.length})`}
+              </button>
             </div>
 
-            {/* Comments List */}
-            {isLoadingComments ? (
-              <div className="text-center py-4">
-                <Loading />
+            {/* 기록 탭 */}
+            {detailTab === 'moments' && (
+              <div className="pt-4">
+                <MomentSection scheduleId={schedule.id} />
               </div>
-            ) : comments.length === 0 ? (
-              <div className="text-center py-4 text-base-content/70">
-                아직 댓글이 없습니다. 첫 댓글을 작성해보세요!
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {comments.map((comment) => (
-                  <div key={comment.id} className="bg-base-200 p-4 rounded-lg">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm">{comment.author_name}</span>
-                        <span className="text-xs text-base-content/70">
-                          {new Date(comment.created_at).toLocaleString('ko-KR', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => handleDeleteComment(comment.id)}
-                        className="btn btn-ghost btn-xs text-error"
-                      >
-                        삭제
-                      </button>
-                    </div>
-                    <p className="text-sm whitespace-pre-wrap">{comment.content}</p>
+            )}
+
+            {/* 댓글 탭 */}
+            {detailTab === 'comments' && (
+              <div className="pt-4 space-y-4">
+                {/* Comment Form */}
+                <div className="bg-base-200 p-4 rounded-lg space-y-3">
+                  <input
+                    type="text"
+                    value={authorName}
+                    onChange={(e) => setAuthorName(e.target.value)}
+                    placeholder="이름 (선택, 비워두면 익명)"
+                    className="input input-bordered input-sm w-full max-w-xs"
+                  />
+                  <textarea
+                    value={commentContent}
+                    onChange={(e) => setCommentContent(e.target.value)}
+                    placeholder="댓글을 입력하세요..."
+                    rows={2}
+                    className="textarea textarea-bordered w-full"
+                  />
+                  <div className="flex justify-end">
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={handleSubmitComment}
+                      disabled={isSubmittingComment || !commentContent.trim()}
+                    >
+                      {isSubmittingComment ? '작성 중...' : '댓글 작성'}
+                    </Button>
                   </div>
-                ))}
+                </div>
+
+                {/* Comments List */}
+                {isLoadingComments ? (
+                  <div className="text-center py-4"><Loading /></div>
+                ) : comments.length === 0 ? (
+                  <div className="text-center py-4 text-base-content/50 text-sm">
+                    아직 댓글이 없어요
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {comments.map((comment) => (
+                      <div key={comment.id} className="bg-base-200 p-3 rounded-lg">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-sm">{comment.author_name}</span>
+                            <span className="text-xs text-base-content/50">
+                              {new Date(comment.created_at).toLocaleString('ko-KR', {
+                                month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+                              })}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteComment(comment.id)}
+                            className="btn btn-ghost btn-xs text-error"
+                          >
+                            삭제
+                          </button>
+                        </div>
+                        <p className="text-sm whitespace-pre-wrap">{comment.content}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
-
-          {/* Reviews Section with Photos */}
-          <div className="divider">사진 리뷰</div>
-          <ReviewSection scheduleId={schedule.id} />
         </div>
 
         <div className="modal-action">
