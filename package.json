@@ -9,7 +9,12 @@
     "preview": "vite preview",
     "pages:dev": "npm run build && wrangler pages dev ./dist",
     "pages:deploy": "npm run build && wrangler pages deploy ./dist",
-    "test": "vitest"
+    "test": "vitest run -c tests/vitest.config.ts",
+    "test:watch": "vitest -c tests/vitest.config.ts",
+    "test:api": "vitest run -c tests/vitest.config.ts tests/api/",
+    "test:api:noai": "cross-env TEST_SKIP_AI=true vitest run -c tests/vitest.config.ts tests/api/",
+    "test:ai": "vitest run -c tests/vitest.config.ts tests/api/assistant.test.ts",
+    "test:integration": "vitest run -c tests/vitest.config.ts tests/api/integration.test.ts"
   },
   "dependencies": {
     "@react-google-maps/api": "^2.20.7",
@@ -35,7 +40,7 @@
     "tailwindcss": "^3.4.16",
     "typescript": "~5.6.2",
     "vite": "^6.0.3",
-    "vitest": "^4.0.8",
+    "vitest": "^4.0.18",
     "wrangler": "^4.0.0"
   }
 }
