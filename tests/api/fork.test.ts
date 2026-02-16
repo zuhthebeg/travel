@@ -66,7 +66,7 @@ describe('Plan Fork API', () => {
     const forkedPlanId = fork.data.plan.id;
     createdPlanIds.push(forkedPlanId);
 
-    const forkedPlanDetail = await api<{ plan: { id: number; forked_from: number } }>('GET', `/api/plans/${forkedPlanId}`);
+    const forkedPlanDetail = await api<{ plan: { id: number; forked_from: number } }>('GET', `/api/plans/${forkedPlanId}`, undefined, authHeaders(forkerCredential));
     expect(forkedPlanDetail.status).toBe(200);
     expect(forkedPlanDetail.data.plan.forked_from).toBe(sourcePlanId);
 
