@@ -9,7 +9,8 @@ import { TravelMap, type MapPoint } from '../components/TravelMap';
 import { Button } from '../components/Button';
 import { Loading } from '../components/Loading';
 import type { Plan, Schedule } from '../store/types';
-import { Globe, Map as MapIcon, Calendar, Clock } from 'lucide-react';
+import { Globe, Map as MapIcon, Calendar, Clock, Camera } from 'lucide-react';
+import AlbumTimeline from '../components/AlbumTimeline';
 
 interface PlanWithSchedules extends Plan {
   schedules?: Schedule[];
@@ -454,6 +455,18 @@ export function MainPage() {
                   />
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* 내 앨범 (로그인 사용자) */}
+        {currentUser && (
+          <div className="mb-8">
+            <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
+              <Camera className="w-5 h-5 text-orange-500" /> 내 앨범
+            </h3>
+            <div className="card bg-base-100 shadow-sm p-4">
+              <AlbumTimeline />
             </div>
           </div>
         )}

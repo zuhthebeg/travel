@@ -483,13 +483,33 @@ export function PlanDetailPage() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <h1 className="text-base sm:text-lg md:text-xl font-bold truncate">{selectedPlan.title}</h1>
-                <div className="badge badge-secondary badge-xs sm:badge-sm whitespace-nowrap flex-shrink-0">
-                  {(selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'private'
-                    ? '나만'
-                    : (selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'shared'
-                    ? '동행만'
-                    : '공개'}
-                </div>
+                {isOwner ? (
+                  <select
+                    value={selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')}
+                    onChange={async (e) => {
+                      const newVisibility = e.target.value as 'private' | 'shared' | 'public';
+                      try {
+                        await plansAPI.update(selectedPlan.id, { visibility: newVisibility });
+                        setSelectedPlan({ ...selectedPlan, visibility: newVisibility });
+                      } catch (err) {
+                        console.error('Failed to update visibility:', err);
+                      }
+                    }}
+                    className="select select-xs select-bordered font-semibold text-xs h-6 min-h-0 pr-6"
+                  >
+                    <option value="private">🔒 나만</option>
+                    <option value="shared">👥 동행만</option>
+                    <option value="public">🌍 공개</option>
+                  </select>
+                ) : (
+                  <div className="badge badge-secondary badge-xs sm:badge-sm whitespace-nowrap flex-shrink-0">
+                    {(selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'private'
+                      ? '🔒 나만'
+                      : (selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'shared'
+                      ? '👥 동행만'
+                      : '🌍 공개'}
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-base-content/70 flex-wrap">
                 {selectedPlan.region && (
