@@ -13,7 +13,7 @@ export default function ForkButton({ planId, onForked }: ForkButtonProps) {
   const handleFork = async () => {
     if (isLoading) return;
 
-    const confirmed = window.confirm('이 플랜을 내 앨범으로 가져오시겠어요?');
+    const confirmed = window.confirm('이 여행 계획을 복제해서 내 플랜으로 만들까요?');
     if (!confirmed) return;
 
     try {
@@ -21,7 +21,7 @@ export default function ForkButton({ planId, onForked }: ForkButtonProps) {
       const result = await forkAPI.fork(planId);
       onForked(result.plan);
     } catch (error) {
-      alert(error instanceof Error ? error.message : '앨범 가져오기에 실패했습니다.');
+      alert(error instanceof Error ? error.message : '플랜 복제에 실패했습니다.');
     } finally {
       setIsLoading(false);
     }
@@ -38,7 +38,7 @@ export default function ForkButton({ planId, onForked }: ForkButtonProps) {
       {isLoading ? (
         <span className="loading loading-spinner loading-xs" />
       ) : (
-        '📥 내 앨범으로 가져가기'
+        '📋 이 계획 복제하기'
       )}
     </Button>
   );

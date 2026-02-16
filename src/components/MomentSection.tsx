@@ -81,9 +81,9 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
   const loadReviewPhotos = async () => {
     try {
       const { reviews } = await reviewsAPI.getByScheduleId(scheduleId);
-      setReviewPhotos((reviews || []).filter((review) => !!review.image_data));
+      setReviewPhotos(reviews || []);
     } catch (e) {
-      console.error('Failed to load review photos:', e);
+      console.error('Failed to load reviews:', e);
       setReviewPhotos([]);
     }
   };
@@ -116,7 +116,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
   };
 
   const handleSubmit = async () => {
-    if (!note && !mood && !revisit && !imageFile) {
+    if (!note && !mood && !revisit && !imageFile && !imagePreview) {
       setError('기분, 메모, 사진 중 하나는 남겨주세요');
       return;
     }
@@ -128,6 +128,9 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
       let photo_data: string | undefined;
       if (imageFile) {
         photo_data = await compressImage(imageFile, 800, 0.8);
+      } else if (imagePreview) {
+        // 리뷰에서 가져온 사진 (base64 직접 사용)
+        photo_data = imagePreview;
       }
 
       const body: Record<string, any> = {};
@@ -395,22 +398,60 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
         </div>
       )}
 
+      {/* 리뷰 섹션 */}
       {reviewPhotos.length > 0 && (
-        <div className="space-y-2 pt-2">
-          <h4 className="font-medium text-sm">📷 다른 사람들의 사진</h4>
-          <div className="grid grid-cols-4 gap-2">
+        <div className="space-y-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+          <h4 className="font-semibold text-sm flex items-center gap-2">
+            📝 리뷰
+            <span className="text-gray-400 font-normal">({reviewPhotos.length})</span>
+          </h4>
+          <div className="space-y-2">
             {reviewPhotos.map((review) => (
-              <button
-                key={review.id}
-                onClick={() => setSelectedReviewImage(review.image_data)}
-                className="aspect-square overflow-hidden rounded-lg border border-base-300 hover:opacity-90"
-              >
-                <img
-                  src={review.image_data}
-                  alt="리뷰 사진"
-                  className="w-full h-full object-cover"
-                />
-              </button>
+              <div key={review.id} className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 space-y-2 border border-gray-100 dark:border-gray-700">
+                {/* 상단: 작성자 + 별점 */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {review.author_name || '익명'}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <span key={i} className={`text-sm ${i < review.rating ? 'text-yellow-400' : 'text-gray-300'}`}>★</span>
+                    ))}
+                  </div>
+                </div>
+                {/* 리뷰 텍스트 */}
+                {review.review_text && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{review.review_text}</p>
+                )}
+                {/* 사진 */}
+                {review.image_data && (
+                  <div className="relative group">
+                    <img
+                      src={review.image_data}
+                      alt="리뷰 사진"
+                      className="w-full rounded-lg max-h-48 object-cover cursor-pointer"
+                      onClick={() => setSelectedReviewImage(review.image_data)}
+                    />
+                    {/* 가져오기 버튼 — 로그인 유저만 */}
+                    {currentUser && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setImagePreview(review.image_data);
+                          setImageFile(null); // 파일 아닌 base64 직접 사용
+                          if (!showForm) setShowForm(true);
+                        }}
+                        className="absolute bottom-2 right-2 bg-orange-500 text-white text-xs px-2.5 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity shadow-lg"
+                      >
+                        📥 내 기록에 추가
+                      </button>
+                    )}
+                  </div>
+                )}
+                <span className="text-xs text-gray-400">
+                  {new Date(review.created_at).toLocaleDateString('ko')}
+                </span>
+              </div>
             ))}
           </div>
         </div>
