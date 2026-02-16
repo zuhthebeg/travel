@@ -1,80 +1,26 @@
 {
-  "name": "Travly - AI 여행 플래너",
+  "name": "Travly - 시간 여행 앨범",
   "short_name": "Travly",
-  "description": "AI 어시스턴트와 함께하는 스마트 여행 계획",
+  "description": "여행을 기록하고, 추억을 모으는 시간 여행 앨범",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#4f46e5",
+  "theme_color": "#f97316",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/favicon-16x16.png",
-      "sizes": "16x16",
-      "type": "image/png"
-    },
-    {
-      "src": "/favicon-32x32.png",
-      "sizes": "32x32",
-      "type": "image/png"
-    },
-    {
-      "src": "/favicon-512x512.png",
+      "src": "/icons/icon-192.svg",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
     },
     {
-      "src": "/favicon-512x512.png",
+      "src": "/icons/icon-192.svg",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/favicon-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
     }
   ],
-  "categories": ["travel", "productivity"],
-  "screenshots": [],
-  "shortcuts": [
-    {
-      "name": "새 여행 만들기",
-      "short_name": "새 여행",
-      "description": "새로운 여행 계획 시작하기",
-      "url": "/plan/new",
-      "icons": [
-        {
-          "src": "/favicon-512x512.png",
-          "sizes": "512x512"
-        }
-      ]
-    },
-    {
-      "name": "내 여행",
-      "short_name": "내 여행",
-      "description": "나의 여행 계획 보기",
-      "url": "/my",
-      "icons": [
-        {
-          "src": "/favicon-512x512.png",
-          "sizes": "512x512"
-        }
-      ]
-    },
-    {
-      "name": "AI 어시스턴트",
-      "short_name": "AI",
-      "description": "AI 여행 도우미와 대화하기",
-      "url": "/assistant",
-      "icons": [
-        {
-          "src": "/favicon-512x512.png",
-          "sizes": "512x512"
-        }
-      ]
-    }
-  ]
+  "categories": ["travel", "lifestyle"],
+  "lang": "ko"
 }

@@ -17,7 +17,7 @@
     <link rel="manifest" href="/manifest.json" />
 
     <!-- Theme Color -->
-    <meta name="theme-color" content="#4f46e5" />
+    <meta name="theme-color" content="#f97316" />
 
     <!-- Apple iOS PWA Support -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -34,5 +34,12 @@
 
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+      }
+    </script>
   </body>
 </html>
