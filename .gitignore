@@ -38,9 +38,7 @@ dist-ssr
 # Build cache
 tsconfig.tsbuildinfo
 
-# Test and sample files
-*.test.ts
-*.test.js
+# Sample files
 sample_plan.txt
 
 # Special Windows file
