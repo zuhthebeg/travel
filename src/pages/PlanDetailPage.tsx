@@ -11,6 +11,7 @@ import { TravelMap, schedulesToMapPoints } from '../components/TravelMap'; // �
 import { TravelAssistantChat } from '../components/TravelAssistantChat'; // Import the new component
 import { TravelProgressBar } from '../components/TravelProgressBar';
 import ReviewSection from '../components/ReviewSection'; // Import ReviewSection
+import MomentSection from '../components/MomentSection'; // Album - 순간 기록
 import TripNotes from '../components/TripNotes'; // Import TripNotes
 import { TravelMemoList } from '../components/travel/TravelMemoList';
 import type { Schedule, Plan, Comment } from '../store/types';
@@ -118,7 +119,7 @@ export function PlanDetailPage() {
   const [showChatbot, setShowChatbot] = useState(false);
   const [pendingScrollIds, setPendingScrollIds] = useState<number[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('horizontal');
-  const [mainTab, setMainTab] = useState<'schedule' | 'notes'>('schedule');
+  const [mainTab, setMainTab] = useState<'schedule' | 'notes' | 'album'>('schedule');
   const [geocodeFailed, setGeocodeFailed] = useState<any[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; city?: string } | null>(null);
   const viewModalRef = useRef<HTMLDialogElement>(null);
@@ -688,6 +689,12 @@ export function PlanDetailPage() {
           >
             📝 메모
           </a>
+          <a 
+            className={`tab gap-2 ${mainTab === 'album' ? 'tab-active' : ''}`} 
+            onClick={() => setMainTab('album')}
+          >
+            📸 앨범
+          </a>
         </div>
 
         {/* 메모 탭 */}
@@ -699,6 +706,44 @@ export function PlanDetailPage() {
             {/* 기존 메모/체크리스트 */}
             <TripNotes planId={selectedPlan.id} />
           </div>
+        )}
+
+        {/* 앨범 탭 */}
+        {mainTab === 'album' && selectedPlan && schedules.length > 0 && (
+          <div className="space-y-8">
+            {Object.entries(groupedSchedules).sort(([a], [b]) => a.localeCompare(b)).map(([date, daySchedules]) => (
+              <div key={date}>
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                  📅 {formatDisplayDate(date)}
+                  <span className="text-sm font-normal text-gray-500">
+                    Day {getDaysDifference(selectedPlan.start_date, date) + 1}
+                  </span>
+                </h3>
+                <div className="space-y-4">
+                  {daySchedules.map((schedule: Schedule) => (
+                    <div key={schedule.id} className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
+                      <div className="flex items-center gap-2 mb-3">
+                        {schedule.time && (
+                          <span className="text-xs bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded-full">
+                            {schedule.time}
+                          </span>
+                        )}
+                        <h4 className="font-semibold">{schedule.title}</h4>
+                        {schedule.place && (
+                          <span className="text-xs text-gray-500">📍 {schedule.place}</span>
+                        )}
+                      </div>
+                      <MomentSection scheduleId={schedule.id} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {mainTab === 'album' && (!schedules || schedules.length === 0) && (
+          <p className="text-center text-gray-400 py-10">일정을 먼저 추가해주세요</p>
         )}
 
         {/* 일정 탭 */}

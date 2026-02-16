@@ -86,3 +86,47 @@ export interface TravelMemo {
   created_at: string;
   updated_at: string;
 }
+
+// Album - Moments
+export interface Moment {
+  id: number;
+  schedule_id: number;
+  user_id: number;
+  photo_data: string | null;
+  note: string | null;
+  mood: 'amazing' | 'good' | 'okay' | 'meh' | 'bad' | null;
+  revisit: 'yes' | 'no' | 'maybe' | null;
+  username?: string;
+  user_picture?: string;
+  created_at: string;
+}
+
+// Album - Plan Members
+export interface PlanMember {
+  user_id: number;
+  username: string;
+  email: string;
+  picture: string | null;
+  role: 'owner' | 'member';
+  joined_at?: string;
+}
+
+export interface PlanMembersResponse {
+  owner: PlanMember;
+  members: PlanMember[];
+}
+
+// Mood 이모지 매핑
+export const MOOD_EMOJI: Record<string, string> = {
+  amazing: '😍',
+  good: '😊',
+  okay: '😐',
+  meh: '😑',
+  bad: '😢',
+};
+
+export const REVISIT_LABELS: Record<string, string> = {
+  yes: '꼭 다시!',
+  no: '한번이면 충분',
+  maybe: '글쎄...',
+};

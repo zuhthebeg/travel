@@ -94,6 +94,10 @@ export async function createTestPlan(userId: number, title = `test_plan_${Date.n
   return res.data.plan;
 }
 
+export function authHeaders(credential: string) {
+  return { 'X-Auth-Credential': credential };
+}
+
 export async function cleanup(planIds: number[]) {
   for (const id of [...new Set(planIds)].filter(Boolean)) {
     await api('DELETE', `/api/plans/${id}`);

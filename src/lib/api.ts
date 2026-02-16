@@ -1,4 +1,4 @@
-import type { Plan, Schedule, Review, ReviewStats, User } from '../store/types';
+import type { Plan, Schedule, Review, ReviewStats, User, Moment, PlanMembersResponse, PlanMember } from '../store/types';
 
 // API 베이스 URL (개발/프로덕션 환경에 따라 자동 설정)
 const API_BASE_URL = import.meta.env.DEV ? 'http://127.0.0.1:9999' : '';
@@ -227,6 +227,25 @@ export const reviewsAPI = {
   },
 };
 
+// 내부 인증 헤더 생성기
+function getAuthHeaders(): Record<string, string> {
+  const credential =
+    localStorage.getItem('X-Auth-Credential') ||
+    localStorage.getItem('x-auth-credential') ||
+    localStorage.getItem('authCredential') ||
+    localStorage.getItem('auth_credential') ||
+    localStorage.getItem('temp_auth_credential') ||
+    localStorage.getItem('google_credential');
+
+  if (!credential) {
+    throw new Error('인증 정보가 없습니다. 로그인 후 이용해주세요.');
+  }
+
+  return {
+    'X-Auth-Credential': credential,
+  };
+}
+
 // Auth API
 export const authAPI = {
   // Google 로그인
@@ -236,5 +255,94 @@ export const authAPI = {
       body: JSON.stringify({ credential }),
     });
     return result.user;
+  },
+};
+
+// Moments API
+export const momentsAPI = {
+  // 일정별 순간 기록 조회
+  getByScheduleId: async (scheduleId: number): Promise<{ moments: Moment[]; count: number }> => {
+    return apiRequest<{ moments: Moment[]; count: number }>(
+      `/api/schedules/${scheduleId}/moments`,
+      {
+        headers: getAuthHeaders(),
+      }
+    );
+  },
+
+  // 순간 기록 생성
+  create: async (
+    scheduleId: number,
+    data: { photo_data?: string; note?: string; mood?: string; revisit?: string }
+  ): Promise<{ moment: Moment }> => {
+    return apiRequest<{ moment: Moment }>(`/api/schedules/${scheduleId}/moments`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+  },
+
+  // 순간 기록 수정
+  update: async (
+    momentId: number,
+    data: Partial<{ photo_data: string; note: string; mood: string; revisit: string }>
+  ): Promise<{ moment: Moment }> => {
+    return apiRequest<{ moment: Moment }>(`/api/moments/${momentId}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+  },
+
+  // 순간 기록 삭제
+  delete: async (momentId: number): Promise<void> => {
+    return apiRequest<void>(`/api/moments/${momentId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+  },
+};
+
+// Members API
+export const membersAPI = {
+  // 플랜 멤버 목록
+  getByPlanId: async (planId: number): Promise<PlanMembersResponse> => {
+    return apiRequest<PlanMembersResponse>(`/api/plans/${planId}/members`, {
+      headers: getAuthHeaders(),
+    });
+  },
+
+  // 멤버 초대
+  invite: async (planId: number, email: string): Promise<{ member: PlanMember }> => {
+    const result = await apiRequest<{ member: PlanMember }>(`/api/plans/${planId}/members`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ email }),
+    });
+    return result;
+  },
+
+  // 멤버 제거
+  remove: async (planId: number, userId: number): Promise<void> => {
+    return apiRequest<void>(`/api/plans/${planId}/members/${userId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+  },
+};
+
+// Fork API
+export const forkAPI = {
+  // 플랜 복사(내 앨범으로 가져가기)
+  fork: async (
+    planId: number
+  ): Promise<{ plan: any; schedules_copied: number; forked_from: number }> => {
+    return apiRequest<{ plan: any; schedules_copied: number; forked_from: number }>(
+      `/api/plans/${planId}/fork`,
+      {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      }
+    );
   },
 };
