@@ -96,6 +96,7 @@ export interface Moment {
   photo_data: string | null;
   note: string | null;
   mood: 'amazing' | 'good' | 'okay' | 'meh' | 'bad' | null;
+  rating: number | null;
   revisit: 'yes' | 'no' | 'maybe' | null;
   username?: string;
   user_picture?: string;
