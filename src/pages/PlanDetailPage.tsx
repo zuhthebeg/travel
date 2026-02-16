@@ -1706,67 +1706,103 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
             <div className="flex-1">
               <div className="font-semibold text-sm text-base-content/70 mb-1">장소</div>
               {editingPlace ? (
-                <div className="flex items-center gap-2">
-                  <PlaceAutocomplete
-                    value={placeValue}
-                    onChange={(v) => setPlaceValue(v)}
-                    onSelect={(place) => {
-                      setPlaceValue(place.name);
-                      setPendingCoords({ lat: place.lat, lng: place.lng });
-                    }}
-                    placeholder="장소 검색..."
-                    className="flex-1"
-                  />
-                  <button
-                    onClick={handleSavePlace}
-                    disabled={savingPlace}
-                    className="btn btn-primary btn-sm btn-square"
-                  >
-                    {savingPlace ? '…' : '✓'}
-                  </button>
-                  <button
-                    onClick={() => { setEditingPlace(false); setPlaceValue(schedule.place || ''); setPendingCoords(null); }}
-                    className="btn btn-ghost btn-sm btn-square"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ) : (
-                <div className="text-lg flex items-center gap-2 flex-wrap group">
-                  {schedule.place ? (
-                    <>
-                      {linkifyFlightNumbers(schedule.place as string)}
-                      <a
-                        href={(() => {
-                          const place = schedule.place as string;
-                          const shouldAddLocation = place.length < 10 && (userLocation?.city || planRegion);
-                          const searchQuery = shouldAddLocation
-                            ? `${place} ${userLocation?.city || planRegion}`
-                            : place;
-                          return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`;
-                        })()}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="link link-secondary hover:link-hover inline-flex items-center gap-1"
-                        title="지도에서 보기"
-                      >
-                        <Map className="w-4 h-4" />
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                        </svg>
-                      </a>
-                    </>
-                  ) : (
-                    <span className="text-base-content/40 text-sm">장소 없음</span>
+                <>
+                  <div className="flex items-center gap-2">
+                    <PlaceAutocomplete
+                      value={placeValue}
+                      onChange={(v) => setPlaceValue(v)}
+                      onSelect={(place) => {
+                        setPlaceValue(place.name);
+                        setPendingCoords({ lat: place.lat, lng: place.lng });
+                      }}
+                      placeholder="장소 검색..."
+                      className="flex-1"
+                    />
+                    <button
+                      onClick={handleSavePlace}
+                      disabled={savingPlace}
+                      className="btn btn-primary btn-sm btn-square"
+                    >
+                      {savingPlace ? '…' : '✓'}
+                    </button>
+                    <button
+                      onClick={() => { setEditingPlace(false); setPlaceValue(schedule.place || ''); setPendingCoords(null); }}
+                      className="btn btn-ghost btn-sm btn-square"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  {pendingCoords && (
+                    <div className="mt-2 rounded-lg overflow-hidden border border-base-300">
+                      <TravelMap
+                        points={[{
+                          id: 1,
+                          lat: pendingCoords.lat,
+                          lng: pendingCoords.lng,
+                          title: placeValue || '선택한 위치',
+                          date: schedule.date,
+                          order: 1,
+                        }]}
+                        height="120px"
+                        showRoute={false}
+                      />
+                    </div>
                   )}
-                  <button
-                    onClick={() => setEditingPlace(true)}
-                    className="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity"
-                    title="장소 수정"
-                  >
-                    ✏️
-                  </button>
-                </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-lg flex items-center gap-2 flex-wrap group">
+                    {schedule.place ? (
+                      <>
+                        {linkifyFlightNumbers(schedule.place as string)}
+                        <a
+                          href={(() => {
+                            const place = schedule.place as string;
+                            const shouldAddLocation = place.length < 10 && (userLocation?.city || planRegion);
+                            const searchQuery = shouldAddLocation
+                              ? `${place} ${userLocation?.city || planRegion}`
+                              : place;
+                            return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`;
+                          })()}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="link link-secondary hover:link-hover inline-flex items-center gap-1"
+                          title="지도에서 보기"
+                        >
+                          <Map className="w-4 h-4" />
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                          </svg>
+                        </a>
+                      </>
+                    ) : (
+                      <span className="text-base-content/40 text-sm">장소 없음</span>
+                    )}
+                    <button
+                      onClick={() => setEditingPlace(true)}
+                      className="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity"
+                      title="장소 수정"
+                    >
+                      ✏️
+                    </button>
+                  </div>
+                  {schedule.latitude && schedule.longitude && (
+                    <div className="mt-2 rounded-lg overflow-hidden border border-base-300">
+                      <TravelMap
+                        points={[{
+                          id: schedule.id,
+                          lat: schedule.latitude,
+                          lng: schedule.longitude,
+                          title: (schedule.place as string) || schedule.title as string,
+                          date: schedule.date,
+                          order: 1,
+                        }]}
+                        height="120px"
+                        showRoute={false}
+                      />
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
