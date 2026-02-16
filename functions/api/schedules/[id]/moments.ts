@@ -3,7 +3,7 @@
 
 import type { Env } from '../../../types';
 import { jsonResponse, errorResponse } from '../../../types';
-import { getRequestUser } from '../../../lib/auth';
+import { getRequestUser, checkPlanAccess } from '../../../lib/auth';
 
 export async function onRequestGet(context: {
   env: Env;
@@ -43,7 +43,7 @@ export async function onRequestPost(context: {
       return errorResponse('Authentication required', 401);
     }
 
-    // schedule 존재 확인
+    // schedule 존재 확인 + plan 권한 체크
     const schedule = await env.DB.prepare(
       'SELECT plan_id FROM schedules WHERE id = ?'
     ).bind(scheduleId).first<{ plan_id: number }>();
@@ -52,16 +52,23 @@ export async function onRequestPost(context: {
       return errorResponse('Schedule not found', 404);
     }
 
+    // 권한: owner, member, public 모두 moment 작성 가능 (로그인 필수)
+    const access = await checkPlanAccess(env.DB, schedule.plan_id, user.id);
+    if (!access) {
+      return errorResponse('Access denied', 403);
+    }
+
     const body = await request.json<{
       photo_data?: string;
       note?: string;
       mood?: string;
       revisit?: string;
+      rating?: number;
     }>();
 
     // 최소 하나는 있어야
-    if (!body.photo_data && !body.note && !body.mood && !body.revisit) {
-      return errorResponse('At least one field required (photo_data, note, mood, or revisit)');
+    if (!body.photo_data && !body.note && !body.mood && !body.revisit && !body.rating) {
+      return errorResponse('At least one field required');
     }
 
     // note 길이 제한
@@ -76,17 +83,22 @@ export async function onRequestPost(context: {
     if (body.revisit && !['yes', 'no', 'maybe'].includes(body.revisit)) {
       return errorResponse('Invalid revisit value');
     }
+    // rating 유효성
+    if (body.rating != null && (body.rating < 1 || body.rating > 5 || !Number.isInteger(body.rating))) {
+      return errorResponse('Rating must be integer 1-5');
+    }
 
     const result = await env.DB.prepare(
-      `INSERT INTO moments (schedule_id, user_id, photo_data, note, mood, revisit)
-       VALUES (?, ?, ?, ?, ?, ?)`
+      `INSERT INTO moments (schedule_id, user_id, photo_data, note, mood, revisit, rating)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
     ).bind(
       scheduleId,
       user.id,
       body.photo_data ?? null,
       body.note ?? null,
       body.mood ?? null,
-      body.revisit ?? null
+      body.revisit ?? null,
+      body.rating ?? null
     ).run();
 
     const moment = await env.DB.prepare(

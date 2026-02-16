@@ -32,6 +32,7 @@ export async function onRequestPut(context: {
       note?: string;
       mood?: string;
       revisit?: string;
+      rating?: number | null;
     }>();
 
     const updates: string[] = [];
@@ -55,6 +56,13 @@ export async function onRequestPut(context: {
     if (body.photo_data !== undefined) {
       updates.push('photo_data = ?');
       values.push(body.photo_data);
+    }
+    if (body.rating !== undefined) {
+      if (body.rating != null && (body.rating < 1 || body.rating > 5 || !Number.isInteger(body.rating))) {
+        return errorResponse('Rating must be integer 1-5');
+      }
+      updates.push('rating = ?');
+      values.push(body.rating);
     }
 
     if (updates.length === 0) {

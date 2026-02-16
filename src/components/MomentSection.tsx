@@ -1,9 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
-import { reviewsAPI } from '../lib/api';
-import type { Review } from '../store/types';
 import { compressImage, validateImageFile } from '../lib/imageUtils';
-import { Camera, X, Edit2, Trash2, Smile } from 'lucide-react';
+import { Camera, X, Edit2, Trash2, Smile, Star } from 'lucide-react';
 
 // Inline types (will be moved to types.ts by Spark)
 interface Moment {
@@ -14,6 +12,7 @@ interface Moment {
   note: string | null;
   mood: 'amazing' | 'good' | 'okay' | 'meh' | 'bad' | null;
   revisit: 'yes' | 'no' | 'maybe' | null;
+  rating: number | null;
   username?: string;
   user_picture?: string;
   created_at: string;
@@ -42,8 +41,7 @@ interface MomentSectionProps {
 export default function MomentSection({ scheduleId }: MomentSectionProps) {
   const { currentUser } = useStore();
   const [moments, setMoments] = useState<Moment[]>([]);
-  const [reviewPhotos, setReviewPhotos] = useState<Review[]>([]);
-  const [selectedReviewImage, setSelectedReviewImage] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -52,6 +50,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
   const [note, setNote] = useState('');
   const [mood, setMood] = useState<string | null>(null);
   const [revisit, setRevisit] = useState<string | null>(null);
+  const [rating, setRating] = useState<number | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,7 +59,6 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
 
   useEffect(() => {
     loadMoments();
-    loadReviewPhotos();
   }, [scheduleId]);
 
   const getCredential = () => localStorage.getItem('google_credential') || '';
@@ -75,16 +73,6 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
       console.error('Failed to load moments:', e);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const loadReviewPhotos = async () => {
-    try {
-      const { reviews } = await reviewsAPI.getByScheduleId(scheduleId);
-      setReviewPhotos(reviews || []);
-    } catch (e) {
-      console.error('Failed to load reviews:', e);
-      setReviewPhotos([]);
     }
   };
 
@@ -107,6 +95,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
     setNote('');
     setMood(null);
     setRevisit(null);
+    setRating(null);
     setImageFile(null);
     setImagePreview('');
     setError('');
@@ -116,8 +105,8 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
   };
 
   const handleSubmit = async () => {
-    if (!note && !mood && !revisit && !imageFile && !imagePreview) {
-      setError('기분, 메모, 사진 중 하나는 남겨주세요');
+    if (!note && !mood && !revisit && !rating && !imageFile && !imagePreview) {
+      setError('기분, 메모, 사진, 별점 중 하나는 남겨주세요');
       return;
     }
 
@@ -137,6 +126,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
       if (note) body.note = note;
       if (mood) body.mood = mood;
       if (revisit) body.revisit = revisit;
+      if (rating) body.rating = rating;
       if (photo_data) body.photo_data = photo_data;
 
       const credential = getCredential();
@@ -192,6 +182,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
     setNote(m.note || '');
     setMood(m.mood);
     setRevisit(m.revisit);
+    setRating(m.rating);
     setImagePreview(m.photo_data || '');
     setShowForm(true);
   };
@@ -240,6 +231,31 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
                   <span className="text-[10px] mt-0.5">{opt.label}</span>
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* 별점 */}
+          <div>
+            <label className="text-sm text-gray-600 dark:text-gray-400 mb-1 block">별점</label>
+            <div className="flex gap-1">
+              {[1, 2, 3, 4, 5].map(v => (
+                <button
+                  key={v}
+                  onClick={() => setRating(rating === v ? null : v)}
+                  className="p-0.5"
+                >
+                  <Star
+                    className={`w-6 h-6 transition-colors ${
+                      v <= (rating ?? 0)
+                        ? 'fill-yellow-400 text-yellow-400'
+                        : 'text-gray-300 dark:text-gray-600'
+                    }`}
+                  />
+                </button>
+              ))}
+              {rating && (
+                <span className="text-sm text-gray-500 ml-1 self-center">{rating}/5</span>
+              )}
             </div>
           </div>
 
@@ -368,11 +384,23 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
 
               {/* 사진 */}
               {m.photo_data && (
-                <img src={m.photo_data} alt="moment" className="w-full rounded-lg max-h-60 object-cover" />
+                <img
+                  src={m.photo_data}
+                  alt="moment"
+                  className="w-full rounded-lg max-h-60 object-cover cursor-pointer"
+                  onClick={() => setSelectedImage(m.photo_data)}
+                />
               )}
 
-              {/* 기분 + 재방문 */}
+              {/* 별점 + 기분 + 재방문 */}
               <div className="flex items-center gap-3 flex-wrap">
+                {m.rating && (
+                  <div className="flex items-center gap-0.5">
+                    {[1, 2, 3, 4, 5].map(v => (
+                      <Star key={v} className={`w-3.5 h-3.5 ${v <= m.rating! ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
+                    ))}
+                  </div>
+                )}
                 {m.mood && (
                   <span className="text-lg" title={m.mood}>
                     {MOOD_OPTIONS.find(o => o.value === m.mood)?.emoji}
@@ -398,72 +426,14 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
         </div>
       )}
 
-      {/* 리뷰 섹션 */}
-      {reviewPhotos.length > 0 && (
-        <div className="space-y-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-          <h4 className="font-semibold text-sm flex items-center gap-2">
-            📝 리뷰
-            <span className="text-gray-400 font-normal">({reviewPhotos.length})</span>
-          </h4>
-          <div className="space-y-2">
-            {reviewPhotos.map((review) => (
-              <div key={review.id} className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 space-y-2 border border-gray-100 dark:border-gray-700">
-                {/* 상단: 작성자 + 별점 */}
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {review.author_name || '익명'}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <span key={i} className={`text-sm ${i < review.rating ? 'text-yellow-400' : 'text-gray-300'}`}>★</span>
-                    ))}
-                  </div>
-                </div>
-                {/* 리뷰 텍스트 */}
-                {review.review_text && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{review.review_text}</p>
-                )}
-                {/* 사진 */}
-                {review.image_data && (
-                  <div className="relative group">
-                    <img
-                      src={review.image_data}
-                      alt="리뷰 사진"
-                      className="w-full rounded-lg max-h-48 object-cover cursor-pointer"
-                      onClick={() => setSelectedReviewImage(review.image_data)}
-                    />
-                    {/* 가져오기 버튼 — 로그인 유저만 */}
-                    {currentUser && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setImagePreview(review.image_data);
-                          setImageFile(null); // 파일 아닌 base64 직접 사용
-                          if (!showForm) setShowForm(true);
-                        }}
-                        className="absolute bottom-2 right-2 bg-orange-500 text-white text-xs px-2.5 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity shadow-lg"
-                      >
-                        📥 내 기록에 추가
-                      </button>
-                    )}
-                  </div>
-                )}
-                <span className="text-xs text-gray-400">
-                  {new Date(review.created_at).toLocaleDateString('ko')}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {selectedReviewImage && (
+      {/* 사진 확대 모달 */}
+      {selectedImage && (
         <div
           className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
-          onClick={() => setSelectedReviewImage(null)}
+          onClick={() => setSelectedImage(null)}
         >
           <img
-            src={selectedReviewImage}
+            src={selectedImage}
             alt="확대 이미지"
             className="max-w-full max-h-[85vh] rounded-xl shadow-2xl"
           />
