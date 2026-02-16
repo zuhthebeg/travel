@@ -11,6 +11,7 @@ export interface Plan {
   end_date: string;
   thumbnail: string | null;
   is_public: boolean;
+  visibility?: 'public' | 'shared' | 'private';
   created_at: string;
   updated_at: string;
 }

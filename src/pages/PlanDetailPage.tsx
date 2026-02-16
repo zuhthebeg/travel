@@ -13,6 +13,8 @@ import { TravelProgressBar } from '../components/TravelProgressBar';
 import ReviewSection from '../components/ReviewSection'; // Import ReviewSection
 import MomentSection from '../components/MomentSection'; // Album - 순간 기록
 import TripNotes from '../components/TripNotes'; // Import TripNotes
+import MemberAvatars from '../components/MemberAvatars';
+import ForkButton from '../components/ForkButton';
 import { TravelMemoList } from '../components/travel/TravelMemoList';
 import type { Schedule, Plan, Comment } from '../store/types';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
@@ -108,7 +110,7 @@ function linkifyText(text: string) {
 export function PlanDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { selectedPlan, setSelectedPlan, schedules, setSchedules } = useStore();
+  const { currentUser, selectedPlan, setSelectedPlan, schedules, setSchedules } = useStore();
   const [isLoading, setIsLoading] = useState(true);
   // const [mapLoadError, setMapLoadError] = useState(false); // 지도 기능 임시 비활성화
 
@@ -122,6 +124,7 @@ export function PlanDetailPage() {
   const [mainTab, setMainTab] = useState<'schedule' | 'notes' | 'album'>('schedule');
   const [geocodeFailed, setGeocodeFailed] = useState<any[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; city?: string } | null>(null);
+  const [showShareToast, setShowShareToast] = useState(false);
   const viewModalRef = useRef<HTMLDialogElement>(null);
   const editModalRef = useRef<HTMLDialogElement>(null);
   const planEditModalRef = useRef<HTMLDialogElement>(null);
@@ -455,6 +458,18 @@ export function PlanDetailPage() {
   }
 
   const days = getDaysDifference(selectedPlan.start_date, selectedPlan.end_date);
+  const isOwner = currentUser?.id === selectedPlan.user_id;
+
+  const handleCopyShareLink = async () => {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/album/${selectedPlan.id}`);
+      setShowShareToast(true);
+      setTimeout(() => setShowShareToast(false), 2000);
+    } catch (error) {
+      console.error('공유 링크 복사 실패:', error);
+      alert('링크 복사에 실패했습니다.');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-base-200">
@@ -467,9 +482,13 @@ export function PlanDetailPage() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <h1 className="text-base sm:text-lg md:text-xl font-bold truncate">{selectedPlan.title}</h1>
-                {selectedPlan.is_public && (
-                  <div className="badge badge-secondary badge-xs sm:badge-sm whitespace-nowrap flex-shrink-0">공개</div>
-                )}
+                <div className="badge badge-secondary badge-xs sm:badge-sm whitespace-nowrap flex-shrink-0">
+                  {(selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'private'
+                    ? '나만'
+                    : (selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'shared'
+                    ? '동행만'
+                    : '공개'}
+                </div>
               </div>
               <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-base-content/70 flex-wrap">
                 {selectedPlan.region && (
@@ -488,6 +507,21 @@ export function PlanDetailPage() {
                 )}
                 <span className="whitespace-nowrap flex items-center gap-0.5"><Calendar className="w-3 h-3" /> {formatDateRange(selectedPlan.start_date, selectedPlan.end_date)}</span>
                 <span className="font-medium whitespace-nowrap">{days}일</span>
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <div className="w-full sm:w-auto">
+                  <MemberAvatars planId={selectedPlan.id} isOwner={isOwner} />
+                </div>
+                <Button variant="primary" outline size="sm" onClick={handleCopyShareLink}>
+                  🔗 공유 링크 복사
+                </Button>
+                {!isOwner && currentUser && (
+                  <ForkButton
+                    planId={selectedPlan.id}
+                    onForked={(newPlan) => navigate(`/plans/${newPlan.id}`)}
+                  />
+                )}
               </div>
             </div>
             <div className="flex gap-1 flex-shrink-0">
@@ -975,6 +1009,14 @@ export function PlanDetailPage() {
           </dialog>
         )}
       </main>
+
+      {showShareToast && (
+        <div className="toast toast-top toast-center z-50">
+          <div className="alert alert-success">
+            <span>링크가 복사되었습니다!</span>
+          </div>
+        </div>
+      )}
 
       {/* Floating Travel Progress Bar */}
       {schedules.length > 0 && (
@@ -1856,7 +1898,7 @@ function PlanEditModal({ modalRef, plan, onClose, onSave, onDelete }: PlanEditMo
     region: plan.region || '',
     start_date: plan.start_date,
     end_date: plan.end_date,
-    is_public: plan.is_public,
+    visibility: (plan.visibility || (plan.is_public ? 'public' : 'private')) as 'public' | 'shared' | 'private',
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -1873,7 +1915,7 @@ function PlanEditModal({ modalRef, plan, onClose, onSave, onDelete }: PlanEditMo
         region: formData.region || undefined,
         start_date: formData.start_date,
         end_date: formData.end_date,
-        is_public: formData.is_public,
+        visibility: formData.visibility,
       });
       onSave(updatedPlan);
     } catch (error) {
@@ -1954,16 +1996,24 @@ function PlanEditModal({ modalRef, plan, onClose, onSave, onDelete }: PlanEditMo
             </div>
           </div>
 
-          <div className="form-control">
-            <label className="label cursor-pointer justify-start gap-3">
-              <input
-                type="checkbox"
-                checked={formData.is_public}
-                onChange={(e) => setFormData({ ...formData, is_public: e.target.checked })}
-                className="checkbox checkbox-primary"
-              />
-              <span className="label-text">공개 여행으로 설정</span>
+          <div className="form-control w-full">
+            <label className="label">
+              <span className="label-text">공개 범위</span>
             </label>
+            <select
+              value={formData.visibility}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  visibility: e.target.value as 'public' | 'shared' | 'private',
+                })
+              }
+              className="select select-bordered w-full"
+            >
+              <option value="public">🌍 공개 (public) — 누구나 볼 수 있어요</option>
+              <option value="shared">👥 동행만 (shared) — 초대된 멤버만</option>
+              <option value="private">🔒 나만 (private) — 나만 볼 수 있어요</option>
+            </select>
           </div>
         </div>
 

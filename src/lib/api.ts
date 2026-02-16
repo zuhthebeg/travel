@@ -59,6 +59,7 @@ export const plansAPI = {
     end_date: string;
     thumbnail?: string;
     is_public?: boolean;
+    visibility?: 'public' | 'shared' | 'private';
   }) => {
     const result = await apiRequest<{ plan: Plan }>('/api/plans', {
       method: 'POST',
@@ -77,6 +78,7 @@ export const plansAPI = {
       end_date?: string;
       thumbnail?: string;
       is_public?: boolean;
+      visibility?: 'public' | 'shared' | 'private';
     }
   ) => {
     const result = await apiRequest<{ plan: Plan }>(`/api/plans/${id}`, {

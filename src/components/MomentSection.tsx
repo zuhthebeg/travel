@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
+import { reviewsAPI } from '../lib/api';
+import type { Review } from '../store/types';
 import { compressImage, validateImageFile } from '../lib/imageUtils';
 import { Camera, X, Edit2, Trash2, Smile } from 'lucide-react';
 
@@ -40,6 +42,8 @@ interface MomentSectionProps {
 export default function MomentSection({ scheduleId }: MomentSectionProps) {
   const { currentUser } = useStore();
   const [moments, setMoments] = useState<Moment[]>([]);
+  const [reviewPhotos, setReviewPhotos] = useState<Review[]>([]);
+  const [selectedReviewImage, setSelectedReviewImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -56,6 +60,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
 
   useEffect(() => {
     loadMoments();
+    loadReviewPhotos();
   }, [scheduleId]);
 
   const getCredential = () => localStorage.getItem('google_credential') || '';
@@ -70,6 +75,16 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
       console.error('Failed to load moments:', e);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadReviewPhotos = async () => {
+    try {
+      const { reviews } = await reviewsAPI.getByScheduleId(scheduleId);
+      setReviewPhotos((reviews || []).filter((review) => !!review.image_data));
+    } catch (e) {
+      console.error('Failed to load review photos:', e);
+      setReviewPhotos([]);
     }
   };
 
@@ -377,6 +392,40 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {reviewPhotos.length > 0 && (
+        <div className="space-y-2 pt-2">
+          <h4 className="font-medium text-sm">📷 다른 사람들의 사진</h4>
+          <div className="grid grid-cols-4 gap-2">
+            {reviewPhotos.map((review) => (
+              <button
+                key={review.id}
+                onClick={() => setSelectedReviewImage(review.image_data)}
+                className="aspect-square overflow-hidden rounded-lg border border-base-300 hover:opacity-90"
+              >
+                <img
+                  src={review.image_data}
+                  alt="리뷰 사진"
+                  className="w-full h-full object-cover"
+                />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {selectedReviewImage && (
+        <div
+          className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+          onClick={() => setSelectedReviewImage(null)}
+        >
+          <img
+            src={selectedReviewImage}
+            alt="확대 이미지"
+            className="max-w-full max-h-[85vh] rounded-xl shadow-2xl"
+          />
         </div>
       )}
     </div>
