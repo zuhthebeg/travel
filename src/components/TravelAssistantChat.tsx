@@ -331,9 +331,19 @@ export function TravelAssistantChat({
     }
 
     try {
+      // Auth credential for backend authorization
+      const credential =
+        localStorage.getItem('X-Auth-Credential') ||
+        localStorage.getItem('x-auth-credential') ||
+        localStorage.getItem('authCredential') ||
+        localStorage.getItem('google_credential') || '';
+
       const response = await fetch(`${window.location.origin}/api/assistant`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(credential ? { 'X-Auth-Credential': credential } : {}),
+        },
         body: JSON.stringify({
           message: messageToSend,
           history: messages.map(msg => ({ role: msg.role, parts: [{ text: msg.content }] })),

@@ -1,4 +1,5 @@
 import { callOpenAI, callOpenAIWithVision, type OpenAIMessage, type OpenAIContentPart } from './_common';
+import { getRequestUser, requirePlanOwner } from '../../lib/auth';
 
 interface Env {
   OPENAI_API_KEY: string;
@@ -35,6 +36,22 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   if (!message && !image) {
     return new Response(JSON.stringify({ error: 'Message or image is required' }), {
       status: 400,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+    });
+  }
+
+  // Auth: 로그인 사용자만 + 본인 플랜만
+  const user = await getRequestUser(context.request, context.env.DB);
+  if (!user) {
+    return new Response(JSON.stringify({ error: 'Authentication required' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+    });
+  }
+  const isOwner = await requirePlanOwner(context.env.DB, planId, user.id);
+  if (!isOwner) {
+    return new Response(JSON.stringify({ error: 'Not your plan' }), {
+      status: 403,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     });
   }
@@ -225,14 +242,14 @@ Examples:
             }
           }
           if (sets.length > 0) {
-            values.push(action.id);
+            values.push(action.id, planId);
             await context.env.DB.prepare(
-              `UPDATE schedules SET ${sets.join(', ')} WHERE id = ?`
+              `UPDATE schedules SET ${sets.join(', ')} WHERE id = ? AND plan_id = ?`
             ).bind(...values).run();
             results.push({ type: 'update', success: true, id: action.id });
           }
         } else if (action.type === 'delete' && action.id) {
-          await context.env.DB.prepare('DELETE FROM schedules WHERE id = ?').bind(action.id).run();
+          await context.env.DB.prepare('DELETE FROM schedules WHERE id = ? AND plan_id = ?').bind(action.id, planId).run();
           results.push({ type: 'delete', success: true, id: action.id });
         } else if (action.type === 'shift_all' && typeof action.days === 'number') {
           // Shift all schedules by N days
@@ -273,9 +290,9 @@ Examples:
             }
           }
           if (sets.length > 0) {
-            values.push(planId);
+            values.push(planId, user.id);
             await context.env.DB.prepare(
-              `UPDATE plans SET ${sets.join(', ')} WHERE id = ?`
+              `UPDATE plans SET ${sets.join(', ')} WHERE id = ? AND user_id = ?`
             ).bind(...values).run();
             results.push({ type: 'update_plan', success: true });
           }
@@ -288,7 +305,7 @@ Examples:
           ).bind(planId, m.category, m.title, m.content || null, m.icon || null).run();
           results.push({ type: 'add_memo', success: true, id: result.meta?.last_row_id });
         } else if (action.type === 'update_memo' && action.id) {
-          // Update travel memo
+          // Update travel memo — plan_id 스코프
           const changes = action.changes || {};
           const sets: string[] = [];
           const values: any[] = [];
@@ -299,15 +316,15 @@ Examples:
             }
           }
           if (sets.length > 0) {
-            values.push(action.id);
+            values.push(action.id, planId);
             await context.env.DB.prepare(
-              `UPDATE travel_memos SET ${sets.join(', ')} WHERE id = ?`
+              `UPDATE travel_memos SET ${sets.join(', ')} WHERE id = ? AND plan_id = ?`
             ).bind(...values).run();
             results.push({ type: 'update_memo', success: true, id: action.id });
           }
         } else if (action.type === 'delete_memo' && action.id) {
-          // Delete travel memo
-          await context.env.DB.prepare('DELETE FROM travel_memos WHERE id = ?').bind(action.id).run();
+          // Delete travel memo — plan_id 스코프
+          await context.env.DB.prepare('DELETE FROM travel_memos WHERE id = ? AND plan_id = ?').bind(action.id, planId).run();
           results.push({ type: 'delete_memo', success: true, id: action.id });
         } else if (action.type === 'generate_memos') {
           // Auto-generate travel memos for destination
