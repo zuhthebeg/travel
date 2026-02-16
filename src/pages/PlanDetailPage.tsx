@@ -1545,11 +1545,37 @@ interface ScheduleDetailModalProps {
   planRegion?: string | null;
 }
 
-function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, onUpdate: _onUpdate, userLocation, planRegion }: ScheduleDetailModalProps) {
-  // schedule-level rating/review → moments로 통합됨
-
+function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, onUpdate, userLocation, planRegion }: ScheduleDetailModalProps) {
   // Tab state
   const [detailTab, setDetailTab] = useState<'moments' | 'comments'>('moments');
+
+  // Inline place edit
+  const [editingPlace, setEditingPlace] = useState(false);
+  const [placeValue, setPlaceValue] = useState(schedule.place || '');
+  const [savingPlace, setSavingPlace] = useState(false);
+
+  // Sync placeValue when schedule changes
+  useEffect(() => {
+    setPlaceValue(schedule.place || '');
+    setEditingPlace(false);
+  }, [schedule.id, schedule.place]);
+
+  const handleSavePlace = async () => {
+    if (placeValue === (schedule.place || '')) {
+      setEditingPlace(false);
+      return;
+    }
+    setSavingPlace(true);
+    try {
+      await schedulesAPI.update(schedule.id, { place: placeValue || null });
+      onUpdate(schedule.id, { place: placeValue || null });
+      setEditingPlace(false);
+    } catch (e) {
+      console.error('Failed to save place:', e);
+    } finally {
+      setSavingPlace(false);
+    }
+  };
 
   // Comments state
   const [comments, setComments] = useState<Comment[]>([]);
@@ -1666,37 +1692,77 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
             {isPast && <div className="badge badge-success badge-lg">✓ 완료</div>}
           </div>
 
-          {schedule.place && (
-            <div className="flex items-start gap-2">
-              <MapPin className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
-              <div className="flex-1">
-                <div className="font-semibold text-sm text-base-content/70 mb-1">장소</div>
-                <div className="text-lg flex items-center gap-2 flex-wrap">
-                  {linkifyFlightNumbers(schedule.place as string)}
-                  <a
-                    href={(() => {
-                      const place = schedule.place as string;
-                      // If place name is short (less than 10 chars) and we have location context, add it
-                      const shouldAddLocation = place.length < 10 && (userLocation?.city || planRegion);
-                      const searchQuery = shouldAddLocation
-                        ? `${place} ${userLocation?.city || planRegion}`
-                        : place;
-                      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`;
-                    })()}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="link link-secondary hover:link-hover inline-flex items-center gap-1"
-                    title="지도에서 보기"
+          <div className="flex items-start gap-2">
+            <MapPin className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
+            <div className="flex-1">
+              <div className="font-semibold text-sm text-base-content/70 mb-1">장소</div>
+              {editingPlace ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={placeValue}
+                    onChange={(e) => setPlaceValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSavePlace();
+                      if (e.key === 'Escape') { setEditingPlace(false); setPlaceValue(schedule.place || ''); }
+                    }}
+                    autoFocus
+                    placeholder="장소를 입력하세요"
+                    className="input input-bordered input-sm flex-1"
+                  />
+                  <button
+                    onClick={handleSavePlace}
+                    disabled={savingPlace}
+                    className="btn btn-primary btn-sm btn-square"
                   >
-                    <Map className="w-4 h-4" />
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                    </svg>
-                  </a>
+                    {savingPlace ? '…' : '✓'}
+                  </button>
+                  <button
+                    onClick={() => { setEditingPlace(false); setPlaceValue(schedule.place || ''); }}
+                    className="btn btn-ghost btn-sm btn-square"
+                  >
+                    ✕
+                  </button>
                 </div>
-              </div>
+              ) : (
+                <div className="text-lg flex items-center gap-2 flex-wrap group">
+                  {schedule.place ? (
+                    <>
+                      {linkifyFlightNumbers(schedule.place as string)}
+                      <a
+                        href={(() => {
+                          const place = schedule.place as string;
+                          const shouldAddLocation = place.length < 10 && (userLocation?.city || planRegion);
+                          const searchQuery = shouldAddLocation
+                            ? `${place} ${userLocation?.city || planRegion}`
+                            : place;
+                          return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`;
+                        })()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="link link-secondary hover:link-hover inline-flex items-center gap-1"
+                        title="지도에서 보기"
+                      >
+                        <Map className="w-4 h-4" />
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                        </svg>
+                      </a>
+                    </>
+                  ) : (
+                    <span className="text-base-content/40 text-sm">장소 없음</span>
+                  )}
+                  <button
+                    onClick={() => setEditingPlace(true)}
+                    className="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity"
+                    title="장소 수정"
+                  >
+                    ✏️
+                  </button>
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           {schedule.memo && (
             <div>
