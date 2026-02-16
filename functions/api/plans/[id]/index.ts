@@ -2,12 +2,14 @@
 
 import type { Env, UpdatePlanRequest } from '../../../types';
 import { jsonResponse, errorResponse } from '../../../types';
+import { getRequestUser, checkPlanAccess } from '../../../lib/auth';
 
 export async function onRequestGet(context: {
   env: Env;
   params: { id: string };
+  request: Request;
 }): Promise<Response> {
-  const { env, params } = context;
+  const { env, params, request } = context;
   const planId = params.id;
 
   try {
@@ -18,6 +20,20 @@ export async function onRequestGet(context: {
 
     if (plans.length === 0) {
       return errorResponse('Plan not found', 404);
+    }
+
+    const plan = plans[0] as any;
+
+    // visibility 기반 접근 체크
+    // public: 누구나 조회 가능 (비가입 포함)
+    // shared: owner + 멤버만
+    // private: owner만
+    if (plan.visibility !== 'public') {
+      const user = await getRequestUser(request, env.DB);
+      const access = await checkPlanAccess(env.DB, Number(planId), user?.id ?? null);
+      if (!access) {
+        return errorResponse('Plan not found', 404);
+      }
     }
 
     // 해당 plan의 스케줄들도 함께 조회

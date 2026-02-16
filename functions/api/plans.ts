@@ -50,8 +50,8 @@ export async function onRequestPost(context: { env: Env; request: Request }): Pr
       return errorResponse('Missing required fields: user_id, title, start_date, end_date');
     }
 
-    // visibility 결정: 명시적 visibility > is_public 하위호환
-    const visibility = body.visibility ?? (body.is_public ? 'public' : 'private');
+    // visibility 결정: 기본값 public (SEO 유입 목적)
+    const visibility = body.visibility ?? 'public';
 
     const result = await env.DB.prepare(
       `INSERT INTO plans (user_id, title, region, start_date, end_date, thumbnail, is_public, visibility)
