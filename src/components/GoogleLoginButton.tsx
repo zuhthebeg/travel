@@ -38,6 +38,7 @@ export default function GoogleLoginButton({
         const user = await authAPI.googleLogin(credential);
         setCurrentUser(user);
         localStorage.setItem('temp_user_id', user.id.toString());
+        localStorage.setItem('google_credential', credential);
 
         if (onSuccess) {
           onSuccess();
