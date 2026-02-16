@@ -2,6 +2,7 @@
 
 import type { Env, Plan, CreatePlanRequest } from '../types';
 import { jsonResponse, errorResponse } from '../types';
+import { getRequestUser } from '../lib/auth';
 
 export async function onRequestGet(context: { env: Env; request: Request }): Promise<Response> {
   const { env, request } = context;
@@ -19,8 +20,9 @@ export async function onRequestGet(context: { env: Env; request: Request }): Pro
       params.push(userId);
     }
 
+    // is_public 파라미터 → visibility 기반으로 처리 (하위 호환)
     if (isPublic === '1' || isPublic === 'true') {
-      conditions.push('is_public = 1');
+      conditions.push("(is_public = 1 OR visibility = 'public')");
     }
 
     if (conditions.length > 0) {
@@ -48,9 +50,12 @@ export async function onRequestPost(context: { env: Env; request: Request }): Pr
       return errorResponse('Missing required fields: user_id, title, start_date, end_date');
     }
 
+    // visibility 결정: 명시적 visibility > is_public 하위호환
+    const visibility = body.visibility ?? (body.is_public ? 'public' : 'private');
+
     const result = await env.DB.prepare(
-      `INSERT INTO plans (user_id, title, region, start_date, end_date, thumbnail, is_public)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO plans (user_id, title, region, start_date, end_date, thumbnail, is_public, visibility)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     )
       .bind(
         body.user_id,
@@ -59,7 +64,8 @@ export async function onRequestPost(context: { env: Env; request: Request }): Pr
         body.start_date,
         body.end_date,
         body.thumbnail || null,
-        body.is_public ? 1 : 0
+        body.is_public ? 1 : 0,
+        visibility
       )
       .run();
 

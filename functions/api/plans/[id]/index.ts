@@ -83,6 +83,16 @@ export async function onRequestPut(context: {
       updates.push('is_public = ?');
       values.push(body.is_public ? 1 : 0);
     }
+    if ((body as any).visibility !== undefined) {
+      const v = (body as any).visibility;
+      if (['private', 'shared', 'public'].includes(v)) {
+        updates.push('visibility = ?');
+        values.push(v);
+        // is_public 동기화
+        updates.push('is_public = ?');
+        values.push(v === 'public' ? 1 : 0);
+      }
+    }
 
     if (updates.length === 0) {
       return errorResponse('No fields to update');
