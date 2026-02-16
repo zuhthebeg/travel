@@ -12,6 +12,7 @@ import { TravelAssistantChat } from '../components/TravelAssistantChat'; // Impo
 import { TravelProgressBar } from '../components/TravelProgressBar';
 // ReviewSection removed — merged into MomentSection
 import MomentSection from '../components/MomentSection'; // Album - 순간 기록
+import { PlaceAutocomplete } from '../components/PlaceAutocomplete';
 import TripNotes from '../components/TripNotes'; // Import TripNotes
 import MemberAvatars from '../components/MemberAvatars';
 import ForkButton from '../components/ForkButton';
@@ -1560,16 +1561,24 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
     setEditingPlace(false);
   }, [schedule.id, schedule.place]);
 
+  const [pendingCoords, setPendingCoords] = useState<{ lat: number; lng: number } | null>(null);
+
   const handleSavePlace = async () => {
-    if (placeValue === (schedule.place || '')) {
+    if (placeValue === (schedule.place || '') && !pendingCoords) {
       setEditingPlace(false);
       return;
     }
     setSavingPlace(true);
     try {
-      await schedulesAPI.update(schedule.id, { place: placeValue || null });
-      onUpdate(schedule.id, { place: placeValue || null });
+      const updates: Record<string, any> = { place: placeValue || null };
+      if (pendingCoords) {
+        updates.lat = pendingCoords.lat;
+        updates.lng = pendingCoords.lng;
+      }
+      await schedulesAPI.update(schedule.id, updates);
+      onUpdate(schedule.id, updates);
       setEditingPlace(false);
+      setPendingCoords(null);
     } catch (e) {
       console.error('Failed to save place:', e);
     } finally {
@@ -1698,17 +1707,15 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
               <div className="font-semibold text-sm text-base-content/70 mb-1">장소</div>
               {editingPlace ? (
                 <div className="flex items-center gap-2">
-                  <input
-                    type="text"
+                  <PlaceAutocomplete
                     value={placeValue}
-                    onChange={(e) => setPlaceValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleSavePlace();
-                      if (e.key === 'Escape') { setEditingPlace(false); setPlaceValue(schedule.place || ''); }
+                    onChange={(v) => setPlaceValue(v)}
+                    onSelect={(place) => {
+                      setPlaceValue(place.name);
+                      setPendingCoords({ lat: place.lat, lng: place.lng });
                     }}
-                    autoFocus
-                    placeholder="장소를 입력하세요"
-                    className="input input-bordered input-sm flex-1"
+                    placeholder="장소 검색..."
+                    className="flex-1"
                   />
                   <button
                     onClick={handleSavePlace}
@@ -1718,7 +1725,7 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
                     {savingPlace ? '…' : '✓'}
                   </button>
                   <button
-                    onClick={() => { setEditingPlace(false); setPlaceValue(schedule.place || ''); }}
+                    onClick={() => { setEditingPlace(false); setPlaceValue(schedule.place || ''); setPendingCoords(null); }}
                     className="btn btn-ghost btn-sm btn-square"
                   >
                     ✕
