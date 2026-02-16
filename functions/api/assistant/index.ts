@@ -1,5 +1,6 @@
 import { callOpenAI, callOpenAIWithVision, type OpenAIMessage, type OpenAIContentPart } from './_common';
-import { getRequestUser, requirePlanOwner } from '../../lib/auth';
+import { getRequestUser, checkPlanAccess, type AccessLevel } from '../../lib/auth';
+import { canExecute } from '../../lib/assistant-acl';
 
 interface Env {
   OPENAI_API_KEY: string;
@@ -19,7 +20,7 @@ export const onRequestOptions: PagesFunction = async () => {
 };
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
-  const { message, history, planId, planTitle, planRegion, planStartDate, planEndDate, schedules, memos, userLang, image } = await context.request.json<{
+  const { message, history, planId, planTitle, planRegion, planStartDate, planEndDate, schedules, memos, moments, members, visibility, userLang, image } = await context.request.json<{
     message: string;
     history: any[];
     planId: number;
@@ -28,9 +29,12 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     planStartDate: string;
     planEndDate: string;
     schedules: any[];
-    memos?: any[]; // Travel memos
+    memos?: any[];
+    moments?: any[];
+    members?: any[];
+    visibility?: string;
     userLang?: string;
-    image?: string; // base64 data URL
+    image?: string;
   }>();
 
   if (!message && !image) {
@@ -40,7 +44,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     });
   }
 
-  // Auth: 로그인 사용자만 + 본인 플랜만
+  // Auth: 로그인 필수 + owner 또는 member만
   const user = await getRequestUser(context.request, context.env.DB);
   if (!user) {
     return new Response(JSON.stringify({ error: 'Authentication required' }), {
@@ -48,9 +52,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     });
   }
-  const isOwner = await requirePlanOwner(context.env.DB, planId, user.id);
-  if (!isOwner) {
-    return new Response(JSON.stringify({ error: 'Not your plan' }), {
+  const access: AccessLevel = await checkPlanAccess(context.env.DB, planId, user.id);
+  if (!access || access === 'public') {
+    return new Response(JSON.stringify({ error: 'Access denied' }), {
       status: 403,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     });
@@ -82,6 +86,19 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     .map(m => `[ID:${m.id}] ${m.category}: ${m.title}${m.content ? ' - ' + m.content.substring(0, 50) + (m.content.length > 50 ? '...' : '') : ''}`)
     .join('\n');
 
+  // Moments 요약 (schedule당 count + 최근 1개만)
+  const momentSummary = (moments || [])
+    .map((m: any) => `[MomentID:${m.id}] Schedule ${m.schedule_id}: ${m.mood || ''} "${(m.note || '').substring(0, 60)}" ${m.revisit ? '(revisit:' + m.revisit + ')' : ''}`)
+    .join('\n');
+
+  // Members 요약
+  const memberSummary = (members || [])
+    .map((m: any) => `[UserID:${m.user_id}] ${m.name || m.email || 'unknown'} (${m.role})`)
+    .join('\n');
+
+  // 현재 사용자의 role 전달
+  const userRole = access === 'owner' ? 'OWNER' : 'MEMBER';
+
   const imageInstructions = image ? `
 IMAGE ANALYSIS:
 When the user sends an image, analyze it in the context of their travel:
@@ -92,7 +109,10 @@ When the user sends an image, analyze it in the context of their travel:
 - If it's a map/directions, provide guidance
 - Can also add the location as a schedule if user asks` : '';
 
-  const systemPrompt = `You are a travel assistant that can CHAT, ANALYZE IMAGES, MODIFY schedules, UPDATE plan info, and MANAGE travel memos.
+  const systemPrompt = `You are a travel assistant that can CHAT, ANALYZE IMAGES, MODIFY schedules, UPDATE plan info, MANAGE travel memos, and RECORD moments.
+
+CURRENT USER ROLE: ${userRole}
+${userRole === 'MEMBER' ? '⚠️ As a MEMBER, you can ONLY: chat, add_moment, update_moment (own), delete_moment (own). All other actions are BLOCKED.' : ''}
 
 TRAVEL PLAN:
 - Plan ID: ${planId}
@@ -103,6 +123,11 @@ TRAVEL PLAN:
 ${scheduleSummary || '(No schedules)'}
 - Travel Memos:
 ${memoSummary || '(No memos)'}
+- Visibility: ${visibility || 'private'}
+- Members:
+${memberSummary || '(No members)'}
+- Moments:
+${momentSummary || '(No moments)'}
 ${imageInstructions}
 
 RESPONSE FORMAT:
@@ -129,6 +154,18 @@ TRAVEL MEMO ACTIONS (for visa, timezone, weather, currency, emergency, accommoda
 - UPDATE_MEMO: {"type": "update_memo", "id": <memo_id>, "changes": {"title": "...", "content": "...", "icon": "..."}}
 - DELETE_MEMO: {"type": "delete_memo", "id": <memo_id>}
 - GENERATE_MEMOS: {"type": "generate_memos"} - Auto-generate travel memos for the destination (visa, timezone, currency, weather, emergency info)
+
+MOMENT ACTIONS (순간 기록 - 일정에 대한 감상/메모):
+- ADD_MOMENT: {"type": "add_moment", "schedule_id": <schedule_id>, "moment": {"note": "200자 이내", "mood": "amazing|good|okay|meh|bad", "revisit": "yes|no|maybe"}}
+- UPDATE_MOMENT: {"type": "update_moment", "id": <moment_id>, "changes": {"note": "...", "mood": "...", "revisit": "..."}}
+- DELETE_MOMENT: {"type": "delete_moment", "id": <moment_id>}
+
+MEMBER ACTIONS (owner only):
+- ADD_MEMBER: {"type": "add_member", "email": "user@example.com"}
+- REMOVE_MEMBER: {"type": "remove_member", "user_id": <user_id>}
+
+VISIBILITY ACTION (owner only):
+- SET_VISIBILITY: {"type": "set_visibility", "visibility": "private|shared|public"}
 
 RULES:
 1. For normal chat (questions, suggestions, image analysis), just reply with empty actions: []
@@ -220,10 +257,16 @@ Examples:
     const reply = parsed.reply || response;
     const actions = parsed.actions || [];
 
-    // Execute actions if any
+    // Execute actions with ACL pre-check
     const results: any[] = [];
     for (const action of actions) {
       try {
+        // ACL 1차 게이트: 역할 기반 차단
+        if (!canExecute(action.type, access)) {
+          results.push({ type: action.type, success: false, error: 'Permission denied' });
+          continue;
+        }
+
         if (action.type === 'add' && action.schedule) {
           const s = action.schedule;
           const result = await context.env.DB.prepare(
@@ -273,7 +316,7 @@ Examples:
           for (const sched of allSchedules.results || []) {
             const searchText = `${sched.title || ''} ${sched.place || ''} ${sched.memo || ''}`.toLowerCase();
             if (keywords.some((kw: string) => searchText.includes(kw))) {
-              await context.env.DB.prepare('DELETE FROM schedules WHERE id = ?').bind(sched.id).run();
+              await context.env.DB.prepare('DELETE FROM schedules WHERE id = ? AND plan_id = ?').bind(sched.id, planId).run();
               deletedCount++;
             }
           }
@@ -327,10 +370,86 @@ Examples:
           await context.env.DB.prepare('DELETE FROM travel_memos WHERE id = ? AND plan_id = ?').bind(action.id, planId).run();
           results.push({ type: 'delete_memo', success: true, id: action.id });
         } else if (action.type === 'generate_memos') {
-          // Auto-generate travel memos for destination
-          // This is handled by creating multiple ADD_MEMO actions in the AI response
-          // The AI should generate multiple add_memo actions instead
           results.push({ type: 'generate_memos', success: true, note: 'AI should generate individual add_memo actions' });
+
+        // ── MOMENT ACTIONS ──
+        } else if (action.type === 'add_moment' && action.schedule_id && action.moment) {
+          // schedule이 이 plan 소속인지 확인
+          const sched = await context.env.DB.prepare(
+            'SELECT id FROM schedules WHERE id = ? AND plan_id = ?'
+          ).bind(action.schedule_id, planId).first();
+          if (!sched) {
+            results.push({ type: 'add_moment', success: false, error: 'Schedule not in this plan' });
+          } else {
+            const m = action.moment;
+            const result = await context.env.DB.prepare(
+              `INSERT INTO moments (schedule_id, user_id, note, mood, revisit) VALUES (?, ?, ?, ?, ?)`
+            ).bind(action.schedule_id, user.id, m.note || null, m.mood || null, m.revisit || null).run();
+            results.push({ type: 'add_moment', success: true, id: result.meta?.last_row_id });
+          }
+        } else if (action.type === 'update_moment' && action.id) {
+          const changes = action.changes || {};
+          const sets: string[] = [];
+          const values: any[] = [];
+          for (const [key, val] of Object.entries(changes)) {
+            if (['note', 'mood', 'revisit'].includes(key)) {
+              sets.push(`${key} = ?`);
+              values.push(val);
+            }
+          }
+          if (sets.length > 0) {
+            // owner는 모든 moment 수정 가능, member는 본인만
+            const ownerCondition = access === 'owner' ? '' : ' AND user_id = ' + user.id;
+            values.push(action.id);
+            await context.env.DB.prepare(
+              `UPDATE moments SET ${sets.join(', ')} WHERE id = ?${ownerCondition}
+               AND schedule_id IN (SELECT id FROM schedules WHERE plan_id = ?)`
+            ).bind(...values, planId).run();
+            results.push({ type: 'update_moment', success: true, id: action.id });
+          }
+        } else if (action.type === 'delete_moment' && action.id) {
+          const ownerCondition = access === 'owner' ? '' : ' AND user_id = ' + user.id;
+          await context.env.DB.prepare(
+            `DELETE FROM moments WHERE id = ?${ownerCondition}
+             AND schedule_id IN (SELECT id FROM schedules WHERE plan_id = ?)`
+          ).bind(action.id, planId).run();
+          results.push({ type: 'delete_moment', success: true, id: action.id });
+
+        // ── MEMBER ACTIONS ──
+        } else if (action.type === 'add_member' && action.email) {
+          const target = await context.env.DB.prepare(
+            'SELECT id FROM users WHERE LOWER(email) = LOWER(?)'
+          ).bind(action.email).first<{ id: number }>();
+          if (!target) {
+            results.push({ type: 'add_member', success: false, error: 'User not found' });
+          } else if (target.id === user.id) {
+            results.push({ type: 'add_member', success: false, error: 'Cannot add yourself' });
+          } else {
+            await context.env.DB.prepare(
+              'INSERT INTO plan_members (plan_id, user_id, role) VALUES (?, ?, ?) ON CONFLICT DO NOTHING'
+            ).bind(planId, target.id, 'member').run();
+            results.push({ type: 'add_member', success: true, user_id: target.id });
+          }
+        } else if (action.type === 'remove_member' && action.user_id) {
+          if (action.user_id === user.id) {
+            results.push({ type: 'remove_member', success: false, error: 'Cannot remove yourself' });
+          } else {
+            await context.env.DB.prepare(
+              'DELETE FROM plan_members WHERE plan_id = ? AND user_id = ? AND role != ?'
+            ).bind(planId, action.user_id, 'owner').run();
+            results.push({ type: 'remove_member', success: true, user_id: action.user_id });
+          }
+
+        // ── VISIBILITY ACTION ──
+        } else if (action.type === 'set_visibility' && action.visibility) {
+          if (['private', 'shared', 'public'].includes(action.visibility)) {
+            await context.env.DB.prepare(
+              'UPDATE plans SET visibility = ? WHERE id = ? AND user_id = ?'
+            ).bind(action.visibility, planId, user.id).run();
+            results.push({ type: 'set_visibility', success: true, visibility: action.visibility });
+          } else {
+            results.push({ type: 'set_visibility', success: false, error: 'Invalid visibility' });
+          }
         }
       } catch (e) {
         console.error('Action failed:', action, e);
@@ -343,9 +462,17 @@ Examples:
       .filter(r => r.success && r.id && ['add', 'update', 'delete'].includes(r.type))
       .map(r => r.id);
 
-    // Check if any memo actions were performed
     const hasMemoChanges = results.some(r => 
       r.success && ['add_memo', 'update_memo', 'delete_memo', 'generate_memos'].includes(r.type)
+    );
+    const hasMomentChanges = results.some(r =>
+      r.success && ['add_moment', 'update_moment', 'delete_moment'].includes(r.type)
+    );
+    const hasMemberChanges = results.some(r =>
+      r.success && ['add_member', 'remove_member'].includes(r.type)
+    );
+    const hasVisibilityChange = results.some(r =>
+      r.success && r.type === 'set_visibility'
     );
 
     return new Response(JSON.stringify({ 
@@ -353,6 +480,9 @@ Examples:
       actions: results,
       hasChanges: results.length > 0,
       hasMemoChanges,
+      hasMomentChanges,
+      hasMemberChanges,
+      hasVisibilityChange,
       modifiedScheduleIds: modifiedIds
     }), {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
