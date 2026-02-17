@@ -26,6 +26,25 @@ const EXAMPLE_QUERIES = [
 
 export function CreatePlanPage() {
   const navigate = useNavigate();
+
+  // 로그인 체크
+  const hasAuth = !!(localStorage.getItem('X-Auth-Credential') || localStorage.getItem('google_credential'));
+  if (!hasAuth) {
+    return (
+      <div className="min-h-screen bg-base-200 flex items-center justify-center p-4">
+        <div className="card bg-base-100 shadow-xl max-w-md w-full">
+          <div className="card-body text-center">
+            <p className="text-4xl mb-2">🔐</p>
+            <h2 className="card-title justify-center">로그인이 필요합니다</h2>
+            <p className="text-base-content/70">여행을 만들려면 먼저 로그인해주세요.</p>
+            <div className="card-actions justify-center mt-2">
+              <button className="btn btn-primary" onClick={() => navigate('/')}>홈으로</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
   const [isLoading, setIsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -188,12 +207,10 @@ export function CreatePlanPage() {
         : `새 여행 ${new Date().toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}`;
       
       const newPlan = await plansAPI.create({
-        user_id: 1,
         title: title || autoTitle,
         region: region || formData.region,
         start_date: start_date || formData.start_date,
         end_date: end_date || formData.end_date,
-        is_public: true,
         thumbnail: formData.thumbnail || undefined,
       });
 
@@ -375,12 +392,10 @@ ${text}`;
     setIsLoading(true);
     try {
       const newPlan = await plansAPI.create({
-        user_id: 1,
         title: formData.title,
         region: formData.region || undefined,
         start_date: formData.start_date,
         end_date: formData.end_date,
-        is_public: true,
         thumbnail: formData.thumbnail || undefined,
       });
 

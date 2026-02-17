@@ -58,17 +58,18 @@ export const plansAPI = {
 
   // 여행 생성
   create: async (data: {
-    user_id: number;
     title: string;
     region?: string;
     start_date: string;
     end_date: string;
     thumbnail?: string;
-    is_public?: boolean;
     visibility?: 'public' | 'shared' | 'private';
   }) => {
+    let headers: Record<string, string> = {};
+    try { headers = getAuthHeaders(); } catch {}
     const result = await apiRequest<{ plan: Plan }>('/api/plans', {
       method: 'POST',
+      headers,
       body: JSON.stringify(data),
     });
     return result.plan;

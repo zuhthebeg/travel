@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { plansAPI, schedulesAPI } from '../lib/api';
-import { getTempUserId, formatDate, getCountryFlag, extractCountryFromRegion } from '../lib/utils';
+import { formatDate, getCountryFlag, extractCountryFromRegion } from '../lib/utils';
 import { PlanCard } from '../components/PlanCard';
 import { GlobalNav } from '../components/GlobalNav';
 import { TravelMap, type MapPoint } from '../components/TravelMap';
@@ -237,9 +237,7 @@ export function MainPage() {
         region: plan.region || undefined,
         start_date: newStartDate,
         end_date: newEndDate,
-        is_public: false,
         thumbnail: plan.thumbnail || '',
-        user_id: getTempUserId(),
       });
 
       const originalSchedules = await schedulesAPI.getByPlanId(plan.id);

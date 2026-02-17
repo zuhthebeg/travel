@@ -65,28 +65,32 @@ export async function onRequestPost(context: { env: Env; request: Request }): Pr
   const { env, request } = context;
 
   try {
+    // 로그인 필수
+    const user = await getRequestUser(request, env.DB);
+    if (!user) return errorResponse('Login required', 401);
+
     const body: CreatePlanRequest = await request.json();
 
     // 필수 필드 검증
-    if (!body.user_id || !body.title || !body.start_date || !body.end_date) {
-      return errorResponse('Missing required fields: user_id, title, start_date, end_date');
+    if (!body.title || !body.start_date || !body.end_date) {
+      return errorResponse('Missing required fields: title, start_date, end_date');
     }
 
-    // visibility 결정: 기본값 public (SEO 유입 목적)
-    const visibility = body.visibility ?? 'public';
+    // visibility 결정: 기본값 private (내 여행)
+    const visibility = body.visibility ?? 'private';
 
     const result = await env.DB.prepare(
       `INSERT INTO plans (user_id, title, region, start_date, end_date, thumbnail, is_public, visibility)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     )
       .bind(
-        body.user_id,
+        user.id,
         body.title,
         body.region || null,
         body.start_date,
         body.end_date,
         body.thumbnail || null,
-        body.is_public ? 1 : 0,
+        0,
         visibility
       )
       .run();
