@@ -72,6 +72,13 @@ async function serverFirstRead<T>(
     return serverFn();
   }
 
+  // If truly offline, skip server call entirely
+  if (!navigator.onLine) {
+    const local = await localFn();
+    if (local !== undefined) return local;
+    throw new Error('오프라인 데이터를 찾을 수 없습니다.');
+  }
+
   try {
     const data = await serverFn();
     if (cacheFn) {
@@ -95,6 +102,11 @@ async function serverFirstWrite<T>(
 ): Promise<T> {
   if (!isOfflineMode()) {
     return serverFn();
+  }
+
+  // If truly offline, go straight to local
+  if (!navigator.onLine) {
+    return localFn();
   }
 
   try {

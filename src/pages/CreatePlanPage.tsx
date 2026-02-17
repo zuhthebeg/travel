@@ -28,6 +28,24 @@ export function CreatePlanPage() {
   const navigate = useNavigate();
 
   // 로그인 체크
+  const isOffline = localStorage.getItem('offline_mode') === 'true';
+  if (isOffline) {
+    return (
+      <div className="min-h-screen bg-base-200 flex items-center justify-center p-4">
+        <div className="card bg-base-100 shadow-xl max-w-md w-full">
+          <div className="card-body text-center">
+            <p className="text-4xl mb-2">✈️</p>
+            <h2 className="card-title justify-center">오프라인 모드</h2>
+            <p className="text-base-content/70">새 여행 생성은 온라인에서만 가능합니다. 프로필에서 오프라인 모드를 끄거나, 인터넷에 연결해주세요.</p>
+            <div className="card-actions justify-center mt-2">
+              <button className="btn btn-primary" onClick={() => navigate(-1)}>돌아가기</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const hasAuth = !!(localStorage.getItem('X-Auth-Credential') || localStorage.getItem('google_credential'));
   if (!hasAuth) {
     return (

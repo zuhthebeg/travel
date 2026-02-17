@@ -635,29 +635,33 @@ Rules:
       )}
       
       <div className="sticky bottom-0 bg-base-100 p-4 border-t border-base-200 flex items-center gap-2">
-        {/* Hidden file input */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleImageSelect}
-          className="hidden"
-        />
+        {/* Hidden file input + Image/STT buttons — online only */}
+        {!offlineMode && (
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageSelect}
+              className="hidden"
+            />
+            
+            {/* Image upload button */}
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading}
+              variant={imageData ? 'secondary' : 'ghost'}
+              className="btn-circle"
+              title="사진 첨부"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+              </svg>
+            </Button>
+          </>
+        )}
         
-        {/* Image upload button */}
-        <Button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isLoading}
-          variant={imageData ? 'secondary' : 'ghost'}
-          className="btn-circle"
-          title="사진 첨부"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-            <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-          </svg>
-        </Button>
-        
-        {browserSupportsSpeechRecognition && (
+        {!offlineMode && browserSupportsSpeechRecognition && (
           <Button
             onClick={isListening ? stopListening : startListening}
             disabled={isLoading}

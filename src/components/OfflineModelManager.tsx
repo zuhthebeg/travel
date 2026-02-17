@@ -111,6 +111,18 @@ export function OfflineModelManager() {
         </p>
 
         {offlineMode && (
+          <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 space-y-1">
+            <p className="text-xs font-medium text-warning-content/80">⚡ 오프라인 모드 주의사항</p>
+            <ul className="text-[10px] text-base-content/60 space-y-0.5 list-disc list-inside">
+              <li>AI 모델이 기기에서 실행되어 <b>배터리 소모가 증가</b>하고 <b>발열</b>이 생길 수 있습니다</li>
+              <li>온라인 AI 대비 <b>성능과 품질이 낮습니다</b> (간단한 추천/요약 수준)</li>
+              <li><b>이미지 인식, 음성 입력</b>은 오프라인에서 지원되지 않습니다</li>
+              <li>새 여행 생성, 멤버 초대 등은 <b>온라인에서만</b> 가능합니다</li>
+            </ul>
+          </div>
+        )}
+
+        {offlineMode && (
           <>
             {/* ── Track 1: AI Model ── */}
             <div className="bg-base-100 rounded-lg p-3 space-y-2">
