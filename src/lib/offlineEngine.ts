@@ -15,7 +15,14 @@ const MODELS = {
     label: 'Qwen3 1.7B',
     sizeHint: '~1GB',
     vramMB: 1500,
-    desc: '균형잡힌 성능',
+    desc: '가벼운 기본 모델',
+  },
+  'llama-3b': {
+    id: 'Llama-3.2-3B-Instruct-q4f16_1-MLC',
+    label: 'Llama 3.2 3B',
+    sizeHint: '~2GB',
+    vramMB: 2500,
+    desc: '한국어 양호, 균형잡힌 성능',
   },
   large: {
     id: 'Qwen3-4B-q4f16_1-MLC',
@@ -23,6 +30,13 @@ const MODELS = {
     sizeHint: '~2.5GB',
     vramMB: 3500,
     desc: '고품질 대화 + JSON',
+  },
+  'qwen-7b': {
+    id: 'Qwen2.5-7B-Instruct-q4f16_1-MLC',
+    label: 'Qwen2.5 7B',
+    sizeHint: '~4.5GB',
+    vramMB: 5000,
+    desc: '최고 품질 (고사양 기기 전용)',
   },
 } as const;
 
@@ -132,7 +146,9 @@ class OfflineEngineManager {
     }
 
     // Qwen3: add /no_think to disable thinking mode (prevents <think> tags)
-    const systemWithNoThink = systemPrompt + '\n/no_think';
+    const modelId = MODELS[this.state.modelSize || 'medium'].id;
+    const isQwen3 = modelId.startsWith('Qwen3');
+    const systemWithNoThink = isQwen3 ? systemPrompt + '\n/no_think' : systemPrompt;
 
     const chatMessages = [
       { role: 'system' as const, content: systemWithNoThink },
