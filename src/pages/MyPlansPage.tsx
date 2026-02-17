@@ -1,7 +1,10 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { plansAPI } from '../lib/api';
+import { plansAPI as rawPlansAPI } from '../lib/api';
+import { offlinePlansAPI } from '../lib/offlineAPI';
+
+const plansAPI = localStorage.getItem('offline_mode') === 'true' ? offlinePlansAPI : rawPlansAPI;
 import type { Plan } from '../store/types';
 import { PlanCard } from '../components/PlanCard';
 import { GlobalNav } from '../components/GlobalNav';

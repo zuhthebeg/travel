@@ -1,7 +1,12 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { plansAPI, schedulesAPI } from '../lib/api';
+import { plansAPI as rawPlansAPI, schedulesAPI as rawSchedulesAPI } from '../lib/api';
+import { offlinePlansAPI, offlineSchedulesAPI } from '../lib/offlineAPI';
+
+// Use offline-aware API when offline mode is on
+const plansAPI = localStorage.getItem('offline_mode') === 'true' ? offlinePlansAPI : rawPlansAPI;
+const schedulesAPI = localStorage.getItem('offline_mode') === 'true' ? offlineSchedulesAPI : rawSchedulesAPI;
 import { formatDate, getCountryFlag, extractCountryFromRegion } from '../lib/utils';
 import { PlanCard } from '../components/PlanCard';
 import { GlobalNav } from '../components/GlobalNav';

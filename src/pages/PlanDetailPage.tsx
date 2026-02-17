@@ -1,7 +1,11 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { plansAPI, schedulesAPI } from '../lib/api';
+import { plansAPI as rawPlansAPI, schedulesAPI as rawSchedulesAPI } from '../lib/api';
+import { offlinePlansAPI, offlineSchedulesAPI } from '../lib/offlineAPI';
+
+const plansAPI = localStorage.getItem('offline_mode') === 'true' ? offlinePlansAPI : rawPlansAPI;
+const schedulesAPI = localStorage.getItem('offline_mode') === 'true' ? offlineSchedulesAPI : rawSchedulesAPI;
 import { formatDateRange, getDaysDifference, formatDate, formatDisplayDate } from '../lib/utils';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
