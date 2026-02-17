@@ -676,7 +676,11 @@ export function PlanDetailPage() {
               <div className="flex items-center gap-2 mb-1">
                 <h1 className="text-base sm:text-lg md:text-xl font-bold truncate flex-1 min-w-0">{selectedPlan.title}</h1>
                 {localStorage.getItem('offline_mode') === 'true' && (
-                  <span className="badge badge-warning badge-xs font-bold flex-shrink-0">⚡오프라인</span>
+                  <span
+                    className="badge badge-warning badge-xs font-bold flex-shrink-0 cursor-pointer hover:badge-outline transition-all"
+                    onClick={() => navigate('/profile')}
+                    title="오프라인 모드 설정으로 이동"
+                  >⚡오프라인</span>
                 )}
                 {isOwner ? (
                   <div className="dropdown dropdown-end flex-shrink-0">
