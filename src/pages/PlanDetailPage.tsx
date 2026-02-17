@@ -482,7 +482,7 @@ export function PlanDetailPage() {
           <div className="flex items-center justify-between gap-2">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <h1 className="text-base sm:text-lg md:text-xl font-bold truncate">{selectedPlan.title}</h1>
+                <h1 className="text-base sm:text-lg md:text-xl font-bold truncate flex-1 min-w-0">{selectedPlan.title}</h1>
                 {isOwner ? (
                   <select
                     value={selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')}
@@ -495,19 +495,19 @@ export function PlanDetailPage() {
                         console.error('Failed to update visibility:', err);
                       }
                     }}
-                    className="select select-xs select-bordered font-semibold text-xs h-6 min-h-0 pr-6"
+                    className="select select-xs select-bordered font-semibold text-[10px] h-6 min-h-0 pl-1 pr-5 flex-shrink-0"
                   >
-                    <option value="private">🔒 나만</option>
-                    <option value="shared">👥 동행만</option>
-                    <option value="public">🌍 공개</option>
+                    <option value="private">🔒</option>
+                    <option value="shared">👥</option>
+                    <option value="public">🌍</option>
                   </select>
                 ) : (
-                  <div className="badge badge-secondary badge-xs sm:badge-sm whitespace-nowrap flex-shrink-0">
+                  <div className="badge badge-secondary badge-xs whitespace-nowrap flex-shrink-0">
                     {(selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'private'
-                      ? '🔒 나만'
+                      ? '🔒'
                       : (selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'shared'
-                      ? '👥 동행만'
-                      : '🌍 공개'}
+                      ? '👥'
+                      : '🌍'}
                   </div>
                 )}
               </div>
