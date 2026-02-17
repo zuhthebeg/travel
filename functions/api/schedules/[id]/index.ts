@@ -2,6 +2,7 @@
 
 import type { Env, UpdateScheduleRequest } from '../../../types';
 import { jsonResponse, errorResponse } from '../../../types';
+import { checkConflict } from '../../../lib/conflict';
 
 export async function onRequestGet(context: {
   env: Env;
@@ -36,6 +37,10 @@ export async function onRequestPut(context: {
 
   try {
     const body: UpdateScheduleRequest = await request.json();
+
+    // Conflict detection
+    const conflict = await checkConflict(request, env.DB, 'schedules', scheduleId);
+    if (conflict.hasConflict) return conflict.response!;
 
     // 업데이트할 필드만 동적으로 쿼리 생성
     const updates: string[] = [];
@@ -102,6 +107,7 @@ export async function onRequestPut(context: {
       return errorResponse('No fields to update');
     }
 
+    updates.push('updated_at = CURRENT_TIMESTAMP');
     values.push(scheduleId);
 
     const query = `UPDATE schedules SET ${updates.join(', ')} WHERE id = ?`;

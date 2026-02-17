@@ -23,6 +23,9 @@ import type { Schedule, Plan, Comment } from '../store/types';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import useBrowserNotifications from '../hooks/useBrowserNotifications'; // Import the new hook
 import { MapPin, Calendar, Cloud, Map, Plane, Clock, FileText, Sparkles, AlertCircle, Search } from 'lucide-react';
+import ConflictBanner from '../components/ConflictBanner';
+import ConflictResolver from '../components/ConflictResolver';
+import type { OpLogEntry } from '../lib/offline/types';
 
 type ViewMode = 'vertical' | 'horizontal' | 'calendar';
 type MainTab = 'schedule' | 'notes' | 'album';
@@ -174,6 +177,8 @@ export function PlanDetailPage() {
   const [geocodeFailed, setGeocodeFailed] = useState<any[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; city?: string } | null>(null);
   const [showShareToast, setShowShareToast] = useState(false);
+  const [conflictOps, setConflictOps] = useState<OpLogEntry[]>([]);
+  const [showConflictResolver, setShowConflictResolver] = useState(false);
   const viewModalRef = useRef<HTMLDialogElement>(null);
   const editModalRef = useRef<HTMLDialogElement>(null);
   const planEditModalRef = useRef<HTMLDialogElement>(null);
@@ -638,6 +643,26 @@ export function PlanDetailPage() {
   return (
     <div className="min-h-screen bg-base-200">
       
+      {/* Conflict Banner */}
+      <div className="container mx-auto px-3 sm:px-4 pt-2">
+        <ConflictBanner
+          planId={Number(id)}
+          onResolve={(ops) => { setConflictOps(ops); setShowConflictResolver(true); }}
+        />
+      </div>
+
+      {/* Conflict Resolver Modal */}
+      {showConflictResolver && conflictOps.length > 0 && (
+        <ConflictResolver
+          conflicts={conflictOps}
+          onClose={() => setShowConflictResolver(false)}
+          onResolved={() => {
+            setConflictOps([]);
+            // Refresh page data
+            window.location.reload();
+          }}
+        />
+      )}
 
       {/* Header - Compact version */}
       <header className="bg-base-100 shadow-sm sticky top-0 z-10">

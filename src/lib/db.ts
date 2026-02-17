@@ -241,16 +241,23 @@ export async function updateOpStatus(
 
 // ─── Convenience: count pending/failed ───
 
-export async function countOpsByStatus(): Promise<{ pending: number; failed: number; dead: number }> {
+export async function countOpsByStatus(): Promise<{ pending: number; failed: number; dead: number; conflict: number }> {
   const db = await getDB();
   const all = await db.getAll('opLog');
-  let pending = 0, failed = 0, dead = 0;
+  let pending = 0, failed = 0, dead = 0, conflict = 0;
   for (const op of all) {
     if (op.status === 'pending' || op.status === 'syncing') pending++;
     else if (op.status === 'failed') failed++;
     else if (op.status === 'dead') dead++;
+    else if (op.status === 'conflict') conflict++;
   }
-  return { pending, failed, dead };
+  return { pending, failed, dead, conflict };
+}
+
+export async function getConflictOps(planId?: number): Promise<OpLogEntry[]> {
+  const db = await getDB();
+  const all = await db.getAll('opLog');
+  return all.filter(op => op.status === 'conflict' && (planId === undefined || op.planId === planId));
 }
 
 // ─── Bulk cache helpers ───

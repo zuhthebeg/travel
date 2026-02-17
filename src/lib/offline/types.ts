@@ -13,6 +13,7 @@ export interface LocalMeta {
   conflict: boolean;
   localUpdatedAt: number; // Date.now()
   pendingSync: boolean;
+  serverVersion?: Record<string, any>; // Server data when conflict detected
 }
 
 export const defaultLocalMeta: LocalMeta = {
@@ -56,7 +57,7 @@ export interface CachedUserProfile {
 
 export type OpEntity = 'plans' | 'schedules' | 'moments' | 'travel_memos' | 'comments';
 export type OpAction = 'create' | 'update' | 'delete';
-export type OpStatus = 'pending' | 'syncing' | 'done' | 'failed' | 'dead';
+export type OpStatus = 'pending' | 'syncing' | 'done' | 'failed' | 'dead' | 'conflict';
 
 export interface OpLogEntry {
   opId: string;                    // crypto.randomUUID()

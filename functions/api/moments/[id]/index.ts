@@ -4,6 +4,7 @@
 import type { Env } from '../../../types';
 import { jsonResponse, errorResponse } from '../../../types';
 import { getRequestUser } from '../../../lib/auth';
+import { checkConflict } from '../../../lib/conflict';
 
 export async function onRequestPut(context: {
   env: Env;
@@ -26,6 +27,10 @@ export async function onRequestPut(context: {
 
     if (!existing) return errorResponse('Moment not found', 404);
     if (existing.user_id !== user.id) return errorResponse('Not authorized', 403);
+
+    // Conflict detection
+    const conflict = await checkConflict(request, env.DB, 'moments', momentId);
+    if (conflict.hasConflict) return conflict.response!;
 
     const body = await request.json<{
       photo_data?: string;
@@ -69,6 +74,7 @@ export async function onRequestPut(context: {
       return errorResponse('No fields to update');
     }
 
+    updates.push('updated_at = CURRENT_TIMESTAMP');
     values.push(momentId);
     await env.DB.prepare(
       `UPDATE moments SET ${updates.join(', ')} WHERE id = ?`

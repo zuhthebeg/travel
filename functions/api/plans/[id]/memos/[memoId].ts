@@ -50,6 +50,21 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 // PUT - Update memo
 export const onRequestPut: PagesFunction<Env> = async (context) => {
   const memoId = context.params.memoId;
+
+  // Conflict detection
+  const baseUpdatedAt = context.request.headers.get('X-Base-Updated-At');
+  if (baseUpdatedAt) {
+    const current = await context.env.DB.prepare(
+      'SELECT * FROM travel_memos WHERE id = ?'
+    ).bind(memoId).first();
+    if (current && current.updated_at && new Date(current.updated_at as string).getTime() > new Date(baseUpdatedAt).getTime()) {
+      return new Response(JSON.stringify({ conflict: true, serverVersion: current }), {
+        status: 409,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
+  }
+
   const { category, title, content, icon } = await context.request.json<{
     category?: string;
     title?: string;

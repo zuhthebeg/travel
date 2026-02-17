@@ -4,6 +4,7 @@ import type { Env, UpdatePlanRequest } from '../../../types';
 import { jsonResponse, errorResponse } from '../../../types';
 import { getRequestUser, checkPlanAccess } from '../../../lib/auth';
 import { grantXP, XP_VALUES } from '../../../lib/xp';
+import { checkConflict } from '../../../lib/conflict';
 
 export async function onRequestGet(context: {
   env: Env;
@@ -64,6 +65,10 @@ export async function onRequestPut(context: {
 
   try {
     const body: UpdatePlanRequest = await request.json();
+
+    // Conflict detection
+    const conflict = await checkConflict(request, env.DB, 'plans', planId);
+    if (conflict.hasConflict) return conflict.response!;
 
     // 기존 plan 조회 (날짜 변경 시 스케줄 이동을 위해)
     const { results: existingPlans } = await env.DB.prepare('SELECT start_date FROM plans WHERE id = ?')

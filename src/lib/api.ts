@@ -18,6 +18,12 @@ async function apiRequest<T>(
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    if (response.status === 409 && error.conflict) {
+      const conflictErr = new Error('CONFLICT');
+      (conflictErr as any).status = 409;
+      (conflictErr as any).serverVersion = error.serverVersion;
+      throw conflictErr;
+    }
     throw new Error(error.error || `HTTP error! status: ${response.status}`);
   }
 
@@ -86,10 +92,14 @@ export const plansAPI = {
       thumbnail?: string;
       is_public?: boolean;
       visibility?: 'public' | 'shared' | 'private';
-    }
+    },
+    options?: { baseUpdatedAt?: string },
   ) => {
+    const headers: Record<string, string> = {};
+    if (options?.baseUpdatedAt) headers['X-Base-Updated-At'] = options.baseUpdatedAt;
     const result = await apiRequest<{ plan: Plan }>(`/api/plans/${id}`, {
       method: 'PUT',
+      headers,
       body: JSON.stringify(data),
     });
     return result.plan;
@@ -159,10 +169,14 @@ export const schedulesAPI = {
       latitude?: number;
       longitude?: number;
       country_code?: string;
-    }
+    },
+    options?: { baseUpdatedAt?: string },
   ) => {
+    const headers: Record<string, string> = {};
+    if (options?.baseUpdatedAt) headers['X-Base-Updated-At'] = options.baseUpdatedAt;
     const result = await apiRequest<{ schedule: Schedule }>(`/api/schedules/${id}`, {
       method: 'PUT',
+      headers,
       body: JSON.stringify(data),
     });
     return result.schedule;
@@ -295,11 +309,14 @@ export const momentsAPI = {
   // 순간 기록 수정
   update: async (
     momentId: number,
-    data: Partial<{ photo_data: string; note: string; mood: string; revisit: string }>
+    data: Partial<{ photo_data: string; note: string; mood: string; revisit: string }>,
+    options?: { baseUpdatedAt?: string },
   ): Promise<{ moment: Moment }> => {
+    const headers: Record<string, string> = { ...getAuthHeaders() };
+    if (options?.baseUpdatedAt) headers['X-Base-Updated-At'] = options.baseUpdatedAt;
     return apiRequest<{ moment: Moment }>(`/api/moments/${momentId}`, {
       method: 'PUT',
-      headers: getAuthHeaders(),
+      headers,
       body: JSON.stringify(data),
     });
   },

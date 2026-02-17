@@ -217,6 +217,26 @@ async function syncCreates(ops: OpLogEntry[]): Promise<void> {
   }
 }
 
+async function handleConflict(op: OpLogEntry, serverVersion: Record<string, any>): Promise<void> {
+  const db = await getDB();
+  // Mark the op as conflict
+  await updateOpStatus(op.opId, 'conflict');
+  // Store server version in the cached entity
+  const store = op.entity as 'plans' | 'schedules' | 'moments' | 'travel_memos';
+  if (['plans', 'schedules', 'moments', 'travel_memos'].includes(store)) {
+    const entityId = op.entityId as number;
+    const existing = await db.get(store, entityId);
+    if (existing) {
+      existing.__local = {
+        ...existing.__local,
+        conflict: true,
+        serverVersion,
+      };
+      await db.put(store, existing);
+    }
+  }
+}
+
 async function syncUpdates(ops: OpLogEntry[]): Promise<void> {
   const updates = ops.filter(o => o.action === 'update').sort((a, b) => a.createdAt - b.createdAt);
   const db = await getDB();
@@ -233,15 +253,17 @@ async function syncUpdates(ops: OpLogEntry[]): Promise<void> {
         else { await updateOpStatus(op.opId, 'failed', 'Temp ID not mapped'); continue; }
       }
 
+      const syncOptions = op.baseUpdatedAt ? { baseUpdatedAt: op.baseUpdatedAt } : undefined;
+
       switch (op.entity) {
         case 'plans':
-          await plansAPI.update(entityId, op.payload);
+          await plansAPI.update(entityId, op.payload, syncOptions);
           break;
         case 'schedules':
-          await schedulesAPI.update(entityId, op.payload);
+          await schedulesAPI.update(entityId, op.payload, syncOptions);
           break;
         case 'moments':
-          await momentsAPI.update(entityId, op.payload);
+          await momentsAPI.update(entityId, op.payload, syncOptions);
           break;
         case 'travel_memos': {
           const API_BASE = import.meta.env.DEV ? 'http://127.0.0.1:9999' : '';
@@ -251,11 +273,20 @@ async function syncUpdates(ops: OpLogEntry[]): Promise<void> {
             const mapped = await db.getFromIndex('idMap', 'by_entity_temp', ['plans', planId]);
             if (mapped) planId = mapped.serverId;
           }
+          const headers: Record<string, string> = { 'Content-Type': 'application/json', 'X-Auth-Credential': cred };
+          if (op.baseUpdatedAt) headers['X-Base-Updated-At'] = op.baseUpdatedAt;
           const res = await fetch(`${API_BASE}/api/plans/${planId}/memos/${entityId}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'X-Auth-Credential': cred },
+            headers,
             body: JSON.stringify(op.payload),
           });
+          if (res.status === 409) {
+            const data = await res.json();
+            if (data.conflict) {
+              await handleConflict(op, data.serverVersion);
+              continue;
+            }
+          }
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           break;
         }
@@ -263,6 +294,11 @@ async function syncUpdates(ops: OpLogEntry[]): Promise<void> {
 
       await updateOpStatus(op.opId, 'done');
     } catch (err: any) {
+      // Check for conflict error from apiRequest
+      if (err.status === 409 && err.serverVersion) {
+        await handleConflict(op, err.serverVersion);
+        continue;
+      }
       console.error(`[sync] Update failed:`, err);
       await updateOpStatus(op.opId, op.retryCount >= 4 ? 'dead' : 'failed', err.message);
     }
