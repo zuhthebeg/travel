@@ -420,32 +420,46 @@ export function TravelAssistantChat({
             <div className="space-y-4">
               <div className="chat chat-start">
                 <div className="chat-bubble chat-bubble-info">
-                  안녕하세요! 일정 수정이나 여행 정보 변경을 도와드릴게요.
+                  안녕하세요! 여행에 대해 뭐든 물어보세요 🧳<br />
+                  <span className="text-xs opacity-80">일정 수정, 맛집·명소 추천, 현지 정보까지 도와드릴게요.</span>
                 </div>
               </div>
-              <div className="px-2">
-                <p className="text-xs text-base-content/60 mb-2">💡 이런 것들을 해볼 수 있어요:</p>
-                <div className="flex flex-wrap gap-2">
-                  {[
+              <div className="px-2 space-y-3">
+                {[
+                  { label: '📅 일정 관리', items: [
                     '일정 모두 10일 뒤로 미뤄줘',
-                    '이동 일정은 다 지워줘',
-                    '하루에 주요 일정 2개만 남겨줘',
-                    '여행 제목 바꿔줘',
                     '첫째날 일정 추천해줘',
-                    '비 오면 대안 추가해줘',
-                  ].map((example, i) => (
-                    <button
-                      key={i}
-                      onClick={() => {
-                        setInput(example);
-                        inputRef.current?.focus();
-                      }}
-                      className="badge badge-outline badge-sm hover:badge-primary cursor-pointer transition-colors py-3"
-                    >
-                      {example}
-                    </button>
-                  ))}
-                </div>
+                    '하루에 주요 일정 2개만 남겨줘',
+                  ]},
+                  { label: '🍽️ 맛집·명소', items: [
+                    '근처 현지인 맛집 추천해줘',
+                    '비 오는 날 실내 관광지 알려줘',
+                    '꼭 가봐야 할 곳 3곳만 골라줘',
+                  ]},
+                  { label: '🌤️ 현지 정보', items: [
+                    '여행 기간 날씨 어때?',
+                    '현지 교통수단 뭐가 좋아?',
+                    '환전은 얼마나 해가면 될까?',
+                  ]},
+                ].map((group) => (
+                  <div key={group.label} className="bg-base-200/50 rounded-xl p-3">
+                    <p className="text-xs font-semibold text-base-content/70 mb-2">{group.label}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {group.items.map((example, i) => (
+                        <button
+                          key={i}
+                          onClick={() => {
+                            setInput(example);
+                            inputRef.current?.focus();
+                          }}
+                          className="badge badge-outline badge-sm hover:badge-primary cursor-pointer transition-colors py-3"
+                        >
+                          {example}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
