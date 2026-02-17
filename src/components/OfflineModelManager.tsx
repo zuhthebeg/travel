@@ -34,6 +34,25 @@ export function OfflineModelManager() {
     });
   }, []);
 
+  // Restore previous bootstrap status on mount
+  useEffect(() => {
+    if (offlineMode) {
+      import('../lib/db').then(({ getSyncMeta }) => {
+        getSyncMeta<string>('offlineBootstrapStatus').then(status => {
+          if (status === 'done') {
+            setDataStatus('done');
+            // Restore progress from plan count
+            import('../lib/db').then(({ getCachedPlans }) => {
+              getCachedPlans().then(plans => {
+                setDataProgress({ total: plans.length, done: plans.length, failed: 0 });
+              });
+            });
+          }
+        });
+      });
+    }
+  }, [offlineMode]);
+
   const toggleOfflineMode = useCallback((on: boolean) => {
     setOfflineMode(on);
     localStorage.setItem('offline_mode', on ? 'true' : 'false');
