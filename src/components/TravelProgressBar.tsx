@@ -68,7 +68,7 @@ export function TravelProgressBar({ startDate, endDate }: TravelProgressBarProps
 
       <div className="relative">
         {/* Progress bar container */}
-        <div className="w-full h-8 bg-base-300 rounded-full overflow-hidden shadow-inner">
+        <div className="w-full h-6 bg-base-300 rounded-full overflow-hidden shadow-inner">
           {/* Progress fill with gradient */}
           <div
             className="h-full bg-gradient-to-r from-primary via-secondary to-accent transition-all duration-1000 ease-out relative"
@@ -87,11 +87,11 @@ export function TravelProgressBar({ startDate, endDate }: TravelProgressBarProps
           >
             {isSleepingTime ? (
               <div className="animate-sleep text-secondary">
-                <Moon className="w-8 h-8" />
+                <Moon className="w-6 h-6" />
               </div>
             ) : (
               <div className="animate-run text-primary">
-                <PersonStanding className="w-8 h-8" />
+                <PersonStanding className="w-6 h-6" />
               </div>
             )}
           </div>
@@ -108,7 +108,7 @@ export function TravelProgressBar({ startDate, endDate }: TravelProgressBarProps
 
         {/* Start flag */}
         {progress === 0 && (
-          <div className="absolute -top-8 left-0 transform -translate-x-1/2">
+          <div className="absolute -top-8 left-2">
             <div className="text-error">
               <Flag className="w-8 h-8" />
             </div>
@@ -117,7 +117,7 @@ export function TravelProgressBar({ startDate, endDate }: TravelProgressBarProps
       </div>
 
       {/* Date labels */}
-      <div className="flex justify-between mt-1 text-[10px] text-base-content/70">
+      <div className="flex justify-between mt-1 text-[10px] text-base-content/70 pl-8">
         <span>{startDate}</span>
         <span>{endDate}</span>
       </div>

@@ -25,6 +25,40 @@ import useBrowserNotifications from '../hooks/useBrowserNotifications'; // Impor
 import { MapPin, Calendar, Cloud, Map, Plane, Clock, FileText, Sparkles, AlertCircle, Search } from 'lucide-react';
 
 type ViewMode = 'vertical' | 'horizontal' | 'calendar';
+type MainTab = 'schedule' | 'notes' | 'album';
+
+interface PlanUIState {
+  mapOpen: boolean;
+  mainTab: MainTab;
+  viewMode: ViewMode;
+  scrollX: number;
+}
+
+const DEFAULT_PLAN_UI_STATE: PlanUIState = {
+  mapOpen: true,
+  mainTab: 'schedule',
+  viewMode: 'horizontal',
+  scrollX: 0,
+};
+
+function readPlanUIState(planId?: string): PlanUIState {
+  if (!planId) return DEFAULT_PLAN_UI_STATE;
+
+  try {
+    const saved = localStorage.getItem(`plan-ui-${planId}`);
+    if (!saved) return DEFAULT_PLAN_UI_STATE;
+
+    const parsed = JSON.parse(saved);
+    return {
+      mapOpen: typeof parsed?.mapOpen === 'boolean' ? parsed.mapOpen : DEFAULT_PLAN_UI_STATE.mapOpen,
+      mainTab: ['schedule', 'notes', 'album'].includes(parsed?.mainTab) ? parsed.mainTab : DEFAULT_PLAN_UI_STATE.mainTab,
+      viewMode: ['vertical', 'horizontal', 'calendar'].includes(parsed?.viewMode) ? parsed.viewMode : DEFAULT_PLAN_UI_STATE.viewMode,
+      scrollX: typeof parsed?.scrollX === 'number' ? parsed.scrollX : DEFAULT_PLAN_UI_STATE.scrollX,
+    } as PlanUIState;
+  } catch {
+    return DEFAULT_PLAN_UI_STATE;
+  }
+}
 
 // Helper function to sort schedules by date, then order_index, then time
 function sortSchedulesByDateTime(schedules: Schedule[]): Schedule[] {
@@ -127,14 +161,16 @@ export function PlanDetailPage() {
   const [editingPlan, setEditingPlan] = useState(false);
   const [showChatbot, setShowChatbot] = useState(false);
   const [pendingScrollIds, setPendingScrollIds] = useState<number[]>([]);
-  const [viewMode, setViewMode] = useState<ViewMode>('horizontal');
+  const [viewMode, setViewMode] = useState<ViewMode>(() => readPlanUIState(id).viewMode);
+  const [mapOpen, setMapOpen] = useState<boolean>(() => readPlanUIState(id).mapOpen);
+  const [timelineScrollX, setTimelineScrollX] = useState<number>(() => readPlanUIState(id).scrollX);
   const [mapExcludeCountries, setMapExcludeCountries] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem(`map-exclude-${id}`);
       return saved ? JSON.parse(saved) : [];
     } catch { return []; }
   });
-  const [mainTab, setMainTab] = useState<'schedule' | 'notes' | 'album'>('schedule');
+  const [mainTab, setMainTab] = useState<MainTab>(() => readPlanUIState(id).mainTab);
   const [geocodeFailed, setGeocodeFailed] = useState<any[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; city?: string } | null>(null);
   const [showShareToast, setShowShareToast] = useState(false);
@@ -142,6 +178,8 @@ export function PlanDetailPage() {
   const editModalRef = useRef<HTMLDialogElement>(null);
   const planEditModalRef = useRef<HTMLDialogElement>(null);
   const chatbotModalRef = useRef<HTMLDialogElement>(null);
+  const horizontalTimelineRef = useRef<HTMLDivElement>(null);
+  const scrollSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { requestPermission, showNotification } = useBrowserNotifications(); // Use the notification hook
   const notifiedSchedules = useRef<Set<number>>(new Set()); // To track notified schedules
@@ -185,6 +223,47 @@ export function PlanDetailPage() {
       loadPlanDetail(parseInt(id));
     }
   }, [id]);
+
+  useEffect(() => {
+    const uiState = readPlanUIState(id);
+    setMapOpen(uiState.mapOpen);
+    setMainTab(uiState.mainTab);
+    setViewMode(uiState.viewMode);
+    setTimelineScrollX(uiState.scrollX);
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+
+    const uiState: PlanUIState = {
+      mapOpen,
+      mainTab,
+      viewMode,
+      scrollX: timelineScrollX,
+    };
+
+    localStorage.setItem(`plan-ui-${id}`, JSON.stringify(uiState));
+  }, [id, mapOpen, mainTab, viewMode, timelineScrollX]);
+
+  useEffect(() => {
+    if (mainTab !== 'schedule' || viewMode !== 'horizontal') return;
+
+    const raf = requestAnimationFrame(() => {
+      if (horizontalTimelineRef.current) {
+        horizontalTimelineRef.current.scrollLeft = timelineScrollX;
+      }
+    });
+
+    return () => cancelAnimationFrame(raf);
+  }, [id, mainTab, viewMode, timelineScrollX, schedules.length]);
+
+  useEffect(() => {
+    return () => {
+      if (scrollSaveTimeoutRef.current) {
+        clearTimeout(scrollSaveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (viewingSchedule && viewModalRef.current) {
@@ -452,6 +531,20 @@ export function PlanDetailPage() {
     }, {} as Record<string, Schedule[]>);
   }, [schedules]);
 
+  const handleHorizontalTimelineScroll = () => {
+    if (!horizontalTimelineRef.current) return;
+
+    const nextScrollX = horizontalTimelineRef.current.scrollLeft;
+
+    if (scrollSaveTimeoutRef.current) {
+      clearTimeout(scrollSaveTimeoutRef.current);
+    }
+
+    scrollSaveTimeoutRef.current = setTimeout(() => {
+      setTimelineScrollX(nextScrollX);
+    }, 200);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-base-200">
@@ -665,7 +758,7 @@ export function PlanDetailPage() {
             return (
               <div className="mb-8">
                 <div className="collapse collapse-arrow bg-base-100 shadow-lg rounded-lg">
-                  <input type="checkbox" defaultChecked />
+                  <input type="checkbox" checked={mapOpen} onChange={(e) => setMapOpen(e.target.checked)} />
                   <div className="collapse-title text-xl font-medium flex items-center gap-2">
                     <Map className="w-5 h-5" /> 여행 동선
                     <span className="badge badge-primary badge-sm">{mapPoints.length}곳</span>
@@ -961,7 +1054,7 @@ export function PlanDetailPage() {
               )}
             </Droppable>
           ) : (
-            <div className="overflow-x-auto pb-4">
+            <div ref={horizontalTimelineRef} onScroll={handleHorizontalTimelineScroll} className="overflow-x-auto pb-4">
               <div className="flex gap-6" style={{ minWidth: 'min-content' }}>
                 {Object.entries(groupedSchedules).map(([date, schedulesForDate]) => (
                   <Droppable droppableId={date} key={date}>
@@ -1106,7 +1199,7 @@ export function PlanDetailPage() {
         {isOwner && selectedPlan && !showChatbot && (
           <button
             onClick={() => setShowChatbot(true)}
-            className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-lg shadow-violet-500/30 hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center group"
+            className="fixed bottom-20 right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-lg shadow-violet-500/30 hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center group"
             title="AI 여행 비서"
           >
             <svg viewBox="0 0 24 24" fill="none" className="w-7 h-7" stroke="currentColor" strokeWidth={1.5}>
