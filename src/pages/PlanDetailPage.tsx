@@ -15,6 +15,7 @@ import MomentSection from '../components/MomentSection'; // Album - 순간 기�
 import { PlaceAutocomplete } from '../components/PlaceAutocomplete';
 import TripNotes from '../components/TripNotes'; // Import TripNotes
 import CalendarView from '../components/CalendarView';
+import { downloadICS } from '../lib/ics';
 import MemberAvatars from '../components/MemberAvatars';
 import ForkButton from '../components/ForkButton';
 import { TravelMemoList } from '../components/travel/TravelMemoList';
@@ -559,6 +560,9 @@ export function PlanDetailPage() {
                 </div>
                 <Button variant="primary" outline size="sm" onClick={handleCopyShareLink}>
                   🔗 공유 링크 복사
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => downloadICS(selectedPlan.title, schedules)}>
+                  📅 캘린더 내보내기
                 </Button>
                 {!isOwner && currentUser && (
                   <ForkButton
