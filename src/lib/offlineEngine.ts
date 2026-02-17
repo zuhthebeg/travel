@@ -17,6 +17,13 @@ const MODELS = {
     vramMB: 1500,
     desc: '가벼운 기본 모델',
   },
+  'gemma-2b': {
+    id: 'gemma-2-2b-it-q4f16_1-MLC',
+    label: 'Gemma 2 2B',
+    sizeHint: '~1.5GB',
+    vramMB: 1800,
+    desc: 'Google 경량 모델, 한국어 지원',
+  },
   'llama-3b': {
     id: 'Llama-3.2-3B-Instruct-q4f16_1-MLC',
     label: 'Llama 3.2 3B',
