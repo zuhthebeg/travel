@@ -716,12 +716,7 @@ export function PlanDetailPage() {
                 </div>
                 {selectedPlan.visibility !== 'private' && isOwner && (
                   <Button variant="primary" outline size="sm" onClick={handleCopyInviteLink}>
-                    🔗 초대 링크 복사
-                  </Button>
-                )}
-                {selectedPlan.visibility !== 'private' && (
-                  <Button variant="ghost" outline size="sm" onClick={handleCopyShareLink}>
-                    👁️ 앨범 링크
+                    🔗 초대 링크
                   </Button>
                 )}
                 <Button variant="ghost" size="sm" onClick={() => downloadICS(selectedPlan.title, schedules)}>
@@ -982,6 +977,13 @@ export function PlanDetailPage() {
         {/* 앨범 탭 */}
         {mainTab === 'album' && selectedPlan && schedules.length > 0 && (
           <div className="space-y-8">
+            {selectedPlan.visibility !== 'private' && (
+              <div className="flex justify-end">
+                <Button variant="ghost" outline size="sm" onClick={handleCopyShareLink}>
+                  👁️ 앨범 링크 공유
+                </Button>
+              </div>
+            )}
             {Object.entries(groupedSchedules).sort(([a], [b]) => a.localeCompare(b)).map(([date, daySchedules]) => (
               <div key={date}>
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
