@@ -14,6 +14,7 @@ import { TravelProgressBar } from '../components/TravelProgressBar';
 import MomentSection from '../components/MomentSection'; // Album - 순간 기록
 import { PlaceAutocomplete } from '../components/PlaceAutocomplete';
 import TripNotes from '../components/TripNotes'; // Import TripNotes
+import CalendarView from '../components/CalendarView';
 import MemberAvatars from '../components/MemberAvatars';
 import ForkButton from '../components/ForkButton';
 import { TravelMemoList } from '../components/travel/TravelMemoList';
@@ -22,7 +23,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautif
 import useBrowserNotifications from '../hooks/useBrowserNotifications'; // Import the new hook
 import { MapPin, Calendar, Cloud, Map, Plane, Clock, FileText, Sparkles, AlertCircle, Search } from 'lucide-react';
 
-type ViewMode = 'vertical' | 'horizontal';
+type ViewMode = 'vertical' | 'horizontal' | 'calendar';
 
 // Helper function to sort schedules by date and time
 function sortSchedulesByDateTime(schedules: Schedule[]): Schedule[] {
@@ -815,9 +816,10 @@ export function PlanDetailPage() {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold">일정</h2>
               <div className="flex items-center gap-4">
-                <div className="tabs tabs-boxed">
+                <div className="tabs tabs-boxed tabs-sm">
                   <a className={`tab ${viewMode === 'vertical' ? 'tab-active' : ''}`} onClick={() => setViewMode('vertical')}>목록</a>
                   <a className={`tab ${viewMode === 'horizontal' ? 'tab-active' : ''}`} onClick={() => setViewMode('horizontal')}>타임라인</a>
+                  <a className={`tab ${viewMode === 'calendar' ? 'tab-active' : ''}`} onClick={() => setViewMode('calendar')}>📅</a>
                 </div>
                 <Button variant="primary" onClick={() => setEditingSchedule({} as Schedule)}>
                   일정 추가
@@ -839,6 +841,15 @@ export function PlanDetailPage() {
                 </Card.Actions>
               </Card.Body>
             </Card>
+          ) : viewMode === 'calendar' ? (
+            <div className="card bg-base-100 shadow-sm p-4">
+              <CalendarView
+                schedules={schedules}
+                startDate={selectedPlan.start_date}
+                endDate={selectedPlan.end_date}
+                onScheduleClick={(s) => setViewingSchedule(s)}
+              />
+            </div>
           ) : viewMode === 'vertical' ? (
             <Droppable droppableId="schedules">
               {(provided) => (
