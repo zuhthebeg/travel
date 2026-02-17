@@ -1,4 +1,4 @@
-const CACHE_NAME = 'travly-v1';
+const CACHE_NAME = 'travly-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -35,13 +35,23 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(request)
       .then((response) => {
-        // Cache successful responses
+        // Cache successful responses (including JS/CSS assets)
         if (response.ok) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
         }
         return response;
       })
-      .catch(() => caches.match(request).then((cached) => cached || caches.match('/')))
+      .catch(() => {
+        // Offline: serve from cache
+        return caches.match(request).then((cached) => {
+          if (cached) return cached;
+          // For navigation requests, return the cached index.html (SPA)
+          if (request.mode === 'navigate') {
+            return caches.match('/');
+          }
+          return new Response('Offline', { status: 503 });
+        });
+      })
   );
 });
