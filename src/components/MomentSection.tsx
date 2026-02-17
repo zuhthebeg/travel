@@ -338,7 +338,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
                   className="w-full p-2 rounded-lg border border-gray-200 dark:border-gray-600 dark:bg-gray-700 text-sm"
                 />
                 {imageUrl && (
-                  <img src={imageUrl} alt="preview" className="w-full h-40 object-cover rounded-lg"
+                  <img src={imageUrl} alt="preview" className="w-full max-h-48 object-contain bg-gray-50 dark:bg-gray-900 rounded-lg"
                     onError={e => (e.currentTarget.style.display = 'none')}
                     onLoad={e => (e.currentTarget.style.display = '')}
                   />
@@ -346,7 +346,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
               </div>
             ) : imagePreview ? (
               <div className="relative">
-                <img src={imagePreview} alt="preview" className="w-full h-40 object-cover rounded-lg" />
+                <img src={imagePreview} alt="preview" className="w-full max-h-48 object-contain bg-gray-50 dark:bg-gray-900 rounded-lg" />
                 <button
                   onClick={() => { setImageFile(null); setImagePreview(''); }}
                   className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full"
@@ -447,7 +447,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
                 <img
                   src={m.photo_data}
                   alt="moment"
-                  className="w-full rounded-lg max-h-60 object-cover cursor-pointer"
+                  className="w-full rounded-xl object-contain max-h-96 bg-gray-50 dark:bg-gray-900 cursor-pointer"
                   onClick={() => setSelectedImage(m.photo_data)}
                 />
               )}
