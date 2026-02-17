@@ -1,14 +1,61 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import GoogleLoginButton from './GoogleLoginButton';
 import { Map, ClipboardList, Plane, LogOut, User } from 'lucide-react';
+import { runSync } from '../lib/offline/syncEngine';
 
 export function GlobalNav() {
   const navigate = useNavigate();
   const location = useLocation();
   const { currentUser, setCurrentUser } = useStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isOfflineMode, setIsOfflineMode] = useState(() => localStorage.getItem('offline_mode') === 'true');
+  const [showOnlinePrompt, setShowOnlinePrompt] = useState(false);
+
+  // Listen for offline mode changes (from ProfilePage toggle)
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'offline_mode') setIsOfflineMode(e.newValue === 'true');
+    };
+    window.addEventListener('storage', handleStorage);
+
+    // Also poll localStorage (storage event doesn't fire in same tab)
+    const interval = setInterval(() => {
+      const current = localStorage.getItem('offline_mode') === 'true';
+      setIsOfflineMode(prev => prev !== current ? current : prev);
+    }, 500);
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Detect WiFi/network reconnection while in offline mode
+  useEffect(() => {
+    if (!isOfflineMode) return;
+
+    const handleOnline = () => {
+      setShowOnlinePrompt(true);
+    };
+
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [isOfflineMode]);
+
+  const handleSwitchOnline = useCallback(async () => {
+    // Sync pending changes first
+    try {
+      await runSync();
+    } catch (e) {
+      console.error('[sync on switch]', e);
+    }
+    localStorage.setItem('offline_mode', 'false');
+    setIsOfflineMode(false);
+    setShowOnlinePrompt(false);
+    window.location.reload();
+  }, []);
 
   const handleLogout = () => {
     setCurrentUser(null);
@@ -25,6 +72,7 @@ export function GlobalNav() {
   const isActive = (path: string) => location.pathname === path;
 
   return (
+    <>
     <nav className="navbar bg-base-100 shadow-lg sticky top-0 z-50 min-h-0 px-2 py-1">
       <div className="container mx-auto flex items-center">
         {/* Logo */}
@@ -40,7 +88,7 @@ export function GlobalNav() {
             />
             <span className="font-bold text-primary">Travly</span>
           </a>
-          {localStorage.getItem('offline_mode') === 'true' && (
+          {isOfflineMode && (
             <button
               onClick={() => navigate('/profile')}
               className="badge badge-warning badge-sm font-bold gap-1 cursor-pointer hover:badge-outline transition-all ml-1"
@@ -174,5 +222,36 @@ export function GlobalNav() {
         </div>
       )}
     </nav>
+
+    {/* Online reconnection prompt */}
+    {showOnlinePrompt && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
+        <div className="card bg-base-100 shadow-xl max-w-sm w-full">
+          <div className="card-body text-center p-5">
+            <p className="text-3xl mb-1">📶</p>
+            <h3 className="font-bold text-lg">인터넷 연결 감지</h3>
+            <p className="text-sm text-base-content/70 mt-1">
+              WiFi 연결이 감지되었습니다.<br/>
+              온라인 모드로 전환하고 변경사항을 동기화할까요?
+            </p>
+            <div className="flex gap-2 mt-4 justify-center">
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => setShowOnlinePrompt(false)}
+              >
+                나중에
+              </button>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleSwitchOnline}
+              >
+                온라인 전환
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
