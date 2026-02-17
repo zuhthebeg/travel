@@ -90,7 +90,7 @@ export function OfflineModelManager() {
   const isDataReady = dataStatus === 'done' && offlineMode;
 
   return (
-    <div className={`card shadow-sm ${offlineMode ? 'bg-error/10 border border-error/30' : 'bg-base-200'}`}>
+    <div className={`card shadow-sm ${offlineMode ? 'bg-red-50 dark:bg-red-950/40 border-2 border-red-400 dark:border-red-600' : 'bg-base-200'}`}>
       <div className="card-body p-4 gap-3">
         {/* Header + toggle */}
         <div className="flex items-center justify-between">
@@ -103,7 +103,7 @@ export function OfflineModelManager() {
           </h3>
           <input
             type="checkbox"
-            className={`toggle toggle-sm ${offlineMode ? 'toggle-error' : 'toggle-primary'}`}
+            className={`toggle toggle-md ${offlineMode ? 'toggle-error' : 'toggle-primary'}`}
             checked={offlineMode}
             onChange={e => toggleOfflineMode(e.target.checked)}
           />
