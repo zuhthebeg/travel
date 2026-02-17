@@ -12,15 +12,24 @@ type InitProgressReport = { progress: number; text: string };
 const MODELS = {
   small: {
     id: 'Qwen3-0.6B-q4f16_1-MLC',
-    label: 'Qwen3 0.6B (경량)',
+    label: 'Qwen3 0.6B',
     sizeHint: '~400MB',
     vramMB: 600,
+    desc: '가벼움, 간단한 대화',
   },
-  large: {
+  medium: {
     id: 'Qwen3-1.7B-q4f16_1-MLC',
-    label: 'Qwen3 1.7B (고품질)',
+    label: 'Qwen3 1.7B',
     sizeHint: '~1GB',
     vramMB: 1500,
+    desc: '균형잡힌 성능',
+  },
+  large: {
+    id: 'Qwen3-4B-q4f16_1-MLC',
+    label: 'Qwen3 4B',
+    sizeHint: '~2.5GB',
+    vramMB: 3500,
+    desc: '고품질 대화 + JSON',
   },
 } as const;
 
@@ -63,7 +72,9 @@ class OfflineEngineManager {
   /** Recommend model size based on device memory */
   static recommendedModel(): ModelSize {
     const mem = (navigator as any).deviceMemory;
-    return (mem && mem > 4) ? 'large' : 'small';
+    if (mem && mem >= 8) return 'large';
+    if (mem && mem >= 4) return 'medium';
+    return 'small';
   }
 
   static getModelInfo(size: ModelSize) {
