@@ -7,6 +7,7 @@ import { PlanDetailPage } from './pages/PlanDetailPage'
 import { SharedAlbumPage } from './pages/SharedAlbumPage'
 import { AssistantPage } from './pages/AssistantPage'
 import ProfilePage from './pages/ProfilePage'
+import { InvitePage } from './pages/InvitePage'
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '315180918727-3d9rfmpa36r365qna9smdsvrod441jhd.apps.googleusercontent.com';
 
@@ -23,6 +24,7 @@ function App() {
           <Route path="/album/:planId" element={<SharedAlbumPage />} />
           <Route path="/assistant" element={<AssistantPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/invite/:code" element={<InvitePage />} />
         </Routes>
       </BrowserRouter>
     </GoogleOAuthProvider>

@@ -490,6 +490,28 @@ export function PlanDetailPage() {
     }
   };
 
+  const handleCopyInviteLink = async () => {
+    try {
+      let headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      try {
+        const cred = localStorage.getItem('X-Auth-Credential') || localStorage.getItem('google_credential') || '';
+        if (cred) headers['X-Auth-Credential'] = cred;
+      } catch {}
+      const res = await fetch(`/api/plans/${selectedPlan.id}/invite`, { method: 'POST', headers });
+      const data = await res.json();
+      if (data.invite_code) {
+        const link = `${window.location.origin}/invite/${data.invite_code}`;
+        await navigator.clipboard.writeText(link);
+        setShowShareToast(true);
+        setTimeout(() => setShowShareToast(false), 2000);
+      } else {
+        alert(data.error || '초대 링크 생성에 실패했습니다');
+      }
+    } catch {
+      alert('초대 링크 생성에 실패했습니다');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-base-200">
       
@@ -569,11 +591,18 @@ export function PlanDetailPage() {
                 <div className="w-full sm:w-auto">
                   <MemberAvatars planId={selectedPlan.id} isOwner={isOwner} />
                 </div>
-                <Button variant="primary" outline size="sm" onClick={handleCopyShareLink}>
-                  🔗 공유 링크 복사
-                </Button>
+                {selectedPlan.visibility !== 'private' && isOwner && (
+                  <Button variant="primary" outline size="sm" onClick={handleCopyInviteLink}>
+                    🔗 초대 링크 복사
+                  </Button>
+                )}
+                {selectedPlan.visibility !== 'private' && (
+                  <Button variant="ghost" outline size="sm" onClick={handleCopyShareLink}>
+                    👁️ 앨범 링크
+                  </Button>
+                )}
                 <Button variant="ghost" size="sm" onClick={() => downloadICS(selectedPlan.title, schedules)}>
-                  📅 캘린더 내보내기
+                  📅 내보내기
                 </Button>
                 {!isOwner && currentUser && (
                   <ForkButton

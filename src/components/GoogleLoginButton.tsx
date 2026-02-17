@@ -44,7 +44,12 @@ export default function GoogleLoginButton({
           onSuccess();
         }
 
-        if (redirectTo) {
+        // 초대 리다이렉트 확인
+        const inviteRedirect = localStorage.getItem('invite_redirect');
+        if (inviteRedirect) {
+          localStorage.removeItem('invite_redirect');
+          navigate(inviteRedirect);
+        } else if (redirectTo) {
           navigate(redirectTo);
         }
       } catch (error) {
