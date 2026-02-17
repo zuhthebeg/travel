@@ -25,13 +25,17 @@ import { MapPin, Calendar, Cloud, Map, Plane, Clock, FileText, Sparkles, AlertCi
 
 type ViewMode = 'vertical' | 'horizontal' | 'calendar';
 
-// Helper function to sort schedules by date and time
+// Helper function to sort schedules by date, then order_index, then time
 function sortSchedulesByDateTime(schedules: Schedule[]): Schedule[] {
   return [...schedules].sort((a, b) => {
     // First sort by date
     if (a.date !== b.date) {
       return a.date.localeCompare(b.date);
     }
+    // Then by order_index (if both have it)
+    const oa = a.order_index ?? 999;
+    const ob = b.order_index ?? 999;
+    if (oa !== ob) return oa - ob;
     // Then sort by time (schedules without time go last)
     if (!a.time && !b.time) return 0;
     if (!a.time) return 1;
