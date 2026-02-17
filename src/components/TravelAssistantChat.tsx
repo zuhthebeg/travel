@@ -44,7 +44,7 @@ export function TravelAssistantChat({
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; city?: string } | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null); // Base64 preview
   const [imageData, setImageData] = useState<string | null>(null); // Compressed base64 for API
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [offlineMode, setOfflineMode] = useState(() => localStorage.getItem('offline_mode') === 'true');
   const [offlineState, setOfflineState] = useState<OfflineEngineState>(offlineEngine.getState());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -85,30 +85,21 @@ export function TravelAssistantChat({
     }
   }, [transcript]);
 
-  // Online/offline detection + engine state
+  // Offline engine state subscription
   useEffect(() => {
-    const goOnline = () => setIsOnline(true);
-    const goOffline = () => setIsOnline(false);
-    window.addEventListener('online', goOnline);
-    window.addEventListener('offline', goOffline);
     const unsub = offlineEngine.subscribe(setOfflineState);
-    return () => {
-      window.removeEventListener('online', goOnline);
-      window.removeEventListener('offline', goOffline);
-      unsub();
-    };
+    return unsub;
   }, []);
 
-  // Auto-load offline engine when going offline (if model cached)
+  // Auto-load offline engine when offline mode is enabled
   useEffect(() => {
-    if (!isOnline && offlineState.status === 'idle' && OfflineEngineManager.isSupported()) {
-      offlineEngine.isModelCached('small').then(cached => {
-        if (cached) offlineEngine.init('small');
-      });
+    if (offlineMode && offlineState.status === 'idle' && OfflineEngineManager.isSupported()) {
+      offlineEngine.init('small');
     }
-  }, [isOnline, offlineState.status]);
+  }, [offlineMode, offlineState.status]);
 
-  const useOfflineAI = !isOnline && offlineEngine.isReady();
+  // Use offline AI when: offline mode toggle is ON + engine is ready
+  const useOfflineAI = offlineMode && offlineEngine.isReady();
 
   // Auto-focus input and prepare TTS when component mounts
   useEffect(() => {
@@ -468,14 +459,16 @@ Rules:
     <div className="h-full flex flex-col">
       <div className="flex-grow overflow-y-auto p-6">
         <div className="flex flex-col space-y-4">
-          {/* Online/Offline indicator */}
-          {!isOnline && (
-            <div className={`alert ${offlineEngine.isReady() ? 'alert-warning' : 'alert-error'} py-2 text-xs`}>
-              {offlineEngine.isReady()
-                ? '🟡 오프라인 모드 — 로컬 AI가 응답합니다 (기능 제한)'
+          {/* Offline mode indicator */}
+          {offlineMode && (
+            <div className={`alert ${useOfflineAI ? 'alert-warning' : 'alert-info'} py-2 text-xs`}>
+              {useOfflineAI
+                ? '✈️ 오프라인 모드 — 로컬 AI가 응답합니다'
                 : offlineState.status === 'downloading' || offlineState.status === 'loading'
                   ? `⏳ 오프라인 AI 로딩 중... ${offlineState.progress}%`
-                  : '🔴 오프라인 — AI 모델을 미리 다운로드하면 오프라인에서도 사용 가능합니다'
+                  : offlineState.status === 'error'
+                    ? `❌ ${offlineState.error}`
+                    : '⏳ 오프라인 AI 준비 중...'
               }
             </div>
           )}
