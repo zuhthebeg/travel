@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from './Button';
 import { Loading } from './Loading';
 import type { Schedule, TravelMemo } from '../store/types';
-import useSpeechRecognition from '../hooks/useSpeechRecognition'; // Import the hook
+import useSpeechRecognition from '../hooks/useSpeechRecognition';
+import { offlineEngine, OfflineEngineManager, type OfflineEngineState } from '../lib/offlineEngine';
 
 interface TravelAssistantChatProps {
   planId: number;
@@ -43,6 +44,8 @@ export function TravelAssistantChat({
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; city?: string } | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null); // Base64 preview
   const [imageData, setImageData] = useState<string | null>(null); // Compressed base64 for API
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [offlineState, setOfflineState] = useState<OfflineEngineState>(offlineEngine.getState());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -81,6 +84,31 @@ export function TravelAssistantChat({
       setInput(transcript); // Update input with transcribed text
     }
   }, [transcript]);
+
+  // Online/offline detection + engine state
+  useEffect(() => {
+    const goOnline = () => setIsOnline(true);
+    const goOffline = () => setIsOnline(false);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    const unsub = offlineEngine.subscribe(setOfflineState);
+    return () => {
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
+      unsub();
+    };
+  }, []);
+
+  // Auto-load offline engine when going offline (if model cached)
+  useEffect(() => {
+    if (!isOnline && offlineState.status === 'idle' && OfflineEngineManager.isSupported()) {
+      offlineEngine.isModelCached('small').then(cached => {
+        if (cached) offlineEngine.init('small');
+      });
+    }
+  }, [isOnline, offlineState.status]);
+
+  const useOfflineAI = !isOnline && offlineEngine.isReady();
 
   // Auto-focus input and prepare TTS when component mounts
   useEffect(() => {
@@ -331,6 +359,30 @@ export function TravelAssistantChat({
     }
 
     try {
+      // === Offline mode: use WebLLM ===
+      if (useOfflineAI) {
+        const offlineSystemPrompt = `You are a friendly travel assistant running OFFLINE in the browser.
+Current time: ${currentTime}${locationInfo}
+Travel plan: "${planTitle}" in "${planRegion}" (${planStartDate} ~ ${planEndDate})
+Schedules:
+${(schedules || []).slice(0, 30).map(s => `- ${s.date}${s.time ? ` ${s.time}` : ''}: ${s.title}${s.place ? ` @ ${s.place}` : ''}`).join('\n')}
+
+Rules:
+- Keep answers concise (1-3 sentences)
+- ${getLanguageInstructions()}
+- You CANNOT modify schedules, search the web, or access external APIs
+- If asked to modify schedules, say "온라인에서만 가능합니다"
+- You CAN answer questions about the itinerary, give travel tips, help with English phrases`;
+
+        const reply = await offlineEngine.chat(offlineSystemPrompt, messages, messageToSend!);
+        const assistantMessage: Message = { role: 'assistant', content: reply };
+        setMessages(prev => [...prev, assistantMessage]);
+        if (ttsEnabled) speak(assistantMessage.content);
+        setIsLoading(false);
+        return;
+      }
+
+      // === Online mode: use server API ===
       // Auth credential for backend authorization
       const credential =
         localStorage.getItem('X-Auth-Credential') ||
@@ -416,6 +468,18 @@ export function TravelAssistantChat({
     <div className="h-full flex flex-col">
       <div className="flex-grow overflow-y-auto p-6">
         <div className="flex flex-col space-y-4">
+          {/* Online/Offline indicator */}
+          {!isOnline && (
+            <div className={`alert ${offlineEngine.isReady() ? 'alert-warning' : 'alert-error'} py-2 text-xs`}>
+              {offlineEngine.isReady()
+                ? '🟡 오프라인 모드 — 로컬 AI가 응답합니다 (기능 제한)'
+                : offlineState.status === 'downloading' || offlineState.status === 'loading'
+                  ? `⏳ 오프라인 AI 로딩 중... ${offlineState.progress}%`
+                  : '🔴 오프라인 — AI 모델을 미리 다운로드하면 오프라인에서도 사용 가능합니다'
+              }
+            </div>
+          )}
+
           {messages.length === 0 && (
             <div className="space-y-4">
               <div className="chat chat-start">

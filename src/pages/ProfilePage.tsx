@@ -4,6 +4,7 @@ import { useStore } from '../store/useStore';
 import { GlobalNav } from '../components/GlobalNav';
 import LevelCard from '../components/LevelCard';
 import AlbumTimeline from '../components/AlbumTimeline';
+import { OfflineModelManager } from '../components/OfflineModelManager';
 import { Trophy, MapPin, Camera, Plane, Calendar, LogOut, ChevronRight } from 'lucide-react';
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:8788' : '';
@@ -180,6 +181,9 @@ export default function ProfilePage() {
             </div>
           </div>
         )}
+
+        {/* 오프라인 AI */}
+        <OfflineModelManager />
 
         {/* 로그아웃 */}
         <button
