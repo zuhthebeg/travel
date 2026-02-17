@@ -50,14 +50,9 @@ export const plansAPI = {
 
   // 특정 여행 조회 (일정 포함)
   getById: async (id: number) => {
-    try {
-      return apiRequest<{ plan: Plan; schedules: Schedule[] }>(`/api/plans/${id}`, {
-        headers: getAuthHeaders(),
-      });
-    } catch {
-      // 비로그인 상태에서 public plan 접근 허용
-      return apiRequest<{ plan: Plan; schedules: Schedule[] }>(`/api/plans/${id}`);
-    }
+    let headers: Record<string, string> = {};
+    try { headers = getAuthHeaders(); } catch {}
+    return apiRequest<{ plan: Plan; schedules: Schedule[] }>(`/api/plans/${id}`, { headers });
   },
 
   // 여행 생성

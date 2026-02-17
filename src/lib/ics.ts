@@ -103,15 +103,12 @@ export function generateICS(planTitle: string, schedules: Schedule[]): string {
 
 export function downloadICS(planTitle: string, schedules: Schedule[]) {
   const ics = generateICS(planTitle, schedules);
-  // BOM 추가 (한글 호환)
-  const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
-  const blob = new Blob([bom, ics], { type: 'text/calendar;charset=utf-8' });
+  // BOM 없이 (Google Calendar 호환)
+  const blob = new Blob([ics], { type: 'text/calendar' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  // 파일명: 영문 fallback
-  const safeName = planTitle.replace(/[^\w가-힣\s-]/g, '').trim() || 'travel-plan';
-  a.download = `${safeName}.ics`;
+  a.download = 'travel-plan.ics';
   a.click();
   URL.revokeObjectURL(url);
 }
