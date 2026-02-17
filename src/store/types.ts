@@ -32,6 +32,7 @@ export interface Schedule {
   review: string | null; // Text review, null if not reviewed yet
   latitude: number | null; // 위도
   longitude: number | null; // 경도
+  country_code: string | null; // ISO 3166-1 alpha-2
   created_at: string;
 }
 

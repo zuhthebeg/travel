@@ -127,6 +127,7 @@ export function PlanDetailPage() {
   const [showChatbot, setShowChatbot] = useState(false);
   const [pendingScrollIds, setPendingScrollIds] = useState<number[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('horizontal');
+  const [mapExcludeCountries, setMapExcludeCountries] = useState<string[]>([]);
   const [mainTab, setMainTab] = useState<'schedule' | 'notes' | 'album'>('schedule');
   const [geocodeFailed, setGeocodeFailed] = useState<any[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; city?: string } | null>(null);
@@ -603,8 +604,20 @@ export function PlanDetailPage() {
 
         {/* 여행 동선 지도 (좌표가 있는 일정이 있을 때만 표시) */}
         {(() => {
-          const mapPoints = schedulesToMapPoints(schedules);
-          if (mapPoints.length > 0) {
+          // 국가별 핀 수 집계
+          const countryCounts: Record<string, number> = {};
+          schedules.forEach(s => {
+            if (s.latitude && s.longitude && s.country_code) {
+              countryCounts[s.country_code] = (countryCounts[s.country_code] || 0) + 1;
+            }
+          });
+          const countries = Object.entries(countryCounts).sort((a, b) => b[1] - a[1]);
+          // 가장 많은 국가가 주요 여행지, 나머지는 기본 숨김 후보
+          const _mainCountry = countries[0]?.[0]; void _mainCountry;
+          const mapPoints = schedulesToMapPoints(schedules, 
+            mapExcludeCountries.length > 0 ? mapExcludeCountries : undefined
+          );
+          if (schedulesToMapPoints(schedules).length > 0) {
             return (
               <div className="mb-8">
                 <div className="collapse collapse-arrow bg-base-100 shadow-lg rounded-lg">
@@ -614,6 +627,27 @@ export function PlanDetailPage() {
                     <span className="badge badge-primary badge-sm">{mapPoints.length}곳</span>
                   </div>
                   <div className="collapse-content">
+                    {/* 국가 필터 (2개국 이상일 때만 표시) */}
+                    {countries.length > 1 && (
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {countries.map(([code, count]) => {
+                          const excluded = mapExcludeCountries.includes(code);
+                          return (
+                            <button
+                              key={code}
+                              onClick={() => {
+                                setMapExcludeCountries(prev => 
+                                  excluded ? prev.filter(c => c !== code) : [...prev, code]
+                                );
+                              }}
+                              className={`btn btn-xs ${excluded ? 'btn-ghost opacity-50 line-through' : 'btn-outline btn-primary'}`}
+                            >
+                              {code} ({count})
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                     <TravelMap 
                       points={mapPoints} 
                       showRoute={true}

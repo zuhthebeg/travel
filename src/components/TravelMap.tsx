@@ -203,14 +203,15 @@ export function schedulesToMapPoints(schedules: Array<{
   order_index: number;
   latitude?: number | null;
   longitude?: number | null;
-}>): MapPoint[] {
+  country_code?: string | null;
+}>, excludeCountries?: string[]): MapPoint[] {
   return schedules
     .filter(s => {
       if (s.latitude == null || s.longitude == null) return false;
-      // 유효 범위: 위도 -90~90, 경도 -180~180, (0,0)은 제외 (잘못된 좌표)
       const lat = s.latitude, lng = s.longitude;
       if (lat === 0 && lng === 0) return false;
       if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return false;
+      if (excludeCountries?.length && s.country_code && excludeCountries.includes(s.country_code)) return false;
       return true;
     })
     .map(s => ({
