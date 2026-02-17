@@ -180,6 +180,35 @@ export function PlanDetailPage() {
   const chatbotModalRef = useRef<HTMLDialogElement>(null);
   const horizontalTimelineRef = useRef<HTMLDivElement>(null);
   const scrollSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isDraggingRef = useRef(false);
+  const dragStartXRef = useRef(0);
+  const dragScrollLeftRef = useRef(0);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const el = horizontalTimelineRef.current;
+    if (!el) return;
+    isDraggingRef.current = true;
+    dragStartXRef.current = e.pageX - el.offsetLeft;
+    dragScrollLeftRef.current = el.scrollLeft;
+    el.style.cursor = 'grabbing';
+    el.style.userSelect = 'none';
+  };
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingRef.current) return;
+    const el = horizontalTimelineRef.current;
+    if (!el) return;
+    e.preventDefault();
+    const x = e.pageX - el.offsetLeft;
+    el.scrollLeft = dragScrollLeftRef.current - (x - dragStartXRef.current);
+  };
+  const handleMouseUp = () => {
+    isDraggingRef.current = false;
+    const el = horizontalTimelineRef.current;
+    if (el) {
+      el.style.cursor = 'grab';
+      el.style.userSelect = '';
+    }
+  };
 
   const { requestPermission, showNotification } = useBrowserNotifications(); // Use the notification hook
   const notifiedSchedules = useRef<Set<number>>(new Set()); // To track notified schedules
@@ -571,6 +600,7 @@ export function PlanDetailPage() {
 
   const days = getDaysDifference(selectedPlan.start_date, selectedPlan.end_date);
   const isOwner = currentUser?.id === selectedPlan.user_id;
+  const canUseAssistant = !!currentUser && (isOwner || selectedPlan.visibility !== 'private');
 
   const handleCopyShareLink = async () => {
     try {
@@ -1054,7 +1084,7 @@ export function PlanDetailPage() {
               )}
             </Droppable>
           ) : (
-            <div ref={horizontalTimelineRef} onScroll={handleHorizontalTimelineScroll} className="overflow-x-auto pb-4">
+            <div ref={horizontalTimelineRef} onScroll={handleHorizontalTimelineScroll} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} className="overflow-x-auto pb-4 cursor-grab">
               <div className="flex gap-6" style={{ minWidth: 'min-content' }}>
                 {Object.entries(groupedSchedules).map(([date, schedulesForDate]) => (
                   <Droppable droppableId={date} key={date}>
@@ -1195,8 +1225,8 @@ export function PlanDetailPage() {
           }}
         />
 
-        {/* AI 비서 FAB (오너만) */}
-        {isOwner && selectedPlan && !showChatbot && (
+        {/* AI 비서 FAB (오너 + 공유 멤버) */}
+        {canUseAssistant && selectedPlan && !showChatbot && (
           <button
             onClick={() => setShowChatbot(true)}
             className="fixed bottom-20 right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-lg shadow-violet-500/30 hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center group"
@@ -1211,7 +1241,7 @@ export function PlanDetailPage() {
         )}
 
         {/* 여행 비서 챗봇 모달 */}
-        {isOwner && selectedPlan && (
+        {canUseAssistant && selectedPlan && (
           <dialog ref={chatbotModalRef} className="modal modal-bottom sm:modal-middle">
             <div className="modal-box max-w-4xl h-[80vh] flex flex-col p-0">
               <div className="sticky top-0 bg-base-100 border-b border-base-200 px-6 py-4 flex items-center justify-between z-10">
