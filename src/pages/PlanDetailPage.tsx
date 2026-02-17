@@ -484,31 +484,48 @@ export function PlanDetailPage() {
               <div className="flex items-center gap-2 mb-1">
                 <h1 className="text-base sm:text-lg md:text-xl font-bold truncate flex-1 min-w-0">{selectedPlan.title}</h1>
                 {isOwner ? (
-                  <select
-                    value={selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')}
-                    onChange={async (e) => {
-                      const newVisibility = e.target.value as 'private' | 'shared' | 'public';
-                      try {
-                        await plansAPI.update(selectedPlan.id, { visibility: newVisibility });
-                        setSelectedPlan({ ...selectedPlan, visibility: newVisibility });
-                      } catch (err) {
-                        console.error('Failed to update visibility:', err);
-                      }
-                    }}
-                    className="select select-xs select-bordered font-semibold text-[10px] h-6 min-h-0 pl-1 pr-5 flex-shrink-0"
-                  >
-                    <option value="private">🔒</option>
-                    <option value="shared">👥</option>
-                    <option value="public">🌍</option>
-                  </select>
-                ) : (
-                  <div className="badge badge-secondary badge-xs whitespace-nowrap flex-shrink-0">
-                    {(selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'private'
-                      ? '🔒'
-                      : (selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'shared'
-                      ? '👥'
-                      : '🌍'}
+                  <div className="dropdown dropdown-end flex-shrink-0">
+                    <label tabIndex={0} className="btn btn-xs btn-ghost gap-0.5 px-1.5 h-6 min-h-0">
+                      <span className="text-sm">{
+                        (selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'private' ? '🔒' :
+                        (selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'shared' ? '👥' : '🌍'
+                      }</span>
+                      <svg className="w-3 h-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                    </label>
+                    <ul tabIndex={0} className="dropdown-content menu menu-sm p-1 shadow-lg bg-base-100 rounded-lg w-32 z-50 border border-base-200">
+                      {([
+                        { value: 'private', label: '🔒 나만', desc: '비공개' },
+                        { value: 'shared', label: '👥 동행만', desc: '멤버 공유' },
+                        { value: 'public', label: '🌍 공개', desc: '누구나' },
+                      ] as const).map(opt => (
+                        <li key={opt.value}>
+                          <a
+                            className={`text-xs py-1.5 ${(selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === opt.value ? 'active' : ''}`}
+                            onClick={async () => {
+                              try {
+                                await plansAPI.update(selectedPlan.id, { visibility: opt.value });
+                                setSelectedPlan({ ...selectedPlan, visibility: opt.value });
+                                // 드롭다운 닫기
+                                (document.activeElement as HTMLElement)?.blur();
+                              } catch (err) {
+                                console.error('Failed to update visibility:', err);
+                              }
+                            }}
+                          >
+                            {opt.label}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
+                ) : (
+                  <span className="text-sm flex-shrink-0" title={
+                    (selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'private' ? '비공개' :
+                    (selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'shared' ? '동행만' : '공개'
+                  }>
+                    {(selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'private' ? '🔒' :
+                     (selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'shared' ? '👥' : '🌍'}
+                  </span>
                 )}
               </div>
               <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-base-content/70 flex-wrap">
