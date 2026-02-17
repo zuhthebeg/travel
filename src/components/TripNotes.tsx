@@ -365,7 +365,7 @@ export default function TripNotes({ planId }: TripNotesProps) {
                           )}
                           
                           {/* 내용 */}
-                          <span className={`flex-1 text-sm ${
+                          <span className={`flex-1 text-sm whitespace-pre-wrap ${
                             note.checked ? 'text-gray-400 line-through' : 'text-gray-700'
                           }`}>
                             {note.content}
