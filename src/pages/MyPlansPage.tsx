@@ -1,23 +1,26 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { plansAPI } from '../lib/api';
-import { getTempUserId } from '../lib/utils';
+import type { Plan } from '../store/types';
 import { PlanCard } from '../components/PlanCard';
 import { GlobalNav } from '../components/GlobalNav';
 import { Button } from '../components/Button';
 import { Loading } from '../components/Loading';
 import LoginModal from '../components/LoginModal';
 
+type FilterMode = 'all' | 'mine' | 'shared';
+
 export function MyPlansPage() {
   const navigate = useNavigate();
-  const { plans, setPlans, currentUser } = useStore();
+  const { currentUser } = useStore();
+  const [allPlans, setAllPlans] = useState<Plan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [filter, setFilter] = useState<FilterMode>('all');
 
   useEffect(() => {
-    // Check if user is logged in
     if (!currentUser) {
       setShowLoginModal(true);
       setIsLoading(false);
@@ -30,9 +33,8 @@ export function MyPlansPage() {
     try {
       setIsLoading(true);
       setError(null);
-      const userId = getTempUserId();
-      const myPlans = await plansAPI.getAll({ user_id: userId });
-      setPlans(myPlans);
+      const plans = await plansAPI.getAll({ mine: true });
+      setAllPlans(plans);
     } catch (err) {
       setError(err instanceof Error ? err.message : '내 여행을 불러오는데 실패했습니다.');
       console.error('Failed to load my plans:', err);
@@ -40,6 +42,15 @@ export function MyPlansPage() {
       setIsLoading(false);
     }
   };
+
+  const filteredPlans = useMemo(() => {
+    if (filter === 'mine') return allPlans.filter(p => p.access_type !== 'shared');
+    if (filter === 'shared') return allPlans.filter(p => p.access_type === 'shared');
+    return allPlans;
+  }, [allPlans, filter]);
+
+  const sharedCount = allPlans.filter(p => p.access_type === 'shared').length;
+  const myCount = allPlans.length - sharedCount;
 
   const handleLoginSuccess = () => {
     setShowLoginModal(false);
@@ -65,10 +76,25 @@ export function MyPlansPage() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        {/* Page Title */}
+        {/* Page Title + Filter */}
         <div className="mb-6">
           <h2 className="text-2xl font-bold">📋 내 여행</h2>
-          <p className="text-base-content/70">나의 여행 계획을 관리하세요</p>
+          <p className="text-base-content/70 mb-3">나의 여행 계획을 관리하세요</p>
+          {currentUser && allPlans.length > 0 && (
+            <div className="tabs tabs-boxed tabs-sm w-fit">
+              <a className={`tab ${filter === 'all' ? 'tab-active' : ''}`} onClick={() => setFilter('all')}>
+                전체 ({allPlans.length})
+              </a>
+              <a className={`tab ${filter === 'mine' ? 'tab-active' : ''}`} onClick={() => setFilter('mine')}>
+                내 여행 ({myCount})
+              </a>
+              {sharedCount > 0 && (
+                <a className={`tab ${filter === 'shared' ? 'tab-active' : ''}`} onClick={() => setFilter('shared')}>
+                  공유받음 ({sharedCount})
+                </a>
+              )}
+            </div>
+          )}
         </div>
 
         {!currentUser ? (
@@ -102,7 +128,7 @@ export function MyPlansPage() {
               </Button>
             </div>
           </div>
-        ) : plans.length === 0 ? (
+        ) : filteredPlans.length === 0 ? (
           <div className="card bg-base-100 shadow-xl p-12 text-center">
             <div className="card-body items-center text-center">
               <p className="text-lg mb-4">
@@ -120,8 +146,13 @@ export function MyPlansPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {plans.map((plan) => (
-              <PlanCard key={plan.id} plan={plan} />
+            {filteredPlans.map((plan) => (
+              <div key={plan.id} className="relative">
+                {plan.access_type === 'shared' && (
+                  <span className="absolute top-2 right-2 z-10 badge badge-info badge-sm">공유받음</span>
+                )}
+                <PlanCard plan={plan} />
+              </div>
             ))}
           </div>
         )}
