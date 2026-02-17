@@ -100,23 +100,7 @@ export function SharedAlbumPage() {
     );
   }
 
-  const isPublic = plan.visibility ? plan.visibility === 'public' : plan.is_public;
-  if (!isPublic) {
-    return (
-      <div className="min-h-screen bg-base-200 flex items-center justify-center p-4">
-        <div className="card bg-base-100 shadow-xl max-w-md w-full">
-          <div className="card-body text-center">
-            <p className="text-4xl mb-2">🔒</p>
-            <h2 className="card-title justify-center">비공개 여행입니다</h2>
-            <p className="text-base-content/70">공개된 여행만 공유 앨범으로 볼 수 있어요</p>
-            <div className="card-actions justify-center mt-2">
-              <Link to="/" className="btn btn-primary">홈으로</Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // 앨범 뷰는 항상 공개 (visibility 무관)
 
   const mapPoints = schedulesToMapPoints(schedules);
   const totalDays = getDaysDifference(plan.start_date, plan.end_date);
