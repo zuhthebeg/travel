@@ -53,6 +53,8 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
   const [rating, setRating] = useState<number | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState('');
+  const [imageUrlMode, setImageUrlMode] = useState(false);
+  const [imageUrl, setImageUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -98,6 +100,8 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
     setRating(null);
     setImageFile(null);
     setImagePreview('');
+    setImageUrlMode(false);
+    setImageUrl('');
     setError('');
     setEditingId(null);
     setShowForm(false);
@@ -105,7 +109,8 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
   };
 
   const handleSubmit = async () => {
-    if (!note && !mood && !revisit && !rating && !imageFile && !imagePreview) {
+    const hasImage = imageFile || imagePreview || (imageUrlMode && imageUrl.trim());
+    if (!note && !mood && !revisit && !rating && !hasImage) {
       setError('기분, 메모, 사진, 별점 중 하나는 남겨주세요');
       return;
     }
@@ -115,10 +120,11 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
 
     try {
       let photo_data: string | undefined;
-      if (imageFile) {
+      if (imageUrlMode && imageUrl.trim()) {
+        photo_data = imageUrl.trim();
+      } else if (imageFile) {
         photo_data = await compressImage(imageFile, 800, 0.8);
       } else if (imagePreview) {
-        // 리뷰에서 가져온 사진 (base64 직접 사용)
         photo_data = imagePreview;
       }
 
@@ -295,6 +301,16 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
 
           {/* 사진 */}
           <div>
+            <div className="flex items-center gap-2 mb-1">
+              <label className="text-sm text-gray-600 dark:text-gray-400">사진</label>
+              <button
+                type="button"
+                onClick={() => { setImageUrlMode(!imageUrlMode); setImageUrl(''); setImageFile(null); setImagePreview(''); }}
+                className="text-[10px] text-orange-500 hover:text-orange-600"
+              >
+                {imageUrlMode ? '📁 파일 업로드' : '🔗 URL 입력'}
+              </button>
+            </div>
             <input
               ref={fileInputRef}
               type="file"
@@ -302,7 +318,23 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
               onChange={handleImageSelect}
               className="hidden"
             />
-            {imagePreview ? (
+            {imageUrlMode ? (
+              <div className="space-y-2">
+                <input
+                  type="url"
+                  value={imageUrl}
+                  onChange={e => setImageUrl(e.target.value)}
+                  placeholder="https://example.com/photo.jpg"
+                  className="w-full p-2 rounded-lg border border-gray-200 dark:border-gray-600 dark:bg-gray-700 text-sm"
+                />
+                {imageUrl && (
+                  <img src={imageUrl} alt="preview" className="w-full h-40 object-cover rounded-lg"
+                    onError={e => (e.currentTarget.style.display = 'none')}
+                    onLoad={e => (e.currentTarget.style.display = '')}
+                  />
+                )}
+              </div>
+            ) : imagePreview ? (
               <div className="relative">
                 <img src={imagePreview} alt="preview" className="w-full h-40 object-cover rounded-lg" />
                 <button
