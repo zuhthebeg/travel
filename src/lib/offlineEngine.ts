@@ -73,7 +73,7 @@ class OfflineEngineManager {
   }
 
   /** Check if model is cached (downloaded) */
-  async isModelCached(size: ModelSize = 'small'): Promise<boolean> {
+  async isModelCached(size: ModelSize = 'medium'): Promise<boolean> {
     try {
       const cache = await caches.open('webllm/model');
       const keys = await cache.keys();
@@ -86,7 +86,7 @@ class OfflineEngineManager {
   }
 
   /** Download and initialize engine */
-  async init(size: ModelSize = 'small'): Promise<void> {
+  async init(size: ModelSize = 'medium'): Promise<void> {
     if (this.state.status === 'downloading' || this.state.status === 'loading') return;
 
     if (!OfflineEngineManager.isSupported()) {

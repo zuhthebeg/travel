@@ -44,7 +44,7 @@ export function TravelAssistantChat({
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; city?: string } | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null); // Base64 preview
   const [imageData, setImageData] = useState<string | null>(null); // Compressed base64 for API
-  const [offlineMode, setOfflineMode] = useState(() => localStorage.getItem('offline_mode') === 'true');
+  const [offlineMode] = useState(() => localStorage.getItem('offline_mode') === 'true');
   const [offlineState, setOfflineState] = useState<OfflineEngineState>(offlineEngine.getState());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
