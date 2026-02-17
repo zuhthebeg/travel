@@ -538,3 +538,198 @@ Recommended implementation boundary for first production release:
 - XP/level remains server-authoritative, cached read-only offline
 
 This gives strong traveler value while keeping ACL/security and consistency risks controlled.
+
+---
+
+## V3 Addendum
+
+This addendum **overrides V2 assumptions** where conflicts exist.
+
+### 1) Revised offline mode concept (V3)
+
+1. Offline mode is a **user-controlled manual toggle** (`offline_mode=true/false`), not `navigator.onLine` auto mode.
+2. When offline mode is ON, the app behaves as **offline-first UX mode** for travel features even if network exists.
+3. Scope changes from “selected trip” to **all trips user can access**:
+   - owned trips (`access_type=owner`)
+   - shared trips (`access_type=shared`)
+4. PWA/service worker is assumed to handle static assets (JS/CSS/images/shell). This design only covers **API/domain data caching + sync** in IndexedDB.
+5. Travel features should work offline for all cached trips; only these remain blocked:
+   - social/collab management: invite/member add/remove, invite links
+   - plan creation
+6. Premium gating is deferred: **sync pipeline is enabled for all authenticated users** in this phase.
+
+---
+
+### 2) Data caching trigger when toggle is turned ON
+
+When user enables offline mode in `OfflineModelManager`, run a background bootstrap job:
+
+**Step A — Preconditions**
+- Verify login credential exists.
+- Ensure IndexedDB schema ready (migrate to V3 if needed).
+- Acquire bootstrap lock (singleflight) to avoid duplicate multi-tab downloads.
+
+**Step B — Download manifest**
+- Fetch all accessible plans via `GET /api/plans?mine=1` (includes owned+shared).
+- For each plan id, queue data fetch jobs:
+  - `GET /api/plans/:id` (plan + schedules)
+  - `GET /api/plans/:id/memos`
+  - `GET /api/plans/:id/members` (read-only cache)
+  - comments/moments per schedule (batched with concurrency cap)
+
+**Step C — Persist snapshot**
+- Upsert each entity store transactionally.
+- Mark snapshot metadata per plan:
+  - `lastFetchedAt`
+  - `snapshotVersion`
+  - `isComplete`
+- Record global status (`syncMeta.offlineBootstrapStatus = in_progress|done|failed`).
+
+**Step D — UX feedback**
+- Show progress UI: “Downloading trip data (X/Y plans)”.
+- Allow app usage immediately with partial cache, but show “some trips still syncing” state.
+- On completion: show “Offline data ready”.
+
+**Step E — Keep warm while ON**
+- While offline mode stays ON and user is online, run periodic lightweight refresh (e.g., every 5–10 min + on app focus).
+
+---
+
+### 3) Offline mode ON routing policy (key decision)
+
+**Decision for “online + offlineMode=ON”: use SERVER-FIRST with LOCAL FALLBACK + WRITE-THROUGH CACHE.**
+
+Reason:
+- Keeps data freshest across collaborators.
+- Still resilient during unstable connection.
+- Preserves “offline-ready” expectation without forcing stale-local-only reads.
+
+#### Read calls (GET)
+- If `offline_mode=ON`:
+  1) try server
+  2) if server success -> return server data + upsert local cache
+  3) if server fail/timeout -> return local cache
+- If `offline_mode=OFF`: current online behavior, optional cache fill.
+
+#### Write calls (POST/PUT/DELETE) for allowed travel features
+- If `offline_mode=ON`:
+  - online: send to server first; on success write-through local cache.
+  - server fail/network error: enqueue opLog + apply local optimistic mutation (pending sync).
+- If completely offline: local mutation + opLog queue.
+
+#### Explicitly blocked in offline mode
+- Plan create (`POST /api/plans`)
+- Member/invite management endpoints
+- Other social/permission-changing actions
+
+#### AI Assistant behavior
+- Keep current manual toggle semantics.
+- In offline mode, assistant should execute travel data actions against local repositories/opLog, not block schedule edits.
+- Remove old prompt restriction “You CANNOT modify schedules…” once local action executor is wired.
+
+---
+
+### 4) Pre-trip reminder mechanism (D-1)
+
+Goal: 1 day before trip start, remind user to enable offline mode.
+
+#### Detection logic
+- On app launch, login success, and daily app focus:
+  - query all cached/server plans where `start_date` in `[today+1day, today+2day)` (user timezone).
+  - exclude trips already started/ended.
+
+#### De-dup rules
+- Store reminder key in local storage/IDB, e.g. `offlineReminder:<planId>:<YYYY-MM-DD>`.
+- Fire once per trip per day.
+
+#### Notification channels (web-first)
+1. In-app banner/toast (default).
+2. Optional Web Notification API if permission granted.
+
+#### Reminder copy
+- “Your trip to {region/title} starts tomorrow. Turn on Offline Mode now to download all trip data.”
+- CTA button: “Enable Offline Mode”.
+
+---
+
+### 5) Revised implementation phases (V3 final)
+
+#### Phase 1 — V3 Data Foundation
+- Expand schema/repositories from single active trip to **multi-trip cache**.
+- Add per-plan snapshot metadata and bootstrap status.
+- Keep static resources out-of-scope (PWA handles them).
+
+#### Phase 2 — Toggle-driven bootstrap
+- Connect `offline_mode` toggle to full dataset bootstrap (all trips).
+- Progress, cancel/retry handling, and multi-tab lock.
+
+#### Phase 3 — API routing unification
+- Introduce offline-aware API wrapper for all major travel endpoints.
+- Implement server-first + local fallback reads.
+- Implement write-through + opLog fallback writes.
+- No premium checks in sync path.
+
+#### Phase 4 — Travel feature offline parity
+- Ensure schedules/moments/memos/comments + plan metadata update work offline.
+- Keep plan creation and member/invite operations blocked with clear UX message.
+
+#### Phase 5 — Continuous sync + reconcile
+- Background sync for all users: online event, app focus, manual sync.
+- Conflict handling + dead-letter UI.
+
+#### Phase 6 — Pre-trip reminder
+- D-1 reminder job + dedup + CTA into toggle flow.
+
+#### Phase 7 — QA/hardening
+- Multi-trip load tests, cold-start bootstrap tests, flaky-network routing tests.
+
+---
+
+### 6) Concrete code changes required
+
+#### `src/lib/offlineEngine.ts`
+- Keep as AI runtime manager; no major architectural change.
+- Add optional helper events/hooks so UI can coordinate model-download status with data-bootstrap status (separate concerns).
+- Ensure `isReady()` and init/unload are stable when toggle flips rapidly.
+
+#### `src/components/OfflineModelManager.tsx`
+- Current toggle already exists; extend it to orchestrate **two tracks**:
+  1) WebLLM init/download
+  2) offline data bootstrap for all trips
+- Add progress states:
+  - `model: idle/downloading/ready/error`
+  - `data: idle/downloading/ready/error`
+- On ON:
+  - set `offline_mode=true`
+  - kick model init + data bootstrap
+- On OFF:
+  - set `offline_mode=false`
+  - stop background refresh workers (do not wipe cache by default)
+
+#### `src/components/TravelAssistantChat.tsx`
+- Keep `offline_mode` flag consumption.
+- Replace current offline limitation prompt with action-capable offline assistant path:
+  - offline mode ON + local executor available => allow schedule/memo/moment actions locally
+  - continue online API usage as fallback when needed
+- Update UI badge text to reflect “offline mode active” rather than “no modification possible”.
+
+#### `src/lib/api.ts`
+- Main refactor target.
+- Introduce a central request strategy layer (or new `offlineAPI.ts` used by exported APIs):
+  - detect `offline_mode` flag
+  - for GET: server-first + local fallback
+  - for write: server-first write-through; fallback to opLog+local mutation on failure
+  - endpoint capability map to block non-offline-supported actions
+- Add sync hooks after successful writes / connectivity restore.
+- Ensure existing API signatures remain stable for component migration simplicity.
+
+---
+
+### Final V3 implementation stance
+
+- **Manual toggle is the source of truth.**
+- **All accessible trips are cached when enabled.**
+- **Static assets are handled by PWA; API data is handled by IndexedDB + sync.**
+- **Travel features must function offline; social + plan creation remain online-only.**
+- **No premium gating in this implementation phase.**
+- **D-1 pre-trip reminder is included in scope before coding starts.**
