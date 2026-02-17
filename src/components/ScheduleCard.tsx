@@ -140,10 +140,13 @@ export function ScheduleCard({ schedule, onView }: ScheduleCardProps) {
 
         {schedule.place && (
           <p className="text-sm text-base-content/80 mb-2 flex items-center gap-1.5">
-            <MapPin className="w-4 h-4 text-primary flex-shrink-0" />
+            <MapPin className={`w-4 h-4 flex-shrink-0 ${schedule.latitude && schedule.longitude ? 'text-primary' : 'text-warning'}`} />
             <span className="font-medium">
               {linkifyFlightNumbers(schedule.place as string)}
             </span>
+            {schedule.place && (!schedule.latitude || !schedule.longitude) && (
+              <span className="badge badge-warning badge-xs" title="좌표 없음 — 지도에 표시되지 않습니다">📍?</span>
+            )}
           </p>
         )}
 
