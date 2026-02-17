@@ -161,3 +161,94 @@
 
 ## Final Note
 The design direction is solid (IndexedDB + queue + wrapper), but ID mapping, dependency-aware sync, and quota/media policy are currently the biggest blockers. Address those first to avoid brittle behavior once real offline edits accumulate.
+---
+
+## V2 Review (2026-02-18)
+
+### Verdict
+**Approve with notes** ? V2 resolves the major blockers from V1 and is implementable, but a few edge cases should be fixed before/while coding.
+
+### 1) Did V2 address the 3 critical issues from V1?
+
+Yes, largely.
+
+- **Critical #1 (queue model too weak):** addressed. `opLog` now has `opId`, `status`, `retryCount`, `dependsOn`, error fields.
+- **Critical #2 (temp/server ID mapping underspecified):** addressed. Negative temp IDs + `idMap` + FK rewrite rules are now documented.
+- **Critical #3 (timestamp-only sync unsafe):** addressed. Dependency-aware phase ordering and compaction are added.
+
+So the core architecture is now in the right direction.
+
+### 2) Negative temp ID scheme robustness
+
+Good baseline, but not fully robust yet:
+
+- `nextTempId` shown as in-memory counter. If app reloads or multiple tabs generate IDs, collision risk exists.
+  - **Fix:** persist temp-ID allocator in IndexedDB (`syncMeta.nextTempId`) and reserve IDs transactionally.
+- `idMap` keyPath is only `tempId`. If different entities can share same temp value (e.g., schedule -1 and moment -1), conflict risk.
+  - **Fix:** key as composite (`[entity, tempId]`) or globally unique temp IDs across all entities.
+- Parent refs can also be temporary (e.g., offline schedule under offline plan if plan create is ever enabled later).
+  - **Fix:** ensure all FK fields are rewritten via mapping step before replay and before media upload.
+- Deleting temp entities is partially covered in API examples; ensure equivalent logic exists for all entities (not only schedule).
+
+### 3) 7-phase sync order correctness/completeness
+
+Order is mostly correct:
+
+1. parent creates
+2. child creates
+3. grandchild creates
+4. updates
+5. deletes (child -> parent)
+6. media uploads
+7. refetch/reconcile
+
+This is a sound default. Notes:
+
+- **Gate media on successful moment mapping:** media phase must only run when `momentId` is resolved to server ID.
+- **Refetch strategy:** full refetch is safe but heavy; consider per-plan scoped refetch or ETag/incremental later.
+- **Failure isolation:** define whether phase 7 runs when some ops failed (usually yes, but with failed badge retained).
+
+### 4) Premium/free split cleanliness
+
+Conceptually clean and product-aligned:
+
+- Free: cache + local-only writes
+- Premium: full sync
+
+Risks to close:
+
+- Ensure no hidden auto-sync path can run for free users (startup/online/manual retry should all check `canSync`).
+- Define upgrade behavior clearly: when free -> premium, should old local queue sync immediately? (likely yes, but explicit UX needed).
+- Add clear UI label for local-only records to avoid user assuming cloud backup exists.
+
+### 5) mediaQueue Blob viability on mobile
+
+Viable with constraints; better than storing base64 in main rows.
+
+- Pros: Blob in IndexedDB avoids JSON bloat and keeps entity rows small.
+- Risks: iOS/Safari quota pressure/eviction; large blobs may fail unpredictably.
+- Current mitigations (200MB cap + estimate + cleanup) are good.
+
+Recommended hardening:
+
+- compress/resize at capture time before storing Blob,
+- request `navigator.storage.persist()` where supported,
+- add backpressure UX near quota ("storage almost full"),
+- consider fallback policy for failed blob persistence.
+
+### 6) Remaining gaps / implementation risks
+
+1. **Spec inconsistency:** top summary says "이미지=경로만 저장", but `MediaQueue` model stores `blob: Blob`.
+   - Choose one canonical strategy (current design/body suggests Blob).
+2. **Cross-tab + browser support:** `navigator.locks` is good, but provide fallback mutex for unsupported environments.
+3. **Auth/session errors in sync:** define behavior for 401/403 during replay (pause queue, require re-login, keep pending).
+4. **Transactional guarantees:** tempID remap + dependent op rewrite should occur in one DB transaction to avoid partial corruption.
+5. **Delete tombstone races:** ensure update ops for entities later deleted are compacted out reliably.
+6. **Observability:** add `lastSyncSuccessAt`, `lastSyncErrorAt`, `failedCount`, `deadLetterCount` in `syncMeta` for UX/debugging.
+
+---
+
+## Final Recommendation
+Proceed with implementation as V2 basis, but apply the hardening notes above during Phase 2-B/2-C.
+
+**Final verdict: Approve with notes.**
