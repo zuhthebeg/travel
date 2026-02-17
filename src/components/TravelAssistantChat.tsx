@@ -94,7 +94,8 @@ export function TravelAssistantChat({
   // Auto-load offline engine when offline mode is enabled
   useEffect(() => {
     if (offlineMode && offlineState.status === 'idle' && OfflineEngineManager.isSupported()) {
-      offlineEngine.init('small');
+      const savedModel = (localStorage.getItem('offline_model_size') || 'medium') as import('../lib/offlineEngine').ModelSize;
+      offlineEngine.init(savedModel);
     }
   }, [offlineMode, offlineState.status]);
 

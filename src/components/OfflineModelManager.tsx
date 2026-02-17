@@ -106,7 +106,7 @@ export function OfflineModelManager() {
         {/* Ready */}
         {offlineMode && state.status === 'ready' && (
           <div className="text-xs text-success flex items-center gap-1">
-            ✅ {OfflineEngineManager.getModelInfo(state.modelSize || 'small').label} 준비 완료
+            ✅ {OfflineEngineManager.getModelInfo(state.modelSize || 'medium').label} 준비 완료
           </div>
         )}
 

@@ -10,13 +10,6 @@ type InitProgressReport = { progress: number; text: string };
 
 // Model configs
 const MODELS = {
-  small: {
-    id: 'Qwen3-0.6B-q4f16_1-MLC',
-    label: 'Qwen3 0.6B',
-    sizeHint: '~400MB',
-    vramMB: 600,
-    desc: '가벼움, 간단한 대화',
-  },
   medium: {
     id: 'Qwen3-1.7B-q4f16_1-MLC',
     label: 'Qwen3 1.7B',
@@ -72,9 +65,7 @@ class OfflineEngineManager {
   /** Recommend model size based on device memory */
   static recommendedModel(): ModelSize {
     const mem = (navigator as any).deviceMemory;
-    if (mem && mem >= 8) return 'large';
-    if (mem && mem >= 4) return 'medium';
-    return 'small';
+    return (mem && mem >= 8) ? 'large' : 'medium';
   }
 
   static getModelInfo(size: ModelSize) {
