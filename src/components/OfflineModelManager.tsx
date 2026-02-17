@@ -64,7 +64,8 @@ export function OfflineModelManager() {
         </div>
 
         <p className="text-xs text-base-content/60">
-          여행 전 WiFi에서 켜두세요. 인터넷 없이도 AI 비서와 여행 데이터를 사용할 수 있습니다.
+          여행 전 WiFi에서 켜두세요. 인터넷 없이도 AI 비서를 사용할 수 있습니다.
+          <br /><span className="text-base-content/40">※ 오프라인 AI는 대화·추천·번역만 가능하며, 일정 수정은 지원하지 않습니다.</span>
         </p>
 
         {/* Model selection */}
