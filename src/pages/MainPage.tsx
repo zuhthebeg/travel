@@ -445,7 +445,7 @@ export function MainPage() {
               {sortedPlans.map((plan) => (
                 <div 
                   key={plan.id}
-                  className={`flex-shrink-0 w-72 snap-start transition-all ${selectedPlanId === plan.id ? 'ring-2 ring-primary rounded-2xl' : ''}`}
+                  className={`flex-shrink-0 w-72 snap-start rounded-2xl transition-shadow ${selectedPlanId === plan.id ? 'outline outline-2 outline-primary' : ''}`}
                   onMouseEnter={() => setSelectedPlanId(plan.id)}
                   onMouseLeave={() => setSelectedPlanId(null)}
                 >
