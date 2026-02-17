@@ -1581,7 +1581,7 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
     setEditingPlace(false);
   }, [schedule.id, schedule.place]);
 
-  const [pendingCoords, setPendingCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [pendingCoords, setPendingCoords] = useState<{ lat: number; lng: number; countryCode?: string; city?: string } | null>(null);
 
   const handleSavePlace = async () => {
     if (placeValue === (schedule.place || '') && !pendingCoords) {
@@ -1594,6 +1594,7 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
       if (pendingCoords) {
         updates.lat = pendingCoords.lat;
         updates.lng = pendingCoords.lng;
+        if (pendingCoords.countryCode) updates.country_code = pendingCoords.countryCode;
       }
       await schedulesAPI.update(schedule.id, updates);
       onUpdate(schedule.id, updates);
@@ -1733,7 +1734,7 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
                       onChange={(v) => setPlaceValue(v)}
                       onSelect={(place) => {
                         setPlaceValue(place.name);
-                        setPendingCoords({ lat: place.lat, lng: place.lng });
+                        setPendingCoords({ lat: place.lat, lng: place.lng, countryCode: place.countryCode, city: place.city });
                       }}
                       placeholder="장소 검색..."
                       className="flex-1"

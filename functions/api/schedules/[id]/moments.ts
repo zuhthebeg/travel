@@ -4,7 +4,7 @@
 import type { Env } from '../../../types';
 import { jsonResponse, errorResponse } from '../../../types';
 import { getRequestUser, checkPlanAccess } from '../../../lib/auth';
-import { grantMomentXP, grantXP, XP_VALUES } from '../../../lib/xp';
+import { grantMomentXP, grantVisitXP } from '../../../lib/xp';
 import { checkAndGrantBadges } from '../../../lib/badges';
 
 export async function onRequestGet(context: {
@@ -47,8 +47,8 @@ export async function onRequestPost(context: {
 
     // schedule 존재 확인 + plan 권한 체크
     const schedule = await env.DB.prepare(
-      'SELECT plan_id FROM schedules WHERE id = ?'
-    ).bind(scheduleId).first<{ plan_id: number }>();
+      'SELECT plan_id, country_code, place_en FROM schedules WHERE id = ?'
+    ).bind(scheduleId).first<{ plan_id: number; country_code: string | null; place_en: string | null }>();
 
     if (!schedule) {
       return errorResponse('Schedule not found', 404);
@@ -108,9 +108,14 @@ export async function onRequestPost(context: {
       'SELECT * FROM moments WHERE id = ?'
     ).bind(momentId).first();
 
-    // XP 지급 (비동기, 실패해도 모먼트 생성은 성공)
+    // XP 지급 (실패해도 모먼트 생성은 성공)
     try {
       await grantMomentXP(env.DB, user.id, momentId, !!body.photo_data, !!body.note, body.rating != null);
+      // 방문지 XP (country_code 있을 때만)
+      if (schedule.country_code) {
+        const cityKey = schedule.place_en?.split(',')[0]?.trim().toLowerCase().replace(/\s+/g, '_') || '__unknown__';
+        await grantVisitXP(env.DB, user.id, schedule.country_code, cityKey, schedule.place_en?.split(',')[0]?.trim(), undefined, 'moment', momentId);
+      }
       await checkAndGrantBadges(env.DB, user.id);
     } catch (e) {
       console.error('XP grant error:', e);

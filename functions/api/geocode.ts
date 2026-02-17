@@ -23,7 +23,7 @@ export async function onRequestGet(context: { env: Env; request: Request }): Pro
         if (props.city && props.city !== props.name) parts.push(props.city);
         if (props.state) parts.push(props.state);
         if (props.country) parts.push(props.country);
-        return { id: i, name: parts.join(', '), lat, lng, type: props.type || 'place' };
+        return { id: i, name: parts.join(', '), lat, lng, type: props.type || 'place', countryCode: props.countrycode || null, city: props.city || props.name || null };
       });
 
     // 1차: 직접 검색

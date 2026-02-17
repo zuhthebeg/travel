@@ -8,6 +8,7 @@ interface PhotonResult {
     city?: string;
     state?: string;
     country?: string;
+    countrycode?: string;
     osm_key?: string;
     osm_value?: string;
   };
@@ -19,7 +20,7 @@ interface PhotonResult {
 interface PlaceAutocompleteProps {
   value: string;
   onChange: (value: string) => void;
-  onSelect: (place: { name: string; lat: number; lng: number }) => void;
+  onSelect: (place: { name: string; lat: number; lng: number; countryCode?: string; city?: string }) => void;
   placeholder?: string;
   className?: string;
 }
@@ -114,7 +115,7 @@ export function PlaceAutocomplete({
     
     setQuery(displayName);
     onChange(displayName);
-    onSelect({ name: displayName, lat, lng });
+    onSelect({ name: displayName, lat, lng, countryCode: props.countrycode?.toUpperCase(), city: props.city || props.name });
     setIsOpen(false);
     setResults([]);
   };

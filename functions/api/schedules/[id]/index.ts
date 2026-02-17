@@ -93,6 +93,10 @@ export async function onRequestPut(context: {
       updates.push('place_en = ?');
       values.push((body as any).place_en);
     }
+    if ((body as any).country_code !== undefined) {
+      updates.push('country_code = ?');
+      values.push((body as any).country_code);
+    }
 
     if (updates.length === 0) {
       return errorResponse('No fields to update');

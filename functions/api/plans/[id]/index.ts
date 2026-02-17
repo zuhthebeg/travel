@@ -3,6 +3,7 @@
 import type { Env, UpdatePlanRequest } from '../../../types';
 import { jsonResponse, errorResponse } from '../../../types';
 import { getRequestUser, checkPlanAccess } from '../../../lib/auth';
+import { grantXP, XP_VALUES } from '../../../lib/xp';
 
 export async function onRequestGet(context: {
   env: Env;
@@ -139,7 +140,19 @@ export async function onRequestPut(context: {
       .bind(planId)
       .all();
 
-    return jsonResponse({ plan: results[0] });
+    const plan = results[0] as any;
+
+    // XP: 공개 전환 시
+    try {
+      const user = await getRequestUser(request, env.DB);
+      if (user && plan.visibility === 'public') {
+        await grantXP(env.DB, user.id, 'plan_public', XP_VALUES.plan_public, `plan_public:plan:${planId}`, 'plan', planId);
+      }
+    } catch (e) {
+      console.error('XP grant error:', e);
+    }
+
+    return jsonResponse({ plan });
   } catch (error) {
     console.error('Error updating plan:', error);
     return errorResponse('Failed to update plan', 500);

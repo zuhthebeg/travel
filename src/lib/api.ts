@@ -151,6 +151,7 @@ export const schedulesAPI = {
       review?: string;
       latitude?: number;
       longitude?: number;
+      country_code?: string;
     }
   ) => {
     const result = await apiRequest<{ schedule: Schedule }>(`/api/schedules/${id}`, {
