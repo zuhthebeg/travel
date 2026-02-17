@@ -40,6 +40,15 @@ export function GlobalNav() {
             />
             <span className="font-bold text-primary">Travly</span>
           </a>
+          {localStorage.getItem('offline_mode') === 'true' && (
+            <button
+              onClick={() => navigate('/profile')}
+              className="badge badge-warning badge-sm font-bold gap-1 cursor-pointer hover:badge-outline transition-all ml-1"
+              title="오프라인 모드 설정으로 이동"
+            >
+              ⚡ 오프라인
+            </button>
+          )}
         </div>
 
         {/* Desktop Navigation */}
