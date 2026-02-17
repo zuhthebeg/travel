@@ -8,7 +8,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { offlineEngine, OfflineEngineManager, MODELS, type ModelSize, type OfflineEngineState } from '../lib/offlineEngine';
 import { runBootstrap, cancelBootstrap, onBootstrapProgress, startKeepWarm, stopKeepWarm } from '../lib/offline/bootstrap';
-import { enableAutoSync, disableAutoSync } from '../lib/offline/syncEngine';
+import { enableAutoSync, disableAutoSync, runSync } from '../lib/offline/syncEngine';
 import type { BootstrapProgress } from '../lib/offline/types';
 
 export function OfflineModelManager() {
@@ -49,6 +49,12 @@ export function OfflineModelManager() {
       startKeepWarm();
       enableAutoSync();
     } else {
+      // Flush pending ops before turning off
+      runSync().then(({ synced, failed }) => {
+        if (synced > 0 || failed > 0) {
+          console.log(`[offline] Sync on disable: ${synced} synced, ${failed} failed`);
+        }
+      }).catch(console.error);
       // Stop everything
       if (aiState.status === 'ready' || aiState.status === 'downloading' || aiState.status === 'loading') {
         offlineEngine.unload();
