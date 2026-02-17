@@ -45,7 +45,7 @@ export function PlanCard({ plan, showImportButton = false, onImport }: PlanCardP
       <Card.Body>
         <Card.Title>
           {plan.title}
-          {plan.is_public && <div className="badge badge-secondary">공개</div>}
+          {plan.visibility === 'public' && <div className="badge badge-secondary">공개</div>}
         </Card.Title>
         {plan.region && (
           <p className="text-base-content/70 flex items-center gap-1.5">
