@@ -12,6 +12,27 @@ export async function onRequestGet(context: { env: Env; request: Request }): Pro
   const isPublic = url.searchParams.get('is_public');
 
   try {
+    // mine=1: 내 여행 + 공유받은 여행
+    const mine = url.searchParams.get('mine');
+    if (mine === '1') {
+      const user = await getRequestUser(request, env.DB);
+      if (!user) return errorResponse('Login required', 401);
+      const { results } = await env.DB.prepare(`
+        SELECT p.*, 
+          CASE WHEN p.user_id = ? THEN 'owner' ELSE 'shared' END as access_type
+        FROM plans p
+        WHERE p.user_id = ?
+        UNION
+        SELECT p.*,
+          'shared' as access_type
+        FROM plans p
+        JOIN plan_members pm ON pm.plan_id = p.id
+        WHERE pm.user_id = ?
+        ORDER BY created_at DESC
+      `).bind(user.id, user.id, user.id).all();
+      return jsonResponse({ plans: results });
+    }
+
     let query = 'SELECT * FROM plans';
     const conditions: string[] = [];
     const params: any[] = [];

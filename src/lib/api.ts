@@ -32,11 +32,12 @@ async function apiRequest<T>(
 // Plans API
 export const plansAPI = {
   // 여행 목록 조회
-  getAll: async (params?: { user_id?: number; is_public?: boolean }) => {
+  getAll: async (params?: { user_id?: number; is_public?: boolean; mine?: boolean }) => {
     const searchParams = new URLSearchParams();
     if (params?.user_id) searchParams.append('user_id', params.user_id.toString());
     if (params?.is_public !== undefined)
       searchParams.append('is_public', params.is_public ? '1' : '0');
+    if (params?.mine) searchParams.append('mine', '1');
 
     const query = searchParams.toString();
     let headers: Record<string, string> = {};

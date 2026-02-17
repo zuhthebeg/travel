@@ -32,11 +32,24 @@ export function MainPage() {
   
   // 국가 토글 상태 (비로그인용) - Set으로 선택된 국가 코드 관리
   const [selectedCountries, setSelectedCountries] = useState<Set<string>>(new Set());
+  
+  // 내 여행 + 공유받은 여행
+  const [myPlans, setMyPlans] = useState<Plan[]>([]);
 
   useEffect(() => {
     setSelectedCountries(new Set());
     loadPublicPlans();
+    if (currentUser) loadMyPlans();
   }, [currentUser]);
+
+  const loadMyPlans = async () => {
+    try {
+      const plans = await plansAPI.getAll({ mine: true });
+      setMyPlans(plans);
+    } catch (err) {
+      console.error('Failed to load my plans:', err);
+    }
+  };
 
   const loadPublicPlans = async () => {
     try {
@@ -288,6 +301,42 @@ export function MainPage() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
+        {/* 내 여행 섹션 (로그인 시) */}
+        {currentUser && myPlans.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold flex items-center gap-2 mb-4">
+              ✈️ 내 여행
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {myPlans.map((plan) => (
+                <div
+                  key={plan.id}
+                  onClick={() => navigate(`/plans/${plan.id}`)}
+                  className="card bg-base-100 shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+                >
+                  <div className="card-body p-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="card-title text-base">{plan.title}</h3>
+                      {plan.access_type === 'shared' && (
+                        <span className="badge badge-info badge-sm">공유받음</span>
+                      )}
+                    </div>
+                    <p className="text-sm text-base-content/60">
+                      {plan.region && <span className="mr-2">📍 {plan.region}</span>}
+                      {plan.start_date} ~ {plan.end_date}
+                    </p>
+                    <div className="flex gap-1 mt-1">
+                      {plan.visibility === 'public' && <span className="badge badge-ghost badge-xs">🌍 공개</span>}
+                      {plan.visibility === 'shared' && <span className="badge badge-ghost badge-xs">👥 공유</span>}
+                      {plan.visibility === 'private' && <span className="badge badge-ghost badge-xs">🔒 비공개</span>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Hero Section with Map */}
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">

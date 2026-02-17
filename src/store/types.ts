@@ -12,6 +12,7 @@ export interface Plan {
   thumbnail: string | null;
   is_public: boolean;
   visibility?: 'public' | 'shared' | 'private';
+  access_type?: 'owner' | 'shared'; // mine=1 응답에서만 포함
   created_at: string;
   updated_at: string;
 }
