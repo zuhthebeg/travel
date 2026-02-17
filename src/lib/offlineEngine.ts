@@ -129,8 +129,11 @@ class OfflineEngineManager {
       throw new Error('오프라인 AI가 준비되지 않았습니다.');
     }
 
+    // Qwen3: add /no_think to disable thinking mode (prevents <think> tags)
+    const systemWithNoThink = systemPrompt + '\n/no_think';
+
     const chatMessages = [
-      { role: 'system' as const, content: systemPrompt },
+      { role: 'system' as const, content: systemWithNoThink },
       ...messages.slice(-6).map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
       { role: 'user' as const, content: userMessage },
     ];
@@ -139,11 +142,12 @@ class OfflineEngineManager {
       messages: chatMessages,
       temperature: 0.7,
       max_tokens: 512,
-      // Disable thinking mode for faster responses
-      extra_body: { enable_thinking: false },
-    } as any);
+    });
 
-    return reply.choices[0]?.message?.content || '응답을 생성하지 못했습니다.';
+    let content = reply.choices[0]?.message?.content || '응답을 생성하지 못했습니다.';
+    // Strip any remaining <think>...</think> tags
+    content = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+    return content;
   }
 
   /** Unload engine to free memory */
