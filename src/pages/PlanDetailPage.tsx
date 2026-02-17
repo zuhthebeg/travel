@@ -128,7 +128,12 @@ export function PlanDetailPage() {
   const [showChatbot, setShowChatbot] = useState(false);
   const [pendingScrollIds, setPendingScrollIds] = useState<number[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('horizontal');
-  const [mapExcludeCountries, setMapExcludeCountries] = useState<string[]>([]);
+  const [mapExcludeCountries, setMapExcludeCountries] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(`map-exclude-${id}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
   const [mainTab, setMainTab] = useState<'schedule' | 'notes' | 'album'>('schedule');
   const [geocodeFailed, setGeocodeFailed] = useState<any[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; city?: string } | null>(null);
@@ -646,9 +651,11 @@ export function PlanDetailPage() {
                             <button
                               key={code}
                               onClick={() => {
-                                setMapExcludeCountries(prev => 
-                                  excluded ? prev.filter(c => c !== code) : [...prev, code]
-                                );
+                                setMapExcludeCountries(prev => {
+                                  const next = excluded ? prev.filter(c => c !== code) : [...prev, code];
+                                  localStorage.setItem(`map-exclude-${id}`, JSON.stringify(next));
+                                  return next;
+                                });
                               }}
                               className={`btn btn-xs ${excluded ? 'btn-ghost opacity-50 line-through' : 'btn-outline btn-primary'}`}
                             >
