@@ -6,6 +6,7 @@ import LevelCard from '../components/LevelCard';
 import AlbumTimeline from '../components/AlbumTimeline';
 import { OfflineModelManager } from '../components/OfflineModelManager';
 import { Trophy, MapPin, Camera, Plane, Calendar, LogOut, ChevronRight } from 'lucide-react';
+import { getCachedPlans, getCachedMomentsBySchedule, getCachedSchedulesByPlan } from '../lib/db';
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:8788' : '';
 
@@ -31,6 +32,32 @@ export default function ProfilePage() {
   }, [currentUser]);
 
   const loadStats = async () => {
+    const isOffline = localStorage.getItem('offline_mode') === 'true' && !navigator.onLine;
+
+    if (isOffline) {
+      // Load from IndexedDB cache
+      try {
+        const plans = await getCachedPlans();
+        let totalMoments = 0;
+        for (const plan of plans) {
+          const schedules = await getCachedSchedulesByPlan(plan.id);
+          for (const s of schedules) {
+            const moments = await getCachedMomentsBySchedule(s.id);
+            totalMoments += moments.length;
+          }
+        }
+        setStats({
+          totalPlans: plans.length,
+          totalMoments,
+          totalCountries: 0, // Not available offline
+          totalCities: 0,
+        });
+      } catch (e) {
+        console.error('Failed to load offline stats:', e);
+      }
+      return;
+    }
+
     try {
       const credential = localStorage.getItem('google_credential') || '';
       const headers: Record<string, string> = credential ? { 'X-Auth-Credential': credential } : {};
@@ -136,13 +163,25 @@ export default function ProfilePage() {
 
         {/* 탭 컨텐츠 */}
         {activeTab === 'level' && (
-          <LevelCard />
+          localStorage.getItem('offline_mode') === 'true' && !navigator.onLine ? (
+            <div className="card bg-base-100 shadow-sm p-4 text-center text-sm text-base-content/50">
+              레벨 정보는 온라인에서 확인할 수 있습니다
+            </div>
+          ) : (
+            <LevelCard />
+          )
         )}
 
         {activeTab === 'album' && (
-          <div className="card bg-base-100 shadow-sm p-4">
-            <AlbumTimeline />
-          </div>
+          localStorage.getItem('offline_mode') === 'true' && !navigator.onLine ? (
+            <div className="card bg-base-100 shadow-sm p-4 text-center text-sm text-base-content/50">
+              앨범 타임라인은 온라인에서 확인할 수 있습니다
+            </div>
+          ) : (
+            <div className="card bg-base-100 shadow-sm p-4">
+              <AlbumTimeline />
+            </div>
+          )
         )}
 
         {activeTab === 'stats' && stats && (
