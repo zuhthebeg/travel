@@ -39,15 +39,25 @@ export const plansAPI = {
       searchParams.append('is_public', params.is_public ? '1' : '0');
 
     const query = searchParams.toString();
+    let headers: Record<string, string> = {};
+    try { headers = getAuthHeaders(); } catch {}
     const result = await apiRequest<{ plans: Plan[] }>(
-      `/api/plans${query ? `?${query}` : ''}`
+      `/api/plans${query ? `?${query}` : ''}`,
+      { headers }
     );
     return result.plans;
   },
 
   // 특정 여행 조회 (일정 포함)
   getById: async (id: number) => {
-    return apiRequest<{ plan: Plan; schedules: Schedule[] }>(`/api/plans/${id}`);
+    try {
+      return apiRequest<{ plan: Plan; schedules: Schedule[] }>(`/api/plans/${id}`, {
+        headers: getAuthHeaders(),
+      });
+    } catch {
+      // 비로그인 상태에서 public plan 접근 허용
+      return apiRequest<{ plan: Plan; schedules: Schedule[] }>(`/api/plans/${id}`);
+    }
   },
 
   // 여행 생성
