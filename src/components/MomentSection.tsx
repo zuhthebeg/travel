@@ -3,6 +3,7 @@ import { useStore } from '../store/useStore';
 import { compressImage, validateImageFile } from '../lib/imageUtils';
 import { Camera, X, Edit2, Trash2, Smile, Star, MapPin, Clock } from 'lucide-react';
 import { extractExif } from '../lib/exif';
+import { offlineMomentsAPI } from '../lib/offlineAPI';
 
 // Inline types (will be moved to types.ts by Spark)
 interface Moment {
@@ -32,8 +33,6 @@ const REVISIT_OPTIONS = [
   { value: 'no', label: '한번이면 충분', color: 'text-gray-500' },
   { value: 'maybe', label: '글쎄...', color: 'text-yellow-600' },
 ] as const;
-
-const API_BASE = import.meta.env.DEV ? 'http://localhost:8788' : '';
 
 interface MomentSectionProps {
   scheduleId: number;
@@ -70,8 +69,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
   const loadMoments = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/schedules/${scheduleId}/moments`);
-      const data = await res.json();
+      const data = await offlineMomentsAPI.getByScheduleId(scheduleId);
       setMoments(data.moments || []);
     } catch (e) {
       console.error('Failed to load moments:', e);
@@ -151,23 +149,11 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
 
       if (editingId) {
         // 수정
-        const res = await fetch(`${API_BASE}/api/moments/${editingId}`, {
-          method: 'PUT',
-          headers,
-          body: JSON.stringify(body),
-        });
-        if (!res.ok) throw new Error('수정 실패');
-        const data = await res.json();
+        const data = await offlineMomentsAPI.update(editingId, body);
         setMoments(prev => prev.map(m => m.id === editingId ? { ...m, ...data.moment } : m));
       } else {
         // 생성
-        const res = await fetch(`${API_BASE}/api/schedules/${scheduleId}/moments`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(body),
-        });
-        if (!res.ok) throw new Error('저장 실패');
-        const data = await res.json();
+        const data = await offlineMomentsAPI.create(scheduleId, body);
         setMoments(prev => [data.moment, ...prev]);
       }
 
@@ -182,11 +168,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
   const handleDelete = async (id: number) => {
     if (!confirm('이 기록을 삭제할까요?')) return;
     try {
-      const credential = getCredential();
-      await fetch(`${API_BASE}/api/moments/${id}`, {
-        method: 'DELETE',
-        headers: credential ? { 'X-Auth-Credential': credential } : {},
-      });
+      await offlineMomentsAPI.delete(id);
       setMoments(prev => prev.filter(m => m.id !== id));
     } catch (e) {
       console.error('Delete failed:', e);
