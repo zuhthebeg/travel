@@ -3,6 +3,7 @@
 import type { Env, Plan, CreatePlanRequest } from '../types';
 import { jsonResponse, errorResponse } from '../types';
 import { getRequestUser } from '../lib/auth';
+import { grantXP, XP_VALUES } from '../lib/xp';
 
 export async function onRequestGet(context: { env: Env; request: Request }): Promise<Response> {
   const { env, request } = context;
@@ -74,7 +75,19 @@ export async function onRequestPost(context: { env: Env; request: Request }): Pr
       .bind(result.meta.last_row_id)
       .all();
 
-    return jsonResponse({ plan: results[0] }, 201);
+    const plan = results[0] as any;
+
+    // XP 지급
+    try {
+      const user = await getRequestUser(request, env.DB);
+      if (user) {
+        await grantXP(env.DB, user.id, 'plan_create', XP_VALUES.plan_create, `plan_create:plan:${plan.id}`, 'plan', plan.id);
+      }
+    } catch (e) {
+      console.error('XP grant error:', e);
+    }
+
+    return jsonResponse({ plan }, 201);
   } catch (error) {
     console.error('Error creating plan:', error);
     return errorResponse('Failed to create plan', 500);

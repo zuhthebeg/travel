@@ -3,6 +3,8 @@
 
 import type { Env } from '../../../../types';
 import { jsonResponse, errorResponse } from '../../../../types';
+import { grantXP, XP_VALUES } from '../../../../lib/xp';
+import { checkAndGrantBadges } from '../../../../lib/badges';
 import { getRequestUser, requirePlanOwner } from '../../../../lib/auth';
 
 export async function onRequestGet(context: {
@@ -90,6 +92,14 @@ export async function onRequestPost(context: {
     await env.DB.prepare(
       'INSERT INTO plan_members (plan_id, user_id, role) VALUES (?, ?, ?)'
     ).bind(planId, invitee.id, 'member').run();
+
+    // XP 지급 (초대한 사람에게)
+    try {
+      await grantXP(env.DB, user.id, 'invite_member', XP_VALUES.invite_member, `invite_member:plan:${planId}:user:${invitee.id}`, 'plan_member', null);
+      await checkAndGrantBadges(env.DB, user.id);
+    } catch (e) {
+      console.error('XP grant error:', e);
+    }
 
     return jsonResponse({
       member: { user_id: invitee.id, username: invitee.username, email: invitee.email, role: 'member' },

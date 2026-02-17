@@ -4,6 +4,8 @@
 import type { Env } from '../../../types';
 import { jsonResponse, errorResponse } from '../../../types';
 import { getRequestUser, checkPlanAccess } from '../../../lib/auth';
+import { grantMomentXP, grantXP, XP_VALUES } from '../../../lib/xp';
+import { checkAndGrantBadges } from '../../../lib/badges';
 
 export async function onRequestGet(context: {
   env: Env;
@@ -101,9 +103,18 @@ export async function onRequestPost(context: {
       body.rating ?? null
     ).run();
 
+    const momentId = result.meta.last_row_id;
     const moment = await env.DB.prepare(
       'SELECT * FROM moments WHERE id = ?'
-    ).bind(result.meta.last_row_id).first();
+    ).bind(momentId).first();
+
+    // XP 지급 (비동기, 실패해도 모먼트 생성은 성공)
+    try {
+      await grantMomentXP(env.DB, user.id, momentId, !!body.photo_data, !!body.note, body.rating != null);
+      await checkAndGrantBadges(env.DB, user.id);
+    } catch (e) {
+      console.error('XP grant error:', e);
+    }
 
     return jsonResponse({ moment }, 201);
   } catch (error) {
