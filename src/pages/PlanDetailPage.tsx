@@ -398,19 +398,25 @@ export function PlanDetailPage() {
 
     if (!draggedSchedule) return;
 
-    // If moving to a different date, update the schedule
+    // If moving to a different date, confirm first
     if (source.droppableId !== destination.droppableId) {
       const newDate = destination.droppableId;
+      const formatKo = (d: string) => {
+        const dt = new Date(d + 'T00:00:00');
+        return `${dt.getMonth() + 1}월 ${dt.getDate()}일`;
+      };
+      const confirmed = window.confirm(
+        `"${draggedSchedule.title}"을(를)\n${formatKo(draggedSchedule.date)} → ${formatKo(newDate)}로 이동하시겠습니까?`
+      );
+      if (!confirmed) return;
 
       try {
         await schedulesAPI.update(draggedSchedule.id, { date: newDate });
 
-        // Update local state
         const updatedSchedules = schedules.map(s =>
           s.id === draggedSchedule.id ? { ...s, date: newDate } : s
         );
 
-        // Sort by date and time
         setSchedules(sortSchedulesByDateTime(updatedSchedules));
       } catch (error) {
         console.error('Failed to update schedule date:', error);
