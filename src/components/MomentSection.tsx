@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
 import { compressImage, validateImageFile } from '../lib/imageUtils';
-import { Camera, X, Edit2, Trash2, Smile, Star } from 'lucide-react';
+import { Camera, X, Edit2, Trash2, Smile, Star, MapPin, Clock } from 'lucide-react';
+import { extractExif } from '../lib/exif';
 
 // Inline types (will be moved to types.ts by Spark)
 interface Moment {
@@ -55,6 +56,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
   const [imagePreview, setImagePreview] = useState('');
   const [imageUrlMode, setImageUrlMode] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
+  const [exifInfo, setExifInfo] = useState<{ lat: number | null; lng: number | null; datetime: string | null } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -78,7 +80,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
     }
   };
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const validation = validateImageFile(file, 10);
@@ -88,6 +90,13 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
     }
     setImageFile(file);
     setError('');
+
+    // EXIF 추출
+    try {
+      const exif = await extractExif(file);
+      if (exif.lat || exif.datetime) setExifInfo(exif);
+    } catch {}
+
     const reader = new FileReader();
     reader.onload = (ev) => setImagePreview(ev.target?.result as string);
     reader.readAsDataURL(file);
@@ -102,6 +111,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
     setImagePreview('');
     setImageUrlMode(false);
     setImageUrl('');
+    setExifInfo(null);
     setError('');
     setEditingId(null);
     setShowForm(false);
@@ -351,6 +361,24 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
               >
                 <Camera className="w-4 h-4" /> 사진 추가
               </button>
+            )}
+
+            {/* EXIF 정보 표시 */}
+            {exifInfo && (exifInfo.lat || exifInfo.datetime) && (
+              <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+                {exifInfo.lat && exifInfo.lng && (
+                  <span className="flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full">
+                    <MapPin className="w-3 h-3" />
+                    {exifInfo.lat.toFixed(4)}, {exifInfo.lng.toFixed(4)}
+                  </span>
+                )}
+                {exifInfo.datetime && (
+                  <span className="flex items-center gap-1 px-2 py-1 bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full">
+                    <Clock className="w-3 h-3" />
+                    {exifInfo.datetime}
+                  </span>
+                )}
+              </div>
             )}
           </div>
 

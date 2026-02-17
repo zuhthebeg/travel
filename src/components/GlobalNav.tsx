@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import GoogleLoginButton from './GoogleLoginButton';
-import { Map, ClipboardList, Plane, LogOut } from 'lucide-react';
+import { Map, ClipboardList, Plane, LogOut, User } from 'lucide-react';
 
 export function GlobalNav() {
   const navigate = useNavigate();
@@ -77,6 +77,7 @@ export function GlobalNav() {
                 <li className="menu-title">
                   <span>{currentUser.username}</span>
                 </li>
+                <li><a onClick={() => navigate('/profile')} className="flex items-center gap-2"><User className="w-4 h-4" /> 내 프로필</a></li>
                 <li><a onClick={() => navigate('/my')} className="flex items-center gap-2"><ClipboardList className="w-4 h-4" /> 내 여행</a></li>
                 <li><a onClick={() => navigate('/plan/new')} className="flex items-center gap-2"><Plane className="w-4 h-4" /> 새 여행</a></li>
                 <li><a onClick={handleLogout} className="flex items-center gap-2"><LogOut className="w-4 h-4" /> 로그아웃</a></li>
@@ -138,6 +139,12 @@ export function GlobalNav() {
               <>
                 <li className="menu-title px-3">
                   <span className="text-xs text-base-content/60">{currentUser.username}</span>
+                </li>
+                <li>
+                  <a onClick={() => navigate('/profile')} className="flex items-center gap-3 py-3">
+                    <User className="w-5 h-5" />
+                    <span className="font-medium">내 프로필</span>
+                  </a>
                 </li>
                 <li>
                   <a 
