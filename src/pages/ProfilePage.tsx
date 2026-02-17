@@ -5,7 +5,7 @@ import { GlobalNav } from '../components/GlobalNav';
 import LevelCard from '../components/LevelCard';
 import AlbumTimeline from '../components/AlbumTimeline';
 import { OfflineModelManager } from '../components/OfflineModelManager';
-import { Trophy, MapPin, Camera, Plane, Calendar, LogOut, ChevronRight } from 'lucide-react';
+import { Trophy, MapPin, Camera, Plane, Calendar, LogOut, ChevronRight, Wifi, WifiOff } from 'lucide-react';
 import { getCachedPlans, getCachedMomentsBySchedule, getCachedSchedulesByPlan } from '../lib/db';
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:8788' : '';
@@ -21,7 +21,7 @@ export default function ProfilePage() {
   const { currentUser, setCurrentUser } = useStore();
   const navigate = useNavigate();
   const [stats, setStats] = useState<Stats | null>(null);
-  const [activeTab, setActiveTab] = useState<'level' | 'album' | 'stats'>('level');
+  const [activeTab, setActiveTab] = useState<'level' | 'album' | 'stats' | 'offline'>('level');
 
   useEffect(() => {
     if (!currentUser) {
@@ -95,10 +95,12 @@ export default function ProfilePage() {
 
   if (!currentUser) return null;
 
+  const isOfflineOn = localStorage.getItem('offline_mode') === 'true';
   const tabs = [
     { id: 'level' as const, label: '레벨', icon: Trophy },
     { id: 'album' as const, label: '앨범', icon: Camera },
     { id: 'stats' as const, label: '통계', icon: Plane },
+    { id: 'offline' as const, label: '오프라인', icon: isOfflineOn ? WifiOff : Wifi },
   ];
 
   return (
@@ -221,8 +223,9 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* 오프라인 AI */}
-        <OfflineModelManager />
+        {activeTab === 'offline' && (
+          <OfflineModelManager />
+        )}
 
         {/* 로그아웃 */}
         <button
