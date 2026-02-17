@@ -1534,8 +1534,22 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
 
     setSaveStatus('saving');
     try {
-      // 좌표는 자동완성 선택 시에만 갱신됨 (formData에 이미 반영)
-      const { latitude, longitude } = formData;
+      let { latitude, longitude } = formData;
+
+      // 장소가 변경됐는데 좌표가 없으면 geocode 시도
+      if (formData.place && !latitude && !longitude) {
+        try {
+          const geoRes = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(formData.place)}&limit=1`);
+          if (geoRes.ok) {
+            const geoData = await geoRes.json();
+            if (geoData.features?.length > 0) {
+              const [lng, lat] = geoData.features[0].geometry.coordinates;
+              latitude = lat;
+              longitude = lng;
+            }
+          }
+        } catch { /* geocode failure is non-critical */ }
+      }
 
       const savedSchedule = schedule?.id
         ? await schedulesAPI.update(schedule.id, {
@@ -1887,8 +1901,14 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
           }
         } catch {}
       }
-      await schedulesAPI.update(schedule.id, updates);
-      onUpdate(schedule.id, updates);
+      // Map lat/lng to latitude/longitude for server API
+      const apiUpdates: Record<string, any> = {};
+      if (updates.place !== undefined) apiUpdates.place = updates.place;
+      if (updates.lat !== undefined) apiUpdates.latitude = updates.lat;
+      if (updates.lng !== undefined) apiUpdates.longitude = updates.lng;
+      if (updates.country_code !== undefined) apiUpdates.country_code = updates.country_code;
+      await schedulesAPI.update(schedule.id, apiUpdates);
+      onUpdate(schedule.id, { ...apiUpdates, latitude: updates.lat, longitude: updates.lng });
       setEditingPlace(false);
       setPendingCoords(null);
     } catch (e) {
