@@ -1254,9 +1254,11 @@ export function PlanDetailPage() {
                   planEndDate={selectedPlan.end_date}
                   schedules={schedules}
                   onScheduleChange={(modifiedIds) => {
-                    loadPlanDetail(selectedPlan.id);
-                    if (modifiedIds && modifiedIds.length > 0) {
-                      setPendingScrollIds(modifiedIds);
+                    if (confirm('변경사항이 반영되었습니다. 새로고침할까요?')) {
+                      loadPlanDetail(selectedPlan.id);
+                      if (modifiedIds && modifiedIds.length > 0) {
+                        setPendingScrollIds(modifiedIds);
+                      }
                     }
                   }}
                 />
@@ -1833,6 +1835,21 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
         updates.lat = pendingCoords.lat;
         updates.lng = pendingCoords.lng;
         if (pendingCoords.countryCode) updates.country_code = pendingCoords.countryCode;
+      } else if (placeValue && placeValue !== (schedule.place || '')) {
+        // 장소 텍스트만 변경됐을 때 자동 geocode 시도
+        try {
+          const geoRes = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(placeValue)}&limit=1`);
+          if (geoRes.ok) {
+            const geoData = await geoRes.json();
+            if (geoData.features?.length > 0) {
+              const [lng, lat] = geoData.features[0].geometry.coordinates;
+              const cc = geoData.features[0].properties?.countrycode?.toUpperCase();
+              updates.lat = lat;
+              updates.lng = lng;
+              if (cc) updates.country_code = cc;
+            }
+          }
+        } catch {}
       }
       await schedulesAPI.update(schedule.id, updates);
       onUpdate(schedule.id, updates);

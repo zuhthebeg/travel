@@ -8,6 +8,7 @@
 
 interface Env {
   DB: D1Database;
+  OPENAI_API_KEY: string;
 }
 
 const corsHeaders = {
@@ -74,7 +75,43 @@ function hasKorean(text: string): boolean {
   return /[\uAC00-\uD7AF]/.test(text);
 }
 
-// MyMemory 번역 API (무료, 키 불필요)
+// OpenAI 일괄 번역 (장소명 리스트 → 영어)
+async function batchTranslateWithOpenAI(
+  places: string[],
+  regionContext: string,
+  apiKey: string
+): Promise<Record<string, string>> {
+  if (!places.length || !apiKey) return {};
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        response_format: { type: 'json_object' },
+        messages: [{
+          role: 'system',
+          content: `You translate Korean place names to English for geocoding. Region context: ${regionContext}. Return JSON: {"translations": {"original": "english", ...}}. Use the most well-known English name for each place. If it's already English, keep as-is.`
+        }, {
+          role: 'user',
+          content: JSON.stringify(places)
+        }],
+        temperature: 0,
+      }),
+    });
+    if (!res.ok) return {};
+    const data = await res.json() as any;
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) return {};
+    const parsed = JSON.parse(content);
+    return parsed.translations || {};
+  } catch (e) {
+    console.error('OpenAI translation error:', e);
+    return {};
+  }
+}
+
+// MyMemory 번역 API (무료 폴백)
 async function translateToEnglish(text: string): Promise<string | null> {
   try {
     const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=ko|en`);
@@ -130,11 +167,26 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     let failed = 0;
     const results: any[] = [];
 
-    for (const schedule of schedules.results || []) {
-      // Build search query with context
+    // 1단계: 한국어 장소명 일괄 번역 (OpenAI)
+    const koreanPlaces: string[] = [];
+    const scheduleList = schedules.results || [];
+    for (const schedule of scheduleList) {
+      const place = schedule.place as string;
+      const placeEn = schedule.place_en as string | null;
+      if (!isGenericPlace(place) && !placeEn && hasKorean(place)) {
+        koreanPlaces.push(place);
+      }
+    }
+    const translations = await batchTranslateWithOpenAI(
+      [...new Set(koreanPlaces)],
+      regionContext,
+      context.env.OPENAI_API_KEY
+    );
+
+    // 2단계: 각 스케줄 geocode
+    for (const schedule of scheduleList) {
       const place = schedule.place as string;
       
-      // Skip generic place names (숙소, 호텔, etc.)
       if (isGenericPlace(place)) {
         results.push({
           id: schedule.id,
@@ -153,12 +205,21 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         coords = await geocodePhoton(placeEn);
       }
       
-      // 2차: 한국어면 영어로 번역 후 검색 (가장 정확)
+      // 2차: OpenAI 번역 결과 사용
+      if (!coords && translations[place]) {
+        coords = await geocodePhoton(translations[place]);
+        if (coords) {
+          await context.env.DB.prepare(
+            `UPDATE schedules SET place_en = ? WHERE id = ? AND place_en IS NULL`
+          ).bind(translations[place], schedule.id).run();
+        }
+      }
+
+      // 3차: 한국어면 MyMemory 폴백
       if (!coords && hasKorean(place)) {
         const english = await translateToEnglish(place);
         if (english) {
           coords = await geocodePhoton(english);
-          // 번역 성공하면 place_en 저장
           if (coords) {
             await context.env.DB.prepare(
               `UPDATE schedules SET place_en = ? WHERE id = ? AND place_en IS NULL`
@@ -167,7 +228,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         }
       }
       
-      // 3차: 원본으로 직접 검색
+      // 4차: 원본으로 직접 검색
       if (!coords) {
         coords = await geocodePhoton(place);
       }
