@@ -371,9 +371,9 @@ export function PlanDetailPage() {
     return () => clearInterval(interval); // Clean up interval on unmount
   }, [selectedPlan, schedules, showNotification, navigate]);
 
-  const loadPlanDetail = async (planId: number) => {
+  const loadPlanDetail = async (planId: number, soft = false) => {
     try {
-      setIsLoading(true);
+      if (!soft) setIsLoading(true);
       setError(null);
       const data = await plansAPI.getById(planId);
       setSelectedPlan(data.plan);
@@ -382,7 +382,7 @@ export function PlanDetailPage() {
       setError(err instanceof Error ? err.message : '여행 정보를 불러오는데 실패했습니다.');
       console.error('Failed to load plan detail:', err);
     } finally {
-      setIsLoading(false);
+      if (!soft) setIsLoading(false);
     }
   };
 
@@ -1233,7 +1233,7 @@ export function PlanDetailPage() {
               <path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" strokeLinecap="round" strokeLinejoin="round" />
               <path d="M18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white animate-pulse" />
+            <span className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white animate-pulse ${localStorage.getItem('offline_mode') === 'true' ? 'bg-orange-400' : 'bg-green-400'}`} />
           </button>
         )}
 
@@ -1255,7 +1255,7 @@ export function PlanDetailPage() {
                   schedules={schedules}
                   onScheduleChange={(modifiedIds) => {
                     if (confirm('변경사항이 반영되었습니다. 새로고침할까요?')) {
-                      loadPlanDetail(selectedPlan.id);
+                      loadPlanDetail(selectedPlan.id, true);
                       if (modifiedIds && modifiedIds.length > 0) {
                         setPendingScrollIds(modifiedIds);
                       }
