@@ -1,10 +1,10 @@
 // GET /api/invite/:code — 초대 정보 조회 (비로그인도 가능)
 // POST /api/invite/:code — 초대 수락 (로그인 필요)
 
-import type { Env } from '../../../types';
-import { jsonResponse, errorResponse } from '../../../types';
-import { getRequestUser } from '../../../lib/auth';
-import { grantXP, XP_VALUES } from '../../../lib/xp';
+import type { Env } from '../../types';
+import { jsonResponse, errorResponse } from '../../types';
+import { getRequestUser } from '../../lib/auth';
+import { grantXP, XP_VALUES } from '../../lib/xp';
 
 export async function onRequestGet(context: { env: Env; params: { code: string }; request: Request }) {
   const { env, params } = context;

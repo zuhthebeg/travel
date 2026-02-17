@@ -1,9 +1,9 @@
 // POST /api/plans/:id/invite — 초대 코드 생성 (owner only)
 // GET /api/plans/:id/invite — 초대 코드 조회
 
-import type { Env } from '../../../../types';
-import { jsonResponse, errorResponse } from '../../../../types';
-import { getRequestUser } from '../../../../lib/auth';
+import type { Env } from '../../../types';
+import { jsonResponse, errorResponse } from '../../../types';
+import { getRequestUser } from '../../../lib/auth';
 
 function generateCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
