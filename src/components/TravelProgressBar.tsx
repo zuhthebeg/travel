@@ -82,7 +82,7 @@ export function TravelProgressBar({ startDate, endDate }: TravelProgressBarProps
         {/* Running/Resting character animation */}
         {progress > 0 && progress < 100 && (
           <div
-            className="absolute -top-8 transform -translate-x-1/2 transition-all duration-1000 ease-out"
+            className="absolute -top-6 transform -translate-x-1/2 transition-all duration-1000 ease-out"
             style={{ left: `${Math.min(progress, 100)}%` }}
           >
             {isSleepingTime ? (
@@ -99,25 +99,25 @@ export function TravelProgressBar({ startDate, endDate }: TravelProgressBarProps
 
         {/* Completion flag */}
         {progress === 100 && (
-          <div className="absolute -top-8 right-0 transform translate-x-1/2">
+          <div className="absolute -top-6 right-0 transform translate-x-1/2">
             <div className="animate-bounce text-warning">
-              <Trophy className="w-8 h-8" />
+              <Trophy className="w-5 h-5" />
             </div>
           </div>
         )}
 
         {/* Start flag */}
         {progress === 0 && (
-          <div className="absolute -top-8 left-2">
+          <div className="absolute -top-5 left-0">
             <div className="text-error">
-              <Flag className="w-8 h-8" />
+              <Flag className="w-5 h-5" />
             </div>
           </div>
         )}
       </div>
 
       {/* Date labels */}
-      <div className="flex justify-between mt-1 text-[10px] text-base-content/70 pl-8">
+      <div className="flex justify-between mt-1 text-[10px] text-base-content/70">
         <span>{startDate}</span>
         <span>{endDate}</span>
       </div>
