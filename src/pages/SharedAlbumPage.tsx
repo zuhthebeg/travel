@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { plansAPI } from '../lib/api';
 import { formatDateRange, formatDisplayDate, getDaysDifference } from '../lib/utils';
 import { Loading } from '../components/Loading';
 import { TravelMap, schedulesToMapPoints } from '../components/TravelMap';
@@ -36,30 +35,20 @@ export function SharedAlbumPage() {
       setIsLoading(true);
       setError(null);
 
-      const data = await plansAPI.getById(id);
-      setPlan(data.plan);
-      const sortedSchedules = [...data.schedules].sort((a, b) => {
-        if (a.date !== b.date) return a.date.localeCompare(b.date);
-        if (!a.time && !b.time) return 0;
-        if (!a.time) return 1;
-        if (!b.time) return -1;
-        return a.time.localeCompare(b.time);
-      });
-      setSchedules(sortedSchedules);
+      const res = await fetch(`${API_BASE}/api/plans/${id}/album`);
+      if (!res.ok) throw new Error('앨범을 불러올 수 없습니다');
+      const data = await res.json();
 
-      // Load moments for all schedules
-      const entries = await Promise.all(
-        sortedSchedules.map(async (schedule) => {
-          try {
-            const res = await fetch(`${API_BASE}/api/schedules/${schedule.id}/moments`);
-            const json = await res.json();
-            return [schedule.id, json.moments || []] as const;
-          } catch {
-            return [schedule.id, []] as const;
-          }
-        })
-      );
-      setMomentsBySchedule(Object.fromEntries(entries));
+      setPlan(data.plan);
+      setSchedules(data.schedules || []);
+
+      // Group moments by schedule_id
+      const grouped: Record<number, Moment[]> = {};
+      for (const m of data.moments || []) {
+        if (!grouped[m.schedule_id]) grouped[m.schedule_id] = [];
+        grouped[m.schedule_id].push(m);
+      }
+      setMomentsBySchedule(grouped);
     } catch (err) {
       setError(err instanceof Error ? err.message : '공유 앨범을 불러오지 못했습니다');
     } finally {
@@ -220,7 +209,7 @@ export function SharedAlbumPage() {
                                     key={m.id}
                                     src={m.photo_data!}
                                     alt=""
-                                    className="w-full aspect-[4/3] object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                                    className="w-full rounded-xl object-contain max-h-96 bg-gray-50 dark:bg-gray-900 cursor-pointer hover:opacity-90 transition-opacity"
                                     onClick={() => setSelectedImage(m.photo_data)}
                                   />
                                 ))}

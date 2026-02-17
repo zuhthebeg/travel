@@ -971,16 +971,14 @@ export function PlanDetailPage() {
         {/* 앨범 탭 */}
         {mainTab === 'album' && selectedPlan && schedules.length > 0 && (
           <div className="space-y-8">
-            {selectedPlan.visibility === 'public' && (
-              <div className="flex justify-end">
-                <Button variant="ghost" outline size="sm" onClick={handleCopyShareLink}>
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0-12.814a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0 12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
-                  </svg>
-                  앨범 공유
-                </Button>
-              </div>
-            )}
+            <div className="flex justify-end">
+              <Button variant="ghost" outline size="sm" onClick={handleCopyShareLink}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0-12.814a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0 12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+                </svg>
+                앨범 공유
+              </Button>
+            </div>
             {Object.entries(groupedSchedules).sort(([a], [b]) => a.localeCompare(b)).map(([date, daySchedules]) => (
               <div key={date}>
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
