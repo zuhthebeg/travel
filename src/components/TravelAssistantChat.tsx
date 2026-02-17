@@ -362,12 +362,32 @@ ${(schedules || []).slice(0, 30).map(s => `- ${s.date}${s.time ? ` ${s.time}` : 
 Rules:
 - Keep answers concise (1-3 sentences)
 - ${getLanguageInstructions()}
-- You CANNOT modify schedules, search the web, or access external APIs
-- If asked to modify schedules, say "온라인에서만 가능합니다"
-- You CAN answer questions about the itinerary, give travel tips, help with English phrases`;
+- You CAN answer questions, give travel tips, help with English phrases
+- You CANNOT directly modify schedules, but you CAN suggest changes
+- When user asks to add/edit/delete a schedule, respond with your message AND include a JSON action block like this:
+  %%%ACTION{"type":"add","date":"2026-05-28","title":"센소지 방문","place":"센소지, 도쿄","time":"10:00"}%%%
+  %%%ACTION{"type":"edit","scheduleId":637,"title":"new title"}%%%
+  %%%ACTION{"type":"delete","scheduleId":637}%%%
+- Only include %%%ACTION...%%% when user explicitly asks to modify schedules
+- The action will be shown as a clickable card for the user to confirm`;
 
         const reply = await offlineEngine.chat(offlineSystemPrompt, messages, messageToSend!);
-        const assistantMessage: Message = { role: 'assistant', content: reply };
+
+        // Parse action cards from AI response
+        const actionRegex = /%%%ACTION(\{[^%]+\})%%%/g;
+        const actions: Array<Record<string, any>> = [];
+        let cleanReply = reply;
+        let match;
+        while ((match = actionRegex.exec(reply)) !== null) {
+          try { actions.push(JSON.parse(match[1])); } catch {}
+        }
+        cleanReply = cleanReply.replace(/%%%ACTION\{[^%]+\}%%%/g, '').trim();
+
+        const assistantMessage: Message = {
+          role: 'assistant',
+          content: cleanReply,
+          ...(actions.length > 0 ? { actions } : {}),
+        } as any;
         setMessages(prev => [...prev, assistantMessage]);
         if (ttsEnabled) speak(assistantMessage.content);
         setIsLoading(false);
@@ -464,13 +484,20 @@ Rules:
           {offlineMode && (
             <div className={`alert ${useOfflineAI ? 'alert-warning' : 'alert-info'} py-2 text-xs`}>
               {useOfflineAI
-                ? '✈️ 오프라인 모드 — 로컬 AI가 응답합니다'
+                ? `✈️ 오프라인 모드 (${OfflineEngineManager.getModelInfo(offlineState.modelSize || 'medium').label})`
                 : offlineState.status === 'downloading' || offlineState.status === 'loading'
                   ? `⏳ 오프라인 AI 로딩 중... ${offlineState.progress}%`
                   : offlineState.status === 'error'
                     ? `❌ ${offlineState.error}`
                     : '⏳ 오프라인 AI 준비 중...'
               }
+              {useOfflineAI && messages.length > 0 && (
+                <button
+                  onClick={() => { setMessages([]); offlineEngine.isReady() && offlineEngine.resetChat?.(); }}
+                  className="btn btn-xs btn-ghost ml-auto"
+                  title="대화 초기화"
+                >🗑️ 초기화</button>
+              )}
             </div>
           )}
 
@@ -535,6 +562,50 @@ Rules:
                   </button>
                 )}
               </div>
+              {/* Offline action cards */}
+              {msg.role === 'assistant' && (msg as any).actions?.map((action: any, ai: number) => (
+                <div key={ai} className="mt-1 ml-10">
+                  <button
+                    className="btn btn-sm btn-outline btn-primary gap-1 text-xs"
+                    onClick={async () => {
+                      try {
+                        if (action.type === 'add') {
+                          await import('../lib/api').then(m => m.schedulesAPI.create({
+                            plan_id: planId,
+                            date: action.date,
+                            title: action.title,
+                            place: action.place || null,
+                            time: action.time || undefined,
+                          }));
+                          onScheduleChange?.();
+                        } else if (action.type === 'edit' && action.scheduleId) {
+                          const patch: any = {};
+                          if (action.title) patch.title = action.title;
+                          if (action.place) patch.place = action.place;
+                          if (action.time) patch.time = action.time;
+                          if (action.date) patch.date = action.date;
+                          await import('../lib/api').then(m => m.schedulesAPI.update(action.scheduleId, patch));
+                          onScheduleChange?.([action.scheduleId]);
+                        } else if (action.type === 'delete' && action.scheduleId) {
+                          if (confirm('이 일정을 삭제할까요?')) {
+                            await import('../lib/api').then(m => m.schedulesAPI.delete(action.scheduleId));
+                            onScheduleChange?.();
+                          }
+                        }
+                        setMessages(prev => prev.map((m, mi) =>
+                          mi === index ? { ...m, actions: (m as any).actions?.filter((_: any, j: number) => j !== ai) } as any : m
+                        ));
+                      } catch (err: any) {
+                        alert(`실행 실패: ${err.message || '온라인 상태에서 다시 시도해주세요'}`);
+                      }
+                    }}
+                  >
+                    {action.type === 'add' && `📅 추가: ${action.title} (${action.date}${action.time ? ' ' + action.time : ''})`}
+                    {action.type === 'edit' && `✏️ 수정: ${action.title || '일정'}`}
+                    {action.type === 'delete' && `🗑️ 삭제: #${action.scheduleId}`}
+                  </button>
+                </div>
+              ))}
             </div>
           ))}
           {isLoading && (

@@ -152,6 +152,13 @@ class OfflineEngineManager {
     return content;
   }
 
+  /** Reset conversation (clear KV cache for fresh context) */
+  async resetChat(): Promise<void> {
+    if (this.engine) {
+      try { await this.engine.resetChat(); } catch { /* ignore if not supported */ }
+    }
+  }
+
   /** Unload engine to free memory */
   async unload(): Promise<void> {
     if (this.engine) {
