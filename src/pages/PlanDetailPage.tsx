@@ -2267,7 +2267,7 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
                       }}
                       placeholder="장소 검색..."
                       className="flex-1"
-                      regionHint={selectedPlan?.region || ''}
+                      regionHint={planRegion || ''}
                     />
                     <button
                       onClick={handleSavePlace}
