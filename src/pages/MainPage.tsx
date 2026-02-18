@@ -129,27 +129,43 @@ export function MainPage() {
     filteredPlansByTime.forEach((plan) => {
       if (!plan.schedules) return;
       
-      // 선택된 여행만 표시하거나, 선택 없으면 전체 표시
-      if (selectedPlanId && plan.id !== selectedPlanId) return;
+      // 선택된 여행만 표시 → 개별 스케줄 모드
+      if (selectedPlanId && plan.id === selectedPlanId) {
+        plan.schedules.forEach((schedule) => {
+          if (schedule.latitude && schedule.longitude) {
+            points.push({
+              id: schedule.id,
+              lat: schedule.latitude,
+              lng: schedule.longitude,
+              title: schedule.title || schedule.place || '',
+              place: schedule.place,
+              date: schedule.date,
+              order: schedule.order_index,
+            });
+          }
+        });
+        return;
+      }
+      if (selectedPlanId) return; // 다른 여행은 스킵
       
       // 국가 필터 적용
       const countryInfo = extractCountryFromRegion(plan.region);
       if (countryInfo && !selectedCountries.has(countryInfo.code)) return;
       
-      plan.schedules.forEach((schedule) => {
-        if (schedule.latitude && schedule.longitude) {
-          const countryInfo = extractCountryFromRegion(plan.region);
-          points.push({
-            id: schedule.id,
-            lat: schedule.latitude,
-            lng: schedule.longitude,
-            title: `${getCountryFlag(countryInfo?.code)} ${plan.title}`,
-            place: schedule.title,
-            date: schedule.date,
-            order: schedule.order_index,
-          });
-        }
-      });
+      // 여행별 대표 좌표 1개 (첫 번째 유효 스케줄)
+      const firstWithCoords = plan.schedules.find(s => s.latitude && s.longitude);
+      if (firstWithCoords) {
+        points.push({
+          id: plan.id,
+          lat: firstWithCoords.latitude,
+          lng: firstWithCoords.longitude,
+          title: `${getCountryFlag(countryInfo?.code)} ${plan.title}`,
+          place: plan.region,
+          date: firstWithCoords.date,
+          order: 0,
+          label: plan.title,
+        });
+      }
     });
     
     return points;
@@ -296,12 +312,12 @@ export function MainPage() {
   };
 
   const handleMapPointClick = (point: MapPoint) => {
-    // 해당 일정의 여행을 찾아서 상세 페이지로 이동
-    const plan = plansWithSchedules.find(p => 
-      p.schedules?.some(s => s.id === point.id)
-    );
-    if (plan) {
-      navigate(`/plan/${plan.id}`);
+    if (selectedPlanId) {
+      // 개별 스케줄 모드에서는 해당 여행으로 이동
+      navigate(`/plan/${selectedPlanId}`);
+    } else {
+      // 여행별 대표 마커 → point.id가 plan.id
+      navigate(`/plan/${point.id}`);
     }
   };
 

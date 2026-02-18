@@ -23,6 +23,7 @@ export interface MapPoint {
   place?: string;
   date: string;
   order: number;
+  label?: string; // 텍스트 라벨 (숫자 대신 표시)
 }
 
 interface TravelMapProps {
@@ -61,6 +62,34 @@ function createNumberedIcon(number: number, color: string): L.DivIcon {
     `,
     iconSize: [28, 28],
     iconAnchor: [14, 14],
+    popupAnchor: [0, -14],
+  });
+}
+
+// 텍스트 라벨 마커 (여행 제목용)
+function createLabelIcon(label: string, color: string): L.DivIcon {
+  const maxLen = 8;
+  const display = label.length > maxLen ? label.slice(0, maxLen) + '…' : label;
+  return L.divIcon({
+    className: 'custom-marker',
+    html: `
+      <div style="
+        background-color: ${color};
+        color: white;
+        padding: 4px 8px;
+        border-radius: 12px;
+        white-space: nowrap;
+        font-weight: bold;
+        font-size: 11px;
+        border: 2px solid white;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      ">${display}</div>
+    `,
+    iconSize: [0, 0],
+    iconAnchor: [0, 14],
     popupAnchor: [0, -14],
   });
 }
@@ -125,7 +154,9 @@ export function TravelMap({
     sortedPoints.forEach((point, index) => {
       const dayIndex = uniqueDates.indexOf(point.date);
       const color = getColorForDay(dayIndex, totalDays);
-      const icon = createNumberedIcon(index + 1, color);
+      const icon = point.label
+        ? createLabelIcon(point.label, color)
+        : createNumberedIcon(index + 1, color);
 
       const marker = L.marker([point.lat, point.lng], { icon })
         .addTo(map)
