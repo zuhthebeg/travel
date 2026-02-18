@@ -38,7 +38,7 @@ export default function ForkButton({ planId, onForked }: ForkButtonProps) {
       {isLoading ? (
         <span className="loading loading-spinner loading-xs" />
       ) : (
-        '📋 이 계획 복제하기'
+        '📋 내 여행으로 가져오기'
       )}
     </Button>
   );

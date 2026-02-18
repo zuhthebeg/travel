@@ -635,6 +635,8 @@ export function PlanDetailPage() {
 
   const days = getDaysDifference(selectedPlan.start_date, selectedPlan.end_date);
   const isOwner = currentUser?.id === selectedPlan.user_id;
+  const isLoggedIn = !!currentUser;
+  const canEditPlan = isOwner;
   const canUseAssistant = !!currentUser && (isOwner || selectedPlan.visibility !== 'private');
 
   const handleCopyShareLink = async () => {
@@ -776,12 +778,7 @@ export function PlanDetailPage() {
                 <div className="w-full sm:w-auto">
                   <MemberAvatars planId={selectedPlan.id} isOwner={isOwner} />
                 </div>
-                {!isOwner && currentUser && (
-                  <ForkButton
-                    planId={selectedPlan.id}
-                    onForked={(newPlan) => navigate(`/plans/${newPlan.id}`)}
-                  />
-                )}
+                {/* 비소유자 안내 배너는 본문 상단에서 표시 */}
               </div>
             </div>
             <div className="flex gap-1 flex-shrink-0">
@@ -819,6 +816,29 @@ export function PlanDetailPage() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 pb-32">
+
+        {!isOwner && !isLoggedIn && (
+          <div className="alert alert-info mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full">
+              <span>이 여행이 마음에 드시나요? 로그인하면 내 여행으로 가져올 수 있어요</span>
+              <Button size="sm" variant="primary" onClick={() => navigate('/login')}>
+                로그인
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {!isOwner && isLoggedIn && (
+          <div className="alert alert-success mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full">
+              <span>이 여행이 마음에 드시나요? 내 여행으로 가져와서 자유롭게 수정해보세요.</span>
+              <ForkButton
+                planId={selectedPlan.id}
+                onForked={(newPlan) => navigate(`/plans/${newPlan.id}`)}
+              />
+            </div>
+          </div>
+        )}
 
         {/* 여행 동선 지도 (좌표가 있는 일정이 있을 때만 표시) */}
         {(() => {
@@ -875,7 +895,7 @@ export function PlanDetailPage() {
                       className="mt-2"
                     />
                     {/* 좌표 상태 + 보정 UI */}
-                    {(() => {
+                    {canEditPlan && (() => {
                       const withCoords = schedules.filter(s => s.latitude && s.longitude).length;
                       const missingCoords = schedules.filter(s => s.place && s.place.trim() && (!s.latitude || !s.longitude));
 
@@ -1087,13 +1107,15 @@ export function PlanDetailPage() {
                   <a className={`tab ${viewMode === 'horizontal' ? 'tab-active' : ''}`} onClick={() => setViewMode('horizontal')}>타임라인</a>
                   <a className={`tab ${viewMode === 'calendar' ? 'tab-active' : ''}`} onClick={() => setViewMode('calendar')}>📅</a>
                 </div>
-                <Button variant="primary" onClick={() => setEditingSchedule({} as Schedule)}>
-                  일정 추가
-                </Button>
+                {canEditPlan && (
+                  <Button variant="primary" onClick={() => setEditingSchedule({} as Schedule)}>
+                    일정 추가
+                  </Button>
+                )}
               </div>
             </div>
 
-            <DragDropContext onDragEnd={onDragEnd}>
+            {canEditPlan ? <DragDropContext onDragEnd={onDragEnd}>
           {schedules.length === 0 ? (
             <Card>
               <Card.Body className="text-center py-12" centered>
@@ -1180,7 +1202,59 @@ export function PlanDetailPage() {
               </div>
             </div>
           )}
-        </DragDropContext>
+        </DragDropContext> : <div className="space-y-4">
+          {schedules.length === 0 ? (
+            <Card>
+              <Card.Body className="text-center py-12" centered>
+                <p className="text-lg">아직 일정이 없습니다</p>
+              </Card.Body>
+            </Card>
+          ) : viewMode === 'calendar' ? (
+            <div className="card bg-base-100 shadow-sm p-4">
+              <CalendarView
+                schedules={schedules}
+                startDate={selectedPlan.start_date}
+                endDate={selectedPlan.end_date}
+                onScheduleClick={(s) => setViewingSchedule(s)}
+              />
+            </div>
+          ) : viewMode === 'vertical' ? (
+            <div className="space-y-4">
+              {schedules.map((schedule) => (
+                <div key={schedule.id} data-schedule-id={schedule.id}>
+                  <ScheduleCard
+                    schedule={schedule}
+                    onEdit={setEditingSchedule}
+                    onDelete={handleDeleteSchedule}
+                    onView={setViewingSchedule}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div ref={horizontalTimelineRef} onScroll={handleHorizontalTimelineScroll} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} className="overflow-x-auto pb-4 cursor-grab">
+              <div className="flex gap-6" style={{ minWidth: 'min-content' }}>
+                {Object.entries(groupedSchedules).map(([date, schedulesForDate]) => (
+                  <div key={date} className="flex-shrink-0" style={{ width: '320px' }}>
+                    <h3 className="text-base font-bold mb-3 sticky top-0 bg-base-200 py-2 z-5">{formatDisplayDate(date)}</h3>
+                    <div className="space-y-3 overflow-hidden">
+                      {schedulesForDate.map((schedule) => (
+                        <div key={schedule.id} data-schedule-id={schedule.id} className="w-full">
+                          <ScheduleCard
+                            schedule={schedule}
+                            onEdit={setEditingSchedule}
+                            onDelete={handleDeleteSchedule}
+                            onView={setViewingSchedule}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>}
           </>
         )}
 
@@ -1202,6 +1276,9 @@ export function PlanDetailPage() {
               setSchedules(updatedSchedules);
               setViewingSchedule({ ...viewingSchedule, ...updates });
             }}
+            canEdit={canEditPlan}
+            isLoggedIn={isLoggedIn}
+            onLogin={() => navigate('/login')}
             userLocation={userLocation}
             planRegion={selectedPlan.region}
           />
@@ -1222,67 +1299,69 @@ export function PlanDetailPage() {
         )}
 
         {/* 일정 추가/수정 폼 모달 */}
-        <ScheduleFormModal
-          key={editingSchedule?.id}
-          modalRef={editModalRef}
-          planId={selectedPlan.id}
-          planTitle={selectedPlan.title}
-          planRegion={selectedPlan.region}
-          planStartDate={selectedPlan.start_date}
-          planEndDate={selectedPlan.end_date}
-          schedule={editingSchedule}
-          onClose={() => setEditingSchedule(null)}
-          onSave={async (schedule) => {
-            if (editingSchedule?.id) {
-              // Update existing schedule and sort
-              const updatedSchedules = schedules.map((s) => (s.id === schedule.id ? schedule : s));
-              setSchedules(sortSchedulesByDateTime(updatedSchedules));
-            } else {
-              // Add new schedule and sort
-              const newSchedules = sortSchedulesByDateTime([...schedules, schedule]);
-              setSchedules(newSchedules);
+        {canEditPlan && (
+          <ScheduleFormModal
+            key={editingSchedule?.id}
+            modalRef={editModalRef}
+            planId={selectedPlan.id}
+            planTitle={selectedPlan.title}
+            planRegion={selectedPlan.region}
+            planStartDate={selectedPlan.start_date}
+            planEndDate={selectedPlan.end_date}
+            schedule={editingSchedule}
+            onClose={() => setEditingSchedule(null)}
+            onSave={async (schedule) => {
+              if (editingSchedule?.id) {
+                // Update existing schedule and sort
+                const updatedSchedules = schedules.map((s) => (s.id === schedule.id ? schedule : s));
+                setSchedules(sortSchedulesByDateTime(updatedSchedules));
+              } else {
+                // Add new schedule and sort
+                const newSchedules = sortSchedulesByDateTime([...schedules, schedule]);
+                setSchedules(newSchedules);
 
-              // Check if schedule date is outside plan range and update plan dates
-              const scheduleDate = new Date(schedule.date);
-              const planStart = new Date(selectedPlan.start_date);
-              const planEnd = new Date(selectedPlan.end_date);
+                // Check if schedule date is outside plan range and update plan dates
+                const scheduleDate = new Date(schedule.date);
+                const planStart = new Date(selectedPlan.start_date);
+                const planEnd = new Date(selectedPlan.end_date);
 
-              let needsUpdate = false;
-              let newStartDate = selectedPlan.start_date;
-              let newEndDate = selectedPlan.end_date;
+                let needsUpdate = false;
+                let newStartDate = selectedPlan.start_date;
+                let newEndDate = selectedPlan.end_date;
 
-              if (scheduleDate < planStart) {
-                newStartDate = schedule.date;
-                needsUpdate = true;
-              }
-              if (scheduleDate > planEnd) {
-                newEndDate = schedule.date;
-                needsUpdate = true;
-              }
-
-              if (needsUpdate) {
-                try {
-                  const updatedPlan = await plansAPI.update(selectedPlan.id, {
-                    start_date: newStartDate,
-                    end_date: newEndDate,
-                  });
-                  setSelectedPlan(updatedPlan);
-                } catch (error) {
-                  console.error('Failed to update plan dates:', error);
+                if (scheduleDate < planStart) {
+                  newStartDate = schedule.date;
+                  needsUpdate = true;
                 }
-              }
-
-              // Scroll to the newly added schedule after a short delay
-              setTimeout(() => {
-                const scheduleElement = document.querySelector(`[data-schedule-id="${schedule.id}"]`);
-                if (scheduleElement) {
-                  scheduleElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                if (scheduleDate > planEnd) {
+                  newEndDate = schedule.date;
+                  needsUpdate = true;
                 }
-              }, 100);
-            }
-            setEditingSchedule(null);
-          }}
-        />
+
+                if (needsUpdate) {
+                  try {
+                    const updatedPlan = await plansAPI.update(selectedPlan.id, {
+                      start_date: newStartDate,
+                      end_date: newEndDate,
+                    });
+                    setSelectedPlan(updatedPlan);
+                  } catch (error) {
+                    console.error('Failed to update plan dates:', error);
+                  }
+                }
+
+                // Scroll to the newly added schedule after a short delay
+                setTimeout(() => {
+                  const scheduleElement = document.querySelector(`[data-schedule-id="${schedule.id}"]`);
+                  if (scheduleElement) {
+                    scheduleElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
+                }, 100);
+              }
+              setEditingSchedule(null);
+            }}
+          />
+        )}
 
         {/* AI 비서 FAB (오너 + 공유 멤버) */}
         {canUseAssistant && selectedPlan && !showChatbot && (
@@ -1885,11 +1964,14 @@ interface ScheduleDetailModalProps {
   onEdit: () => void;
   onDelete: (id: number) => void;
   onUpdate: (id: number, updates: Partial<Schedule>) => void;
+  canEdit: boolean;
+  isLoggedIn: boolean;
+  onLogin: () => void;
   userLocation?: { lat: number; lng: number; city?: string } | null;
   planRegion?: string | null;
 }
 
-function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, onUpdate, userLocation, planRegion }: ScheduleDetailModalProps) {
+function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, onUpdate, canEdit, isLoggedIn, onLogin, userLocation, planRegion }: ScheduleDetailModalProps) {
   // Tab state
   const [detailTab, setDetailTab] = useState<'moments' | 'comments'>('moments');
 
@@ -2075,7 +2157,7 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
             <MapPin className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
             <div className="flex-1">
               <div className="font-semibold text-sm text-base-content/70 mb-1">장소</div>
-              {editingPlace ? (
+              {canEdit && editingPlace ? (
                 <>
                   <div className="flex items-center gap-2">
                     <PlaceAutocomplete
@@ -2148,13 +2230,15 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
                     ) : (
                       <span className="text-base-content/40 text-sm">장소 없음</span>
                     )}
-                    <button
-                      onClick={() => setEditingPlace(true)}
-                      className="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity"
-                      title="장소 수정"
-                    >
-                      ✏️
-                    </button>
+                    {canEdit && (
+                      <button
+                        onClick={() => setEditingPlace(true)}
+                        className="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity"
+                        title="장소 수정"
+                      >
+                        ✏️
+                      </button>
+                    )}
                   </div>
                   {schedule.latitude && schedule.longitude && (
                     <div className="mt-2 rounded-lg overflow-hidden border border-base-300">
@@ -2244,32 +2328,41 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
             {detailTab === 'comments' && (
               <div className="pt-4 space-y-4">
                 {/* Comment Form */}
-                <div className="bg-base-200 p-4 rounded-lg space-y-3">
-                  <input
-                    type="text"
-                    value={authorName}
-                    onChange={(e) => setAuthorName(e.target.value)}
-                    placeholder="이름 (선택, 비워두면 익명)"
-                    className="input input-bordered input-sm w-full max-w-xs"
-                  />
-                  <textarea
-                    value={commentContent}
-                    onChange={(e) => setCommentContent(e.target.value)}
-                    placeholder="댓글을 입력하세요..."
-                    rows={2}
-                    className="textarea textarea-bordered w-full"
-                  />
-                  <div className="flex justify-end">
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      onClick={handleSubmitComment}
-                      disabled={isSubmittingComment || !commentContent.trim()}
-                    >
-                      {isSubmittingComment ? '작성 중...' : '댓글 작성'}
-                    </Button>
+                {isLoggedIn ? (
+                  <div className="bg-base-200 p-4 rounded-lg space-y-3">
+                    <input
+                      type="text"
+                      value={authorName}
+                      onChange={(e) => setAuthorName(e.target.value)}
+                      placeholder="이름 (선택, 비워두면 익명)"
+                      className="input input-bordered input-sm w-full max-w-xs"
+                    />
+                    <textarea
+                      value={commentContent}
+                      onChange={(e) => setCommentContent(e.target.value)}
+                      placeholder="댓글을 입력하세요..."
+                      rows={2}
+                      className="textarea textarea-bordered w-full"
+                    />
+                    <div className="flex justify-end">
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={handleSubmitComment}
+                        disabled={isSubmittingComment || !commentContent.trim()}
+                      >
+                        {isSubmittingComment ? '작성 중...' : '댓글 작성'}
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="alert alert-info">
+                    <div className="flex items-center justify-between gap-3 w-full">
+                      <span>댓글을 작성하려면 로그인해주세요.</span>
+                      <Button size="sm" variant="primary" onClick={onLogin}>로그인</Button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Comments List */}
                 {isLoadingComments ? (
@@ -2308,19 +2401,21 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
           </div>
         </div>
 
-        <div className="modal-action">
-          <Button variant="error" onClick={() => {
-            if (confirm('이 일정을 삭제하시겠습니까?')) {
-              onDelete(schedule.id);
-              onClose();
-            }
-          }}>
-            삭제
-          </Button>
-          <Button variant="primary" onClick={onEdit}>
-            편집
-          </Button>
-        </div>
+        {canEdit && (
+          <div className="modal-action">
+            <Button variant="error" onClick={() => {
+              if (confirm('이 일정을 삭제하시겠습니까?')) {
+                onDelete(schedule.id);
+                onClose();
+              }
+            }}>
+              삭제
+            </Button>
+            <Button variant="primary" onClick={onEdit}>
+              편집
+            </Button>
+          </div>
+        )}
       </div>
     </dialog>
   );
