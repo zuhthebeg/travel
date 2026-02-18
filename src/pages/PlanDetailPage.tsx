@@ -1536,6 +1536,12 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
     try {
       let { latitude, longitude } = formData;
 
+      // place가 비면 좌표도 제거
+      if (!formData.place || !formData.place.trim()) {
+        latitude = null as any;
+        longitude = null as any;
+      }
+
       // 장소가 변경됐는데 좌표가 없으면 geocode 시도
       if (formData.place && !latitude && !longitude) {
         try {
@@ -1560,8 +1566,8 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
             memo: formData.memo || undefined,
             plan_b: formData.plan_b || undefined,
             plan_c: formData.plan_c || undefined,
-            latitude: latitude ?? undefined,
-            longitude: longitude ?? undefined,
+            latitude: latitude !== undefined ? latitude : undefined,
+            longitude: longitude !== undefined ? longitude : undefined,
           })
         : await schedulesAPI.create({
             plan_id: planId,
@@ -1881,7 +1887,12 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
     setSavingPlace(true);
     try {
       const updates: Record<string, any> = { place: placeValue || null };
-      if (pendingCoords) {
+      if (!placeValue || !placeValue.trim()) {
+        // place 비우면 좌표도 제거
+        updates.lat = null;
+        updates.lng = null;
+        updates.country_code = null;
+      } else if (pendingCoords) {
         updates.lat = pendingCoords.lat;
         updates.lng = pendingCoords.lng;
         if (pendingCoords.countryCode) updates.country_code = pendingCoords.countryCode;

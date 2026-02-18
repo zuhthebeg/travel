@@ -61,6 +61,15 @@ export async function onRequestPut(context: {
     if (body.place !== undefined) {
       updates.push('place = ?');
       values.push(body.place);
+      // place가 비면 좌표도 같이 제거
+      if (!body.place || !body.place.trim()) {
+        updates.push('latitude = ?');
+        values.push(null);
+        updates.push('longitude = ?');
+        values.push(null);
+        updates.push('country_code = ?');
+        values.push(null);
+      }
     }
     if (body.memo !== undefined) {
       updates.push('memo = ?');
