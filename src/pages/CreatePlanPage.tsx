@@ -274,26 +274,11 @@ export function CreatePlanPage() {
 
       let createdSchedulesCount = 0;
       if (schedules && schedules.length > 0) {
-        // 일별 대표 좌표: 각 날짜의 첫 번째 장소만 geocode (rate limit 고려)
-        const dailyCoords = new Map<string, { lat: number; lng: number }>();
-        const datesWithPlace = new Map<string, string>();
-        for (const s of schedules) {
-          if (s.date && s.place && !datesWithPlace.has(s.date)) {
-            datesWithPlace.set(s.date, s.place);
-          }
-        }
-        for (const [date, place] of datesWithPlace) {
-          if (region) {
-            const coords = await geocodeRegion(`${place}, ${region}`);
-            if (coords) dailyCoords.set(date, coords);
-          }
-        }
-
+        // 심플: 여행 지역 좌표 하나로 전체 적용. 정확한 좌표는 보정 버튼으로.
         setProgressInfo({ current: 0, total: schedules.length });
         for (const schedule of schedules) {
           try {
-            // 해당 날짜의 대표 좌표 사용 (개별 geocode 안 함)
-            const finalCoords = dailyCoords.get(schedule.date) || regionCoords;
+            const finalCoords = regionCoords;
 
             await schedulesAPI.create({
               plan_id: newPlan.id,

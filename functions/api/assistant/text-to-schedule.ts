@@ -168,7 +168,7 @@ ${text}
 
   const parsed = JSON.parse(reply);
 
-  // Geocode: Nominatim (with country filter) → Photon (with country preference)
+  // Geocode: Nominatim (country filter) → Photon (country preference) → 실패하면 좌표 비움
   const placeName = parsed.place_en || parsed.place || '';
   if (placeName && !isGenericPlace(parsed.place || '')) {
     const countryCode = getCountryCode(planRegion || '');
@@ -176,7 +176,7 @@ ${text}
     
     let coords: GeoResult | null = null;
     
-    // 1차: Nominatim with country filter (most accurate)
+    // 1차: Nominatim with country filter
     if (countryCode) {
       coords = await geocodeNominatim(placeName, countryCode);
     }
@@ -184,22 +184,20 @@ ${text}
     // 2차: Photon with country preference
     if (!coords) {
       coords = await geocodePhoton(query, countryCode || undefined);
-      // Reject if result is in wrong country
+      // 다른 나라 결과면 reject — 잘못된 좌표보다 없는 게 나음
       if (coords && countryCode && coords.countryCode &&
           coords.countryCode.toLowerCase() !== countryCode.toLowerCase()) {
         coords = null;
       }
     }
     
+    // 좌표 찾았을 때만 저장 (실패하면 비워둠)
     if (coords) {
       parsed.lat = coords.lat;
       parsed.lng = coords.lng;
-      if (coords.countryCode) {
-        parsed.country_code = coords.countryCode;
-      } else if (countryCode) {
-        parsed.country_code = countryCode.toUpperCase();
-      }
+      parsed.country_code = coords.countryCode?.toUpperCase() || countryCode?.toUpperCase() || undefined;
     }
+    // else: lat/lng 없이 반환 → 보정 버튼으로 나중에 처리
   }
 
   // Clean up internal field
