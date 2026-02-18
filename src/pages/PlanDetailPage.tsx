@@ -34,6 +34,32 @@ import type { OpLogEntry } from '../lib/offline/types';
 type ViewMode = 'vertical' | 'horizontal' | 'calendar';
 type MainTab = 'schedule' | 'notes' | 'album';
 
+// AI 처리 중 롤링 팁
+const AI_TIPS = [
+  '💡 등록 후 시간을 정확한 예약에 맞춰 수정할 수 있어요',
+  '📍 좌표가 틀리면 장소명 수정 후 좌표 보정 버튼을 눌러주세요',
+  '🤖 AI 비서에게 "일정 하루 미뤄줘"라고 요청해보세요',
+  '🔄 일정을 드래그해서 날짜를 쉽게 변경할 수 있어요',
+  '📋 플랜 B, C도 등록해두면 현지에서 유연하게 대응할 수 있어요',
+];
+
+function AIProcessingTip() {
+  const [idx, setIdx] = useState(0);
+  const [fade, setFade] = useState(true);
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setFade(false);
+      setTimeout(() => { setIdx(i => (i + 1) % AI_TIPS.length); setFade(true); }, 300);
+    }, 3000);
+    return () => clearInterval(iv);
+  }, []);
+  return (
+    <p className={`text-xs text-base-content/60 text-center mt-2 transition-opacity duration-300 ${fade ? 'opacity-100' : 'opacity-0'}`}>
+      {AI_TIPS[idx]}
+    </p>
+  );
+}
+
 interface PlanUIState {
   mapOpen: boolean;
   mainTab: MainTab;
@@ -1642,6 +1668,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
                 {isAIProcessing ? <Loading /> : <><Sparkles className="w-4 h-4" /> 생성</>}
               </Button>
             </div>
+            {isAIProcessing && <AIProcessingTip />}
           </div>
 
           <div className="divider text-xs text-base-content/50">또는 직접 입력</div>

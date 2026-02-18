@@ -20,6 +20,23 @@ import LevelCard from '../components/LevelCard';
 
 interface PlanWithSchedules extends Plan {
   schedules?: Schedule[];
+  _countryCode?: string | null;
+}
+
+const COUNTRY_NAMES: Record<string, string> = {
+  KR: '\uD55C\uAD6D', JP: '\uC77C\uBCF8', US: '\uBBF8\uAD6D', FR: '\uD504\uB791\uC2A4', GB: '\uC601\uAD6D',
+  IT: '\uC774\uD0C8\uB9AC\uC544', ES: '\uC2A4\uD398\uC778', DE: '\uB3C5\uC77C', CH: '\uC2A4\uC704\uC2A4',
+  TH: '\uD0DC\uAD6D', SG: '\uC2F1\uAC00\uD3EC\uB974', VN: '\uBCA0\uD2B8\uB0A8', HK: '\uD64D\uCF69', TW: '\uB300\uB9CC',
+  ID: '\uC778\uB3C4\uB124\uC2DC\uC544', AU: '\uD638\uC8FC', NZ: '\uB274\uC9C8\uB79C\uB4DC', CN: '\uC911\uAD6D',
+  MY: '\uB9D0\uB808\uC774\uC2DC\uC544', PH: '\uD544\uB9AC\uD540', IN: '\uC778\uB3C4', TR: '\uD130\uD0A4', GR: '\uADF8\uB9AC\uC2A4', PT: '\uD3EC\uB974\uD22C\uAC08',
+};
+
+function getPlanCountry(plan: PlanWithSchedules): { code: string; name: string } | null {
+  if (plan._countryCode) {
+    const code = plan._countryCode.toUpperCase();
+    return { code, name: COUNTRY_NAMES[code] || code };
+  }
+  return extractCountryFromRegion(plan.region);
 }
 
 export function MainPage() {
@@ -82,9 +99,10 @@ export function MainPage() {
         publicPlans.map(async (plan) => {
           try {
             const schedules = await schedulesAPI.getByPlanId(plan.id);
-            return { ...plan, schedules };
+            const detectedCC = schedules.map(s => (s as any).country_code).find((cc: any) => cc);
+            return { ...plan, schedules, _countryCode: detectedCC?.toUpperCase() || null };
           } catch {
-            return { ...plan, schedules: [] };
+            return { ...plan, schedules: [], _countryCode: null };
           }
         })
       );
@@ -167,7 +185,7 @@ export function MainPage() {
       if (selectedPlanId) return; // 다른 여행은 스킵
       
       // 국가 필터 적용
-      const countryInfo = extractCountryFromRegion(plan.region);
+      const countryInfo = getPlanCountry(plan);
       if (countryInfo && !selectedCountries.has(countryInfo.code)) return;
       
       // 여행별 대표 좌표 1개 (첫 번째 유효 스케줄)
@@ -202,7 +220,7 @@ export function MainPage() {
     const stats = new Map<string, { code: string; count: number; flag: string; name: string }>();
     
     plansWithSchedules.forEach((plan) => {
-      const countryInfo = extractCountryFromRegion(plan.region);
+      const countryInfo = getPlanCountry(plan);
       if (countryInfo) {
         const existing = stats.get(countryInfo.code) || { 
           code: countryInfo.code,
@@ -244,7 +262,7 @@ export function MainPage() {
     const seenRegions = new Set<string>();
     
     filteredPlansByTime.forEach((plan) => {
-      const countryInfo = extractCountryFromRegion(plan.region);
+      const countryInfo = getPlanCountry(plan);
       if (!countryInfo || !selectedCountries.has(countryInfo.code)) return;
       
       // 지역당 하나의 포인트만

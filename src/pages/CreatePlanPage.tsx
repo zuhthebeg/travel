@@ -15,6 +15,43 @@ interface Message {
   content: string;
 }
 
+// AI 분석 중 롤링 팁
+const LOADING_TIPS = [
+  '💡 일정이 등록되면 정확한 예약에 맞춰 시간을 수정할 수 있어요',
+  '🗺️ 장소를 검색하면 자동으로 지도에 핀이 찍혀요',
+  '🤖 AI 비서에게 "일정 하루 미뤄줘"라고 요청해보세요',
+  '📍 좌표가 틀리면 장소명을 수정하고 좌표 보정 버튼을 눌러주세요',
+  '👥 친구를 초대하면 함께 일정을 편집할 수 있어요',
+  '📸 여행 후 사진을 추가하면 앨범이 자동으로 만들어져요',
+  '🔄 일정을 드래그해서 날짜를 쉽게 변경할 수 있어요',
+  '⭐ 방문한 장소에 별점을 남기면 다른 여행자에게 도움이 돼요',
+  '📋 플랜 B, C도 등록해두면 현지에서 유연하게 대응할 수 있어요',
+  '🌐 여행을 공개하면 다른 사람들이 참고할 수 있어요',
+];
+
+function RollingTips() {
+  const [tipIndex, setTipIndex] = useState(0);
+  const [fade, setFade] = useState(true);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFade(false);
+      setTimeout(() => {
+        setTipIndex(i => (i + 1) % LOADING_TIPS.length);
+        setFade(true);
+      }, 300);
+    }, 3500);
+    return () => clearInterval(interval);
+  }, []);
+  return (
+    <p
+      className={`text-sm text-base-content/60 text-center mt-2 transition-opacity duration-300 ${fade ? 'opacity-100' : 'opacity-0'}`}
+      style={{ minHeight: '2.5em' }}
+    >
+      {LOADING_TIPS[tipIndex]}
+    </p>
+  );
+}
+
 // 예시 질의 목록
 const EXAMPLE_QUERIES = [
   '3시간 거리 혼자 갈만한 여행지 추천해줘',
@@ -454,6 +491,7 @@ ${text}`;
                 <p className="font-medium">
                   {isGenerating ? 'AI가 일정을 분석 중...' : isUploading ? '업로드 중...' : '처리 중...'}
                 </p>
+                {isGenerating && <RollingTips />}
               </div>
             )}
           </div>
