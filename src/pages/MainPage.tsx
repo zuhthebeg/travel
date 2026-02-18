@@ -97,22 +97,40 @@ export function MainPage() {
     }
   };
 
-  // 최신순 정렬 및 10개 제한
+  // 최신순 정렬 (리스트 표시용 10개 제한)
   const sortedPlans = useMemo(() => {
     return [...plansWithSchedules]
       .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
       .slice(0, 10);
   }, [plansWithSchedules]);
 
-  // 시간 필터링된 여행 (슬라이더 기준 ±30일 범위)
+  // 지도용: 오늘 기준 앞뒤 6개월 여행 (최대 100개, 클라이언트 필터링)
+  const mapPlans = useMemo(() => {
+    const now = new Date();
+    const sixMonthsAgo = new Date(now);
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const sixMonthsLater = new Date(now);
+    sixMonthsLater.setMonth(sixMonthsLater.getMonth() + 6);
+    
+    return plansWithSchedules
+      .filter(plan => {
+        const start = new Date(plan.start_date);
+        const end = new Date(plan.end_date);
+        // 여행 기간이 앞뒤 6개월 범위와 겹치면 포함
+        return !(end < sixMonthsAgo || start > sixMonthsLater);
+      })
+      .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
+      .slice(0, 100);
+  }, [plansWithSchedules]);
+
+  // 시간 필터링된 여행 (슬라이더 기준 ±30일 범위, 지도용 풀 데이터 기반)
   const filteredPlansByTime = useMemo(() => {
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + timeOffset);
     
-    return sortedPlans.filter((plan) => {
+    return mapPlans.filter((plan) => {
       const start = new Date(plan.start_date);
       const end = new Date(plan.end_date);
-      // 여행 기간이 타겟 날짜 ±30일 범위와 겹치는지 확인
       const rangeStart = new Date(targetDate);
       rangeStart.setDate(rangeStart.getDate() - 30);
       const rangeEnd = new Date(targetDate);
@@ -120,7 +138,7 @@ export function MainPage() {
       
       return !(end < rangeStart || start > rangeEnd);
     });
-  }, [sortedPlans, timeOffset]);
+  }, [mapPlans, timeOffset]);
 
   // 지도 포인트 생성 (시간 필터링 적용)
   const allMapPoints = useMemo((): MapPoint[] => {

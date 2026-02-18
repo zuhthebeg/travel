@@ -72,6 +72,16 @@ const COUNTRY_MAPPINGS: Record<string, { code: string; name: string }> = {
   '강릉': { code: 'KR', name: '한국' },
   '인천': { code: 'KR', name: '한국' },
   '한국': { code: 'KR', name: '한국' },
+  '춘천': { code: 'KR', name: '한국' },
+  '속초': { code: 'KR', name: '한국' },
+  '여수': { code: 'KR', name: '한국' },
+  '통영': { code: 'KR', name: '한국' },
+  '대구': { code: 'KR', name: '한국' },
+  '대전': { code: 'KR', name: '한국' },
+  '광주': { code: 'KR', name: '한국' },
+  '평창': { code: 'KR', name: '한국' },
+  '가평': { code: 'KR', name: '한국' },
+  '강원': { code: 'KR', name: '한국' },
   
   // 일본
   '도쿄': { code: 'JP', name: '일본' },
@@ -95,6 +105,7 @@ const COUNTRY_MAPPINGS: Record<string, { code: string; name: string }> = {
   '라스베이거스': { code: 'US', name: '미국' },
   '시애틀': { code: 'US', name: '미국' },
   '미국': { code: 'US', name: '미국' },
+  '그랜드캐니언': { code: 'US', name: '미국' },
   
   // 유럽
   '파리': { code: 'FR', name: '프랑스' },
