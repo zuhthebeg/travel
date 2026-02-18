@@ -2358,7 +2358,7 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
                   <div className="alert alert-info">
                     <div className="flex items-center justify-between gap-3 w-full">
                       <span>댓글을 작성하려면 로그인해주세요.</span>
-                      <Button size="sm" variant="primary" onClick={onLogin}>로그인</Button>
+                      <GoogleLoginButton onSuccess={() => window.location.reload()} />
                     </div>
                   </div>
                 )}
