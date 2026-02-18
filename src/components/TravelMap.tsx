@@ -68,7 +68,7 @@ function createNumberedIcon(number: number, color: string): L.DivIcon {
 
 // 텍스트 라벨 마커 (여행 제목용)
 function createLabelIcon(label: string, color: string): L.DivIcon {
-  const maxLen = 8;
+  const maxLen = 10;
   const display = label.length > maxLen ? label.slice(0, maxLen) + '…' : label;
   return L.divIcon({
     className: 'custom-marker',
@@ -76,21 +76,22 @@ function createLabelIcon(label: string, color: string): L.DivIcon {
       <div style="
         background-color: ${color};
         color: white;
-        padding: 4px 8px;
-        border-radius: 12px;
+        padding: 6px 12px;
+        border-radius: 14px;
         white-space: nowrap;
         font-weight: bold;
-        font-size: 11px;
+        font-size: 13px;
         border: 2px solid white;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-        max-width: 120px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+        max-width: 160px;
         overflow: hidden;
         text-overflow: ellipsis;
+        line-height: 1.2;
       ">${display}</div>
     `,
     iconSize: [0, 0],
-    iconAnchor: [0, 14],
-    popupAnchor: [0, -14],
+    iconAnchor: [0, 16],
+    popupAnchor: [0, -16],
   });
 }
 

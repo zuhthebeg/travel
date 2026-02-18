@@ -240,10 +240,11 @@ export function MainPage() {
           id: plan.id,
           lat: scheduleWithCoords.latitude!,
           lng: scheduleWithCoords.longitude!,
-          title: `${getCountryFlag(countryInfo.code)} ${plan.region || '여행지'}`,
-          place: `${plan.title}`,
+          title: `${getCountryFlag(countryInfo.code)} ${plan.title}`,
+          place: plan.region,
           date: plan.start_date,
           order: 1,
+          label: plan.title,
         });
       }
     });
@@ -502,6 +503,54 @@ export function MainPage() {
                 <span>과거</span>
                 <span>|</span>
                 <span>미래</span>
+              </div>
+              {/* 월별/계절별 퀵 이동 */}
+              <div className="flex flex-wrap gap-1 mt-3">
+                {[
+                  { label: '🌸 봄', month: 4 },
+                  { label: '☀️ 여름', month: 7 },
+                  { label: '🍂 가을', month: 10 },
+                  { label: '❄️ 겨울', month: 1 },
+                ].map(({ label, month }) => {
+                  const now = new Date();
+                  const target = new Date(now.getFullYear(), month - 1, 15);
+                  // 과거 계절이면 다음 해로
+                  if (target < now) target.setFullYear(target.getFullYear() + 1);
+                  const diff = Math.round((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                  const inRange = Math.abs(diff) <= TIME_RANGE;
+                  return (
+                    <button
+                      key={label}
+                      className={`btn btn-xs ${inRange ? 'btn-outline btn-primary' : 'btn-disabled'}`}
+                      onClick={() => inRange && setTimeOffset(diff)}
+                      disabled={!inRange}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+                <span className="border-l border-base-300 mx-1" />
+                {(() => {
+                  const now = new Date();
+                  const buttons = [];
+                  for (let i = -3; i <= 3; i++) {
+                    if (i === 0) continue;
+                    const target = new Date(now.getFullYear(), now.getMonth() + i, 15);
+                    const diff = Math.round((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                    if (Math.abs(diff) > TIME_RANGE) continue;
+                    const monthName = target.toLocaleDateString('ko-KR', { month: 'short' });
+                    buttons.push(
+                      <button
+                        key={i}
+                        className="btn btn-xs btn-outline btn-ghost"
+                        onClick={() => setTimeOffset(diff)}
+                      >
+                        {monthName}
+                      </button>
+                    );
+                  }
+                  return buttons;
+                })()}
               </div>
             </div>
             )}
