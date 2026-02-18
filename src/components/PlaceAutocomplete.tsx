@@ -1,20 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
 import { MapPin, Search, Loader2 } from 'lucide-react';
 
-interface PhotonResult {
-  properties: {
-    name?: string;
-    street?: string;
+interface NominatimResult {
+  place_id: number;
+  display_name: string;
+  lat: string;
+  lon: string;
+  address?: {
     city?: string;
+    town?: string;
+    village?: string;
     state?: string;
     country?: string;
-    countrycode?: string;
-    osm_key?: string;
-    osm_value?: string;
+    country_code?: string;
   };
-  geometry: {
-    coordinates: [number, number]; // [lng, lat]
-  };
+  name?: string;
+  type?: string;
 }
 
 interface PlaceAutocompleteProps {
@@ -35,7 +36,7 @@ export function PlaceAutocomplete({
   regionHint = '',
 }: PlaceAutocompleteProps) {
   const [query, setQuery] = useState(value);
-  const [results, setResults] = useState<PhotonResult[]>([]);
+  const [results, setResults] = useState<NominatimResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -59,7 +60,7 @@ export function PlaceAutocomplete({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Search with debounce
+  // Search with debounce (Nominatim — supports Korean/CJK)
   const searchPlaces = async (searchQuery: string) => {
     if (!searchQuery || searchQuery.length < 2) {
       setResults([]);
@@ -68,17 +69,18 @@ export function PlaceAutocomplete({
 
     setIsLoading(true);
     try {
-      // Build Photon API URL — append region hint for accuracy
       const q = regionHint && !searchQuery.includes(regionHint)
         ? `${searchQuery}, ${regionHint}`
         : searchQuery;
-      let url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=7`;
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=7&addressdetails=1&accept-language=ko`;
       
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: { 'User-Agent': 'Travly/1.0 (https://travly.cocy.io)' },
+      });
       if (!response.ok) throw new Error('Search failed');
       
-      const data = await response.json();
-      setResults(data.features || []);
+      const data: NominatimResult[] = await response.json();
+      setResults(data);
       setIsOpen(true);
       setSelectedIndex(-1);
     } catch (error) {
@@ -103,22 +105,25 @@ export function PlaceAutocomplete({
     }, 300);
   };
 
-  const handleSelect = (result: PhotonResult) => {
-    const props = result.properties;
-    const [lng, lat] = result.geometry.coordinates;
+  const handleSelect = (result: NominatimResult) => {
+    const lat = parseFloat(result.lat);
+    const lng = parseFloat(result.lon);
+    const addr = result.address;
     
-    // Build display name
+    // Build concise display name
     const parts: string[] = [];
-    if (props.name) parts.push(props.name);
-    if (props.city && props.city !== props.name) parts.push(props.city);
-    if (props.state && props.state !== props.city) parts.push(props.state);
-    if (props.country) parts.push(props.country);
+    const name = result.display_name.split(',')[0]?.trim();
+    if (name) parts.push(name);
+    const city = addr?.city || addr?.town || addr?.village;
+    if (city && city !== name) parts.push(city);
+    if (addr?.country) parts.push(addr.country);
     
     const displayName = parts.join(', ');
+    const countryCode = addr?.country_code?.toUpperCase();
     
     setQuery(displayName);
     onChange(displayName);
-    onSelect({ name: displayName, lat, lng, countryCode: props.countrycode?.toUpperCase(), city: props.city || props.name });
+    onSelect({ name: displayName, lat, lng, countryCode, city: city || name || undefined });
     setIsOpen(false);
     setResults([]);
   };
@@ -147,15 +152,11 @@ export function PlaceAutocomplete({
     }
   };
 
-  const formatResultDisplay = (result: PhotonResult) => {
-    const props = result.properties;
-    const main = props.name || props.street || '알 수 없는 장소';
-    const sub: string[] = [];
-    if (props.city) sub.push(props.city);
-    if (props.state) sub.push(props.state);
-    if (props.country) sub.push(props.country);
-    
-    return { main, sub: sub.join(', ') };
+  const formatResultDisplay = (result: NominatimResult) => {
+    const parts = result.display_name.split(',').map(s => s.trim());
+    const main = parts[0] || '알 수 없는 장소';
+    const sub = parts.slice(1, 4).join(', ');
+    return { main, sub };
   };
 
   return (

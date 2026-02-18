@@ -947,6 +947,60 @@ export function PlanDetailPage() {
                             >
                               📍 좌표 보정
                             </button>
+                            <button
+                              onClick={async () => {
+                                const btn = document.activeElement as HTMLButtonElement;
+                                if (btn) { btn.disabled = true; btn.textContent = '🤖 AI 보정 중...'; }
+                                try {
+                                  // 1단계: AI에게 장소명 영문 번역 + 보정 요청
+                                  const schedulesWithPlace = schedules.filter(s => s.place && s.place.trim());
+                                  const places = schedulesWithPlace.map(s => ({ id: s.id, place: s.place, place_en: (s as any).place_en }));
+                                  
+                                  // OpenAI로 장소명 검증 + 영문 변환
+                                  const aiRes = await fetch('/api/assistant/verify-places', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ places, region: selectedPlan.region }),
+                                  });
+                                  
+                                  if (aiRes.ok) {
+                                    const aiData = await aiRes.json() as any;
+                                    // AI가 수정한 place_en 업데이트
+                                    if (aiData.corrections?.length > 0) {
+                                      for (const c of aiData.corrections) {
+                                        await fetch(`/api/schedules/${c.id}`, {
+                                          method: 'PUT',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ place_en: c.place_en }),
+                                        });
+                                      }
+                                    }
+                                  }
+                                  
+                                  // 2단계: 전체 좌표 보정 실행
+                                  const res = await fetch(`/api/plans/${selectedPlan.id}/geocode-schedules`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ mode: 'all' }),
+                                  });
+                                  const data = await res.json() as any;
+                                  // 스케줄 리로드
+                                  try {
+                                    const freshData = await plansAPI.getById(selectedPlan.id);
+                                    setSchedules(sortSchedulesByDateTime(freshData.schedules));
+                                  } catch {}
+                                  const failedItems = (data.results || []).filter((r: any) => r.status === 'not_found');
+                                  setGeocodeFailed(failedItems);
+                                  alert(`🤖 AI 좌표 보정 완료!\n✅ 보정: ${data.updated || 0}개\n❌ 실패: ${failedItems.length}개`);
+                                } catch {
+                                  alert('AI 좌표 보정 실패');
+                                }
+                                if (btn) { btn.disabled = false; btn.textContent = '🤖 AI 좌표 보정'; }
+                              }}
+                              className="btn btn-xs btn-secondary"
+                            >
+                              🤖 AI 좌표 보정
+                            </button>
                           </div>
 
                           {/* 보정 안내 메시지 */}
