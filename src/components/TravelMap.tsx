@@ -67,7 +67,7 @@ function createNumberedIcon(number: number, color: string): L.DivIcon {
 }
 
 // 텍스트 라벨 마커 (여행 제목용)
-function createLabelIcon(label: string, color: string): L.DivIcon {
+export function createLabelIcon(label: string, color: string): L.DivIcon {
   const maxLen = 10;
   const display = label.length > maxLen ? label.slice(0, maxLen) + '…' : label;
   return L.divIcon({

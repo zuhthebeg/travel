@@ -1767,8 +1767,8 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
             memo: formData.memo || undefined,
             plan_b: formData.plan_b || undefined,
             plan_c: formData.plan_c || undefined,
-            latitude: latitude !== undefined ? latitude : undefined,
-            longitude: longitude !== undefined ? longitude : undefined,
+            latitude: latitude != null ? latitude : undefined,
+            longitude: longitude != null ? longitude : undefined,
           })
         : await schedulesAPI.create({
             plan_id: planId,
@@ -2067,7 +2067,7 @@ interface ScheduleDetailModalProps {
   planRegion?: string | null;
 }
 
-function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, onUpdate, canEdit, isLoggedIn, onLogin, userLocation, planRegion }: ScheduleDetailModalProps) {
+function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, onUpdate, canEdit, isLoggedIn, onLogin: _onLogin, userLocation, planRegion }: ScheduleDetailModalProps) {
   // Tab state
   const [detailTab, setDetailTab] = useState<'moments' | 'comments'>('moments');
 

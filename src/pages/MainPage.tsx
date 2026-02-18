@@ -171,10 +171,10 @@ export function MainPage() {
           if (schedule.latitude && schedule.longitude) {
             points.push({
               id: schedule.id,
-              lat: schedule.latitude,
-              lng: schedule.longitude,
+              lat: schedule.latitude!,
+              lng: schedule.longitude!,
               title: schedule.title || schedule.place || '',
-              place: schedule.place,
+              place: schedule.place || undefined,
               date: schedule.date,
               order: schedule.order_index,
             });
@@ -194,10 +194,10 @@ export function MainPage() {
         const startMonth = plan.start_date ? new Date(plan.start_date).getMonth() + 1 : '';
         points.push({
           id: plan.id,
-          lat: firstWithCoords.latitude,
-          lng: firstWithCoords.longitude,
+          lat: firstWithCoords.latitude!,
+          lng: firstWithCoords.longitude!,
           title: `${getCountryFlag(countryInfo?.code)} ${plan.title}`,
-          place: plan.region,
+          place: plan.region || undefined,
           date: firstWithCoords.date,
           order: startMonth ? startMonth : 0,
           label: String(startMonth),
@@ -279,7 +279,7 @@ export function MainPage() {
           lat: scheduleWithCoords.latitude!,
           lng: scheduleWithCoords.longitude!,
           title: `${getCountryFlag(countryInfo.code)} ${plan.title}`,
-          place: plan.region,
+          place: plan.region || undefined,
           date: plan.start_date,
           order: startMonth ? startMonth : 1,
           label: String(startMonth),
@@ -540,7 +540,6 @@ export function MainPage() {
               <div className="flex justify-center gap-1 mt-2">
                 {(() => {
                   const now = new Date();
-                  const currentMonth = now.getMonth(); // 0-indexed
                   // 계절 중심 월: 봄3, 여름6, 가을9, 겨울0
                   const seasonDefs = [
                     { label: '🍂 가을', centerMonth: 9 },
