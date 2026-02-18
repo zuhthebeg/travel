@@ -155,6 +155,7 @@ export function MainPage() {
       // 여행별 대표 좌표 1개 (첫 번째 유효 스케줄)
       const firstWithCoords = plan.schedules.find(s => s.latitude && s.longitude);
       if (firstWithCoords) {
+        const startMonth = plan.start_date ? new Date(plan.start_date).getMonth() + 1 : '';
         points.push({
           id: plan.id,
           lat: firstWithCoords.latitude,
@@ -162,8 +163,8 @@ export function MainPage() {
           title: `${getCountryFlag(countryInfo?.code)} ${plan.title}`,
           place: plan.region,
           date: firstWithCoords.date,
-          order: 0,
-          label: plan.title,
+          order: startMonth ? startMonth : 0,
+          label: String(startMonth),
         });
       }
     });
@@ -236,6 +237,7 @@ export function MainPage() {
       const scheduleWithCoords = plan.schedules?.find(s => s.latitude && s.longitude);
       if (scheduleWithCoords) {
         seenRegions.add(regionKey);
+        const startMonth = plan.start_date ? new Date(plan.start_date).getMonth() + 1 : '';
         points.push({
           id: plan.id,
           lat: scheduleWithCoords.latitude!,
@@ -243,8 +245,8 @@ export function MainPage() {
           title: `${getCountryFlag(countryInfo.code)} ${plan.title}`,
           place: plan.region,
           date: plan.start_date,
-          order: 1,
-          label: plan.title,
+          order: startMonth ? startMonth : 1,
+          label: String(startMonth),
         });
       }
     });
@@ -498,25 +500,36 @@ export function MainPage() {
                   ▶
                 </button>
               </div>
-              {/* 계절 퀵 이동 — 오늘 기준 시간순 정렬 */}
+              {/* 계절 퀵 이동 — 과거~미래 상대 정렬 */}
               <div className="flex justify-center gap-1 mt-2">
                 {(() => {
                   const now = new Date();
-                  const seasons = [
-                    { label: '🌸 봄', month: 4 },
-                    { label: '☀️ 여름', month: 7 },
-                    { label: '🍂 가을', month: 10 },
-                    { label: '❄️ 겨울', month: 1 },
-                  ].map(s => {
-                    const target = new Date(now.getFullYear(), s.month - 1, 15);
-                    if (target < new Date(now.getFullYear(), now.getMonth(), now.getDate() - 15)) {
-                      target.setFullYear(target.getFullYear() + 1);
-                    }
-                    const diff = Math.round((target.getTime() - now.getTime()) / 86400000);
+                  const currentMonth = now.getMonth(); // 0-indexed
+                  // 계절 중심 월: 봄3, 여름6, 가을9, 겨울0
+                  const seasonDefs = [
+                    { label: '🍂 가을', centerMonth: 9 },
+                    { label: '❄️ 겨울', centerMonth: 0 },
+                    { label: '🌸 봄', centerMonth: 3 },
+                    { label: '☀️ 여름', centerMonth: 6 },
+                  ];
+                  // 과거 2계절 + 미래 2계절 기준으로 정렬
+                  const items = seasonDefs.map(s => {
+                    // 과거 방향: 현재 월보다 뒤면 작년
+                    const pastTarget = new Date(now.getFullYear(), s.centerMonth, 15);
+                    if (pastTarget > now) pastTarget.setFullYear(pastTarget.getFullYear() - 1);
+                    const pastDiff = Math.round((pastTarget.getTime() - now.getTime()) / 86400000);
+
+                    // 미래 방향: 현재 월보다 앞이면 올해, 아니면 내년
+                    const futureTarget = new Date(now.getFullYear(), s.centerMonth, 15);
+                    if (futureTarget <= now) futureTarget.setFullYear(futureTarget.getFullYear() + 1);
+                    const futureDiff = Math.round((futureTarget.getTime() - now.getTime()) / 86400000);
+
+                    // 가까운 쪽 선택
+                    const diff = Math.abs(pastDiff) < Math.abs(futureDiff) ? pastDiff : futureDiff;
                     return { ...s, diff, inRange: Math.abs(diff) <= TIME_RANGE };
                   }).sort((a, b) => a.diff - b.diff);
 
-                  return seasons.map(({ label, diff, inRange }) => (
+                  return items.map(({ label, diff, inRange }) => (
                     <button
                       key={label}
                       className={`btn btn-xs ${inRange ? 'btn-outline btn-primary' : 'btn-disabled opacity-40'}`}

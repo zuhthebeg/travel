@@ -156,7 +156,7 @@ export function TravelMap({
       const dayIndex = uniqueDates.indexOf(point.date);
       const color = getColorForDay(dayIndex, totalDays);
       const icon = point.label
-        ? createLabelIcon(point.label, color)
+        ? createNumberedIcon(parseInt(point.label) || (index + 1), color)
         : createNumberedIcon(index + 1, color);
 
       const marker = L.marker([point.lat, point.lng], { icon })
