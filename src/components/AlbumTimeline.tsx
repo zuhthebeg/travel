@@ -35,7 +35,11 @@ const API_BASE = import.meta.env.DEV ? 'http://localhost:8788' : '';
 
 type ViewType = 'timeline' | 'grid' | 'photos';
 
-export default function AlbumTimeline() {
+interface AlbumTimelineProps {
+  pastPlanIds?: Set<number>;
+}
+
+export default function AlbumTimeline({ pastPlanIds }: AlbumTimelineProps) {
   const { currentUser } = useStore();
   const navigate = useNavigate();
   const [moments, setMoments] = useState<TimelineMoment[]>([]);
@@ -82,18 +86,23 @@ export default function AlbumTimeline() {
     return <div className="text-center py-16"><span className="loading loading-spinner loading-md text-orange-500" /></div>;
   }
 
-  if (moments.length === 0) {
+  // 끝난 여행만 필터
+  const filteredMoments = pastPlanIds && pastPlanIds.size > 0
+    ? moments.filter(m => pastPlanIds.has(m.plan_id))
+    : moments;
+
+  if (filteredMoments.length === 0) {
     return (
       <div className="text-center py-16 text-base-content/50">
         <p className="text-4xl mb-3">📸</p>
-        <p className="text-lg mb-1">아직 기록이 없어요</p>
+        <p className="text-lg mb-1">{pastPlanIds ? '완료된 여행 기록이 없어요' : '아직 기록이 없어요'}</p>
         <p className="text-sm">여행 일정에서 순간을 남겨보세요</p>
       </div>
     );
   }
 
   // 여행별 그룹핑
-  const grouped = moments.reduce<Record<number, { plan: { id: number; title: string; region: string | null }; moments: TimelineMoment[] }>>((acc, m) => {
+  const grouped = filteredMoments.reduce<Record<number, { plan: { id: number; title: string; region: string | null }; moments: TimelineMoment[] }>>((acc, m) => {
     if (!acc[m.plan_id]) {
       acc[m.plan_id] = {
         plan: { id: m.plan_id, title: m.plan_title, region: m.plan_region },
@@ -105,13 +114,13 @@ export default function AlbumTimeline() {
   }, {});
 
   // 사진만 필터
-  const allPhotos = moments.filter(m => m.photo_data);
+  const allPhotos = filteredMoments.filter(m => m.photo_data);
 
   return (
     <div className="space-y-4">
       {/* View Toggle */}
       <div className="flex items-center justify-between">
-        <h3 className="font-bold text-lg">📸 내 앨범 <span className="text-sm font-normal text-base-content/50">({moments.length}개 기록)</span></h3>
+        <h3 className="font-bold text-lg">📸 내 앨범 <span className="text-sm font-normal text-base-content/50">({filteredMoments.length}개 기록)</span></h3>
         <div className="flex bg-base-200 rounded-lg p-0.5 gap-0.5">
           <button
             onClick={() => setView('timeline')}

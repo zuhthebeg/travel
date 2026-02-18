@@ -41,6 +41,20 @@ export function MainPage() {
   // 내 여행 + 공유받은 여행
   const [myPlans, setMyPlans] = useState<Plan[]>([]);
 
+  // 오늘 날짜 (YYYY-MM-DD)
+  const today = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }, []);
+
+  // 다가오는 여행 (end_date >= today)
+  const upcomingPlans = useMemo(() => myPlans.filter(p => p.end_date >= today), [myPlans, today]);
+
+  // 끝난 여행 ID 목록 (앨범 필터용)
+  const pastPlanIds = useMemo(() => {
+    return new Set(myPlans.filter(p => p.end_date < today).map(p => p.id));
+  }, [myPlans, today]);
+
   useEffect(() => {
     setSelectedCountries(new Set());
     loadPublicPlans();
@@ -118,6 +132,10 @@ export function MainPage() {
       // 선택된 여행만 표시하거나, 선택 없으면 전체 표시
       if (selectedPlanId && plan.id !== selectedPlanId) return;
       
+      // 국가 필터 적용
+      const countryInfo = extractCountryFromRegion(plan.region);
+      if (countryInfo && !selectedCountries.has(countryInfo.code)) return;
+      
       plan.schedules.forEach((schedule) => {
         if (schedule.latitude && schedule.longitude) {
           const countryInfo = extractCountryFromRegion(plan.region);
@@ -135,7 +153,7 @@ export function MainPage() {
     });
     
     return points;
-  }, [filteredPlansByTime, selectedPlanId]);
+  }, [filteredPlansByTime, selectedPlanId, selectedCountries]);
 
   // 슬라이더용 현재 타겟 날짜
   const targetDateLabel = useMemo(() => {
@@ -305,13 +323,13 @@ export function MainPage() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
         {/* 내 여행 섹션 (로그인 시) */}
-        {currentUser && myPlans.length > 0 && (
+        {currentUser && upcomingPlans.length > 0 && (
           <div className="mb-8">
             <h2 className="text-2xl font-bold flex items-center gap-2 mb-4">
-              ✈️ 내 여행
+              ✈️ 다가오는 여행
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {myPlans.map((plan) => (
+              {upcomingPlans.map((plan) => (
                 <div
                   key={plan.id}
                   onClick={() => navigate(`/plans/${plan.id}`)}
@@ -518,7 +536,7 @@ export function MainPage() {
             <LevelCard />
             <div>
               <div className="card bg-base-100 shadow-sm p-4">
-                <AlbumTimeline />
+                <AlbumTimeline pastPlanIds={pastPlanIds} />
               </div>
             </div>
           </div>
