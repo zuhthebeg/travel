@@ -208,6 +208,9 @@ export function PlanDetailPage() {
   });
   const [mainTab, setMainTab] = useState<MainTab>(() => readPlanUIState(id).mainTab);
   const [geocodeFailed, setGeocodeFailed] = useState<any[]>([]);
+  const [geocodeFailedCollapsed, setGeocodeFailedCollapsed] = useState(() => {
+    try { return localStorage.getItem('geocodeFailed_collapsed') === 'true'; } catch { return false; }
+  });
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; city?: string } | null>(null);
   const [showShareToast, setShowShareToast] = useState(false);
   const [conflictOps, setConflictOps] = useState<OpLogEntry[]>([]);
@@ -1013,10 +1016,18 @@ export function PlanDetailPage() {
                           {/* 보정 결과: 미보정 장소 수정 UI */}
                           {geocodeFailed.length > 0 && (
                             <div className="bg-base-200 rounded-lg p-3 space-y-2">
-                              <p className="text-sm font-medium text-warning">
-                                ⚠️ {geocodeFailed.length}개 장소를 찾지 못했어요. 장소명을 수정해서 다시 시도해보세요:
-                              </p>
-                              {geocodeFailed.map((item: any) => (
+                              <button onClick={() => {
+                                const next = !geocodeFailedCollapsed;
+                                setGeocodeFailedCollapsed(next);
+                                try { localStorage.setItem('geocodeFailed_collapsed', String(next)); } catch {}
+                              }} className="flex items-center gap-2 w-full text-left">
+                                <span className={`transition-transform ${geocodeFailedCollapsed ? '' : 'rotate-90'}`}>▶</span>
+                                <span className="text-sm font-medium text-warning flex-1">
+                                  ⚠️ {geocodeFailed.length}개 장소를 찾지 못했어요
+                                </span>
+                              </button>
+                              {!geocodeFailedCollapsed && <p className="text-xs text-base-content/60 ml-5">장소명을 수정해서 Enter로 다시 시도해보세요</p>}
+                              {!geocodeFailedCollapsed && geocodeFailed.map((item: any) => (
                                 <div key={item.id} className="flex items-center gap-2">
                                   <input
                                     type="text"
