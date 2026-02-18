@@ -1746,10 +1746,13 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
       // 장소가 변경됐는데 좌표가 없으면 geocode 시도
       if (formData.place && !latitude && !longitude) {
         try {
-          const geoRes = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(formData.place)}&limit=1`);
+          const q = planRegion && !formData.place.includes(planRegion)
+            ? `${formData.place}, ${planRegion}` : formData.place;
+          const geoRes = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=5`);
           if (geoRes.ok) {
             const geoData = await geoRes.json();
             if (geoData.features?.length > 0) {
+              // Pick first result; region context in query helps accuracy
               const [lng, lat] = geoData.features[0].geometry.coordinates;
               latitude = lat;
               longitude = lng;
@@ -2105,12 +2108,21 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
         // 장소 텍스트만 변경됐을 때 자동 geocode 시도
         try {
           const q = planRegion && !placeValue.includes(planRegion) ? `${placeValue}, ${planRegion}` : placeValue;
-          const geoRes = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=1`);
+          const geoRes = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=5`);
           if (geoRes.ok) {
             const geoData = await geoRes.json();
             if (geoData.features?.length > 0) {
-              const [lng, lat] = geoData.features[0].geometry.coordinates;
-              const cc = geoData.features[0].properties?.countrycode?.toUpperCase();
+              // Find result matching expected country if possible
+              const expectedCC = schedule.country_code?.toLowerCase();
+              let best = geoData.features[0];
+              if (expectedCC) {
+                const match = geoData.features.find((f: any) =>
+                  f.properties?.countrycode?.toLowerCase() === expectedCC
+                );
+                if (match) best = match;
+              }
+              const [lng, lat] = best.geometry.coordinates;
+              const cc = best.properties?.countrycode?.toUpperCase();
               updates.lat = lat;
               updates.lng = lng;
               if (cc) updates.country_code = cc;
