@@ -42,6 +42,8 @@ const AI_TIPS = [
   '🤖 AI 비서에게 "일정 하루 미뤄줘"라고 요청해보세요',
   '🔄 일정을 드래그해서 날짜를 쉽게 변경할 수 있어요',
   '📋 플랜 B, C도 등록해두면 현지에서 유연하게 대응할 수 있어요',
+  '📱 홈 화면에 추가하면 앱처럼 바로 열 수 있어요',
+  '✈️ 오프라인에서도 저장된 일정을 확인할 수 있어요',
 ];
 
 function AIProcessingTip() {
@@ -2048,7 +2050,8 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
       } else if (placeValue && placeValue !== (schedule.place || '')) {
         // 장소 텍스트만 변경됐을 때 자동 geocode 시도
         try {
-          const geoRes = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(placeValue)}&limit=1`);
+          const q = planRegion && !placeValue.includes(planRegion) ? `${placeValue}, ${planRegion}` : placeValue;
+          const geoRes = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=1`);
           if (geoRes.ok) {
             const geoData = await geoRes.json();
             if (geoData.features?.length > 0) {
@@ -2073,6 +2076,7 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
       setPendingCoords(null);
     } catch (e) {
       console.error('Failed to save place:', e);
+      alert('장소 저장에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setSavingPlace(false);
     }
