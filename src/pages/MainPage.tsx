@@ -224,7 +224,7 @@ export function MainPage() {
     const points: MapPoint[] = [];
     const seenRegions = new Set<string>();
     
-    plansWithSchedules.forEach((plan) => {
+    filteredPlansByTime.forEach((plan) => {
       const countryInfo = extractCountryFromRegion(plan.region);
       if (!countryInfo || !selectedCountries.has(countryInfo.code)) return;
       
@@ -250,7 +250,7 @@ export function MainPage() {
     });
     
     return points;
-  }, [plansWithSchedules, selectedCountries]);
+  }, [filteredPlansByTime, selectedCountries]);
 
   const handleImportPlan = async (plan: Plan) => {
     if (!currentUser) {
@@ -459,10 +459,9 @@ export function MainPage() {
               </div>
             )}
 
-            {/* Time Slider - 로그인 사용자만 */}
-            {currentUser && (
-            <div className="p-4 bg-base-200 border-t">
-              <div className="flex items-center gap-3 mb-2">
+            {/* Time Slider */}
+            <div className="px-4 py-3 bg-base-200 border-t">
+              <div className="flex items-center gap-2 mb-2">
                 <Clock className="w-4 h-4 text-primary" />
                 <span className="font-medium text-sm">시간 여행</span>
                 <span className="badge badge-primary badge-sm">{targetDateLabel}</span>
@@ -476,13 +475,13 @@ export function MainPage() {
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-base-content/50 w-16 text-right">
-                  {(() => {
-                    const d = new Date();
-                    d.setDate(d.getDate() - TIME_RANGE);
-                    return d.toLocaleDateString('ko-KR', { month: 'short' });
-                  })()}
-                </span>
+                <button
+                  className="btn btn-xs btn-circle btn-ghost"
+                  onClick={() => setTimeOffset(Math.max(-TIME_RANGE, timeOffset - 30))}
+                  disabled={timeOffset <= -TIME_RANGE}
+                >
+                  ◀
+                </button>
                 <input
                   type="range"
                   min={-TIME_RANGE}
@@ -491,69 +490,45 @@ export function MainPage() {
                   onChange={(e) => setTimeOffset(parseInt(e.target.value))}
                   className="range range-primary range-sm flex-1"
                 />
-                <span className="text-xs text-base-content/50 w-16">
-                  {(() => {
-                    const d = new Date();
-                    d.setDate(d.getDate() + TIME_RANGE);
-                    return d.toLocaleDateString('ko-KR', { month: 'short' });
-                  })()}
-                </span>
+                <button
+                  className="btn btn-xs btn-circle btn-ghost"
+                  onClick={() => setTimeOffset(Math.min(TIME_RANGE, timeOffset + 30))}
+                  disabled={timeOffset >= TIME_RANGE}
+                >
+                  ▶
+                </button>
               </div>
-              <div className="flex justify-between mt-1 text-xs text-base-content/40 px-16">
-                <span>과거</span>
-                <span>|</span>
-                <span>미래</span>
-              </div>
-              {/* 월별/계절별 퀵 이동 */}
-              <div className="flex flex-wrap gap-1 mt-3">
-                {[
-                  { label: '🌸 봄', month: 4 },
-                  { label: '☀️ 여름', month: 7 },
-                  { label: '🍂 가을', month: 10 },
-                  { label: '❄️ 겨울', month: 1 },
-                ].map(({ label, month }) => {
+              {/* 계절 퀵 이동 — 오늘 기준 시간순 정렬 */}
+              <div className="flex justify-center gap-1 mt-2">
+                {(() => {
                   const now = new Date();
-                  const target = new Date(now.getFullYear(), month - 1, 15);
-                  // 과거 계절이면 다음 해로
-                  if (target < now) target.setFullYear(target.getFullYear() + 1);
-                  const diff = Math.round((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                  const inRange = Math.abs(diff) <= TIME_RANGE;
-                  return (
+                  const seasons = [
+                    { label: '🌸 봄', month: 4 },
+                    { label: '☀️ 여름', month: 7 },
+                    { label: '🍂 가을', month: 10 },
+                    { label: '❄️ 겨울', month: 1 },
+                  ].map(s => {
+                    const target = new Date(now.getFullYear(), s.month - 1, 15);
+                    if (target < new Date(now.getFullYear(), now.getMonth(), now.getDate() - 15)) {
+                      target.setFullYear(target.getFullYear() + 1);
+                    }
+                    const diff = Math.round((target.getTime() - now.getTime()) / 86400000);
+                    return { ...s, diff, inRange: Math.abs(diff) <= TIME_RANGE };
+                  }).sort((a, b) => a.diff - b.diff);
+
+                  return seasons.map(({ label, diff, inRange }) => (
                     <button
                       key={label}
-                      className={`btn btn-xs ${inRange ? 'btn-outline btn-primary' : 'btn-disabled'}`}
+                      className={`btn btn-xs ${inRange ? 'btn-outline btn-primary' : 'btn-disabled opacity-40'}`}
                       onClick={() => inRange && setTimeOffset(diff)}
                       disabled={!inRange}
                     >
                       {label}
                     </button>
-                  );
-                })}
-                <span className="border-l border-base-300 mx-1" />
-                {(() => {
-                  const now = new Date();
-                  const buttons = [];
-                  for (let i = -3; i <= 3; i++) {
-                    if (i === 0) continue;
-                    const target = new Date(now.getFullYear(), now.getMonth() + i, 15);
-                    const diff = Math.round((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                    if (Math.abs(diff) > TIME_RANGE) continue;
-                    const monthName = target.toLocaleDateString('ko-KR', { month: 'short' });
-                    buttons.push(
-                      <button
-                        key={i}
-                        className="btn btn-xs btn-outline btn-ghost"
-                        onClick={() => setTimeOffset(diff)}
-                      >
-                        {monthName}
-                      </button>
-                    );
-                  }
-                  return buttons;
+                  ));
                 })()}
               </div>
             </div>
-            )}
           </div>
         </div>
 
