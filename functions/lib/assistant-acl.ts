@@ -8,6 +8,7 @@ export type AssistantActionType =
   | 'delete'
   | 'shift_all'
   | 'delete_matching'
+  | 'fix_coordinates'
   | 'update_plan'
   | 'add_memo'
   | 'update_memo'
@@ -29,6 +30,7 @@ const ACL: Record<AssistantActionType, Record<RoleForAcl, boolean>> = {
   delete:          { owner: true, member: false },
   shift_all:       { owner: true, member: false },
   delete_matching: { owner: true, member: false },
+  fix_coordinates: { owner: true, member: false },
   update_plan:     { owner: true, member: false },
   add_memo:        { owner: true, member: false },
   update_memo:     { owner: true, member: false },

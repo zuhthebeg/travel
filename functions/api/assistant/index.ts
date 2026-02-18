@@ -145,6 +145,21 @@ SCHEDULE ACTIONS:
 - DELETE: {"type": "delete", "id": <schedule_id>}
 - SHIFT_ALL: {"type": "shift_all", "days": <number>} - Move ALL schedules by N days (positive=future, negative=past)
 - DELETE_MATCHING: {"type": "delete_matching", "pattern": "transport|이동|버스|택시|공항|비행기|기차|KTX|..."} - Delete schedules matching keyword pattern
+- FIX_COORDINATES: {"type": "fix_coordinates", "fixes": [{"id": <schedule_id>, "place": "교정된 장소명", "place_en": "Specific Place Name, City, Country", "clear_coords": false}]}
+  * When user asks to fix coordinates/addresses, analyze ALL schedules carefully
+  * CRITICAL RULES for place_en:
+    - MUST be a specific, real, geocodable place name (NOT generic descriptions)
+    - MUST include the city/district for disambiguation: "Chuncheon Myeongdong Dakgalbi Street, Chuncheon, South Korea"
+    - NEVER use descriptions like "Restaurant in X" or "Hotel in Y" — these geocode to random locations worldwide
+    - For Korean places, use the official romanization + city + "South Korea": "Soyang River Skywalk, Chuncheon, South Korea"
+    - For well-known landmarks, use the most common English name: "Nami Island, Gapyeong, South Korea"
+  * For GENERIC/UNSPECIFIC places (숙소, 호텔, 식당, 카페, 맛집, 레스토랑, 펜션, 체크인, 체크아웃, 휴식, 간식):
+    - Set "clear_coords": true — this REMOVES coordinates entirely (better no pin than wrong pin)
+    - Still provide best-effort place/place_en but mark for coordinate clearing
+  * For places where the name includes the region but is still too vague (e.g., "춘천 호텔", "카페 거리"):
+    - Also set "clear_coords": true
+  * ONLY set "clear_coords": false for places you are CONFIDENT can be geocoded to the correct location
+  * The plan region is the KEY context — all places should make geographic sense within that region
 
 PLAN INFO ACTIONS:
 - UPDATE_PLAN: {"type": "update_plan", "changes": {"title": "...", "region": "...", "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD"}}
@@ -193,6 +208,8 @@ CONVERSATION & RECOMMENDATION RULES (CRITICAL):
 15. When recommending travel destinations, suggest ONLY ONE destination at a time. Wait for user's confirmation or "more" before suggesting another.
 16. Keep reply text SHORT and concise. 1-3 sentences + action if needed.
 17. When suggesting itinerary ideas in conversation (not as actions), keep it brief: list 2-3 highlights max, not a full day-by-day breakdown.
+18. For "좌표 수정/보정해줘", "주소 이상해", "좌표 고쳐줘" → use FIX_COORDINATES. Analyze each schedule's place name and provide corrected versions with proper place_en for geocoding.
+19. FIX_COORDINATES CRITICAL: ALL place_en values MUST include ", [City], [Country]" suffix for accurate geocoding. Generic places (호텔, 식당, 카페, 숙소, etc.) MUST have clear_coords=true. NEVER use English descriptions like "Restaurant in..." — use actual place names only.
 
 Examples:
 - "오후 3시에 해운대 추가해줘" → ADD action
@@ -321,6 +338,106 @@ Examples:
             }
           }
           results.push({ type: 'delete_matching', success: true, count: deletedCount });
+        } else if (action.type === 'fix_coordinates' && action.fixes) {
+          // Fix place names and trigger geocoding
+          const fixes = action.fixes as Array<{ id: number, place: string, place_en: string, clear_coords?: boolean }>;
+          let fixedCount = 0;
+          let clearedCount = 0;
+          let geocodedCount = 0;
+
+          // Get plan region for coordinate validation
+          const planInfo = await context.env.DB.prepare('SELECT region FROM plans WHERE id = ?').bind(planId).first<{region: string | null}>();
+          const region = planInfo?.region || '';
+
+          // Get a reference coordinate from the region by geocoding it
+          let regionLat: number | null = null;
+          let regionLng: number | null = null;
+          if (region) {
+            try {
+              const regionGeo = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(region + ', South Korea')}&limit=1`);
+              if (regionGeo.ok) {
+                const regionData = await regionGeo.json() as any;
+                if (regionData.features?.length > 0) {
+                  [regionLng, regionLat] = regionData.features[0].geometry.coordinates;
+                }
+              }
+            } catch {}
+          }
+
+          for (const fix of fixes) {
+            try {
+              if (fix.clear_coords) {
+                // Generic place — clear coordinates entirely
+                await context.env.DB.prepare(
+                  `UPDATE schedules SET place = ?, place_en = ?, latitude = NULL, longitude = NULL WHERE id = ? AND plan_id = ?`
+                ).bind(fix.place, fix.place_en || null, fix.id, planId).run();
+                clearedCount++;
+                fixedCount++;
+              } else {
+                // Specific place — update name + geocode
+                await context.env.DB.prepare(
+                  `UPDATE schedules SET place = ?, place_en = ?, latitude = NULL, longitude = NULL WHERE id = ? AND plan_id = ?`
+                ).bind(fix.place, fix.place_en, fix.id, planId).run();
+                fixedCount++;
+
+                // Geocode with Photon
+                try {
+                  const geoRes = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(fix.place_en)}&limit=3`);
+                  if (geoRes.ok) {
+                    const geoData = await geoRes.json() as any;
+                    const features = geoData.features || [];
+                    
+                    // Pick the best result — prefer one closest to the plan region
+                    let bestFeature = null;
+                    let bestDist = Infinity;
+                    
+                    for (const f of features) {
+                      const [fLng, fLat] = f.geometry.coordinates;
+                      if (regionLat !== null && regionLng !== null) {
+                        // Simple distance check (not haversine, just rough)
+                        const dist = Math.sqrt(Math.pow(fLat - regionLat, 2) + Math.pow(fLng - regionLng, 2));
+                        if (dist < bestDist) {
+                          bestDist = dist;
+                          bestFeature = f;
+                        }
+                      } else {
+                        bestFeature = f;
+                        break;
+                      }
+                    }
+                    
+                    if (bestFeature) {
+                      const [lng, lat] = bestFeature.geometry.coordinates;
+                      // Sanity check: if region coords known, reject if >2 degrees away (~200km)
+                      if (regionLat !== null && regionLng !== null) {
+                        const dist = Math.sqrt(Math.pow(lat - regionLat, 2) + Math.pow(lng - regionLng, 2));
+                        if (dist > 2.0) {
+                          console.warn(`Geocode result too far from region for "${fix.place_en}": ${lat},${lng} vs region ${regionLat},${regionLng} (dist=${dist.toFixed(2)})`);
+                          // Don't set coordinates — leave null
+                        } else {
+                          await context.env.DB.prepare(
+                            `UPDATE schedules SET latitude = ?, longitude = ? WHERE id = ? AND plan_id = ?`
+                          ).bind(lat, lng, fix.id, planId).run();
+                          geocodedCount++;
+                        }
+                      } else {
+                        await context.env.DB.prepare(
+                          `UPDATE schedules SET latitude = ?, longitude = ? WHERE id = ? AND plan_id = ?`
+                        ).bind(lat, lng, fix.id, planId).run();
+                        geocodedCount++;
+                      }
+                    }
+                  }
+                } catch (geoErr) {
+                  console.error('Geocode error for fix:', fix.place_en, geoErr);
+                }
+              }
+            } catch (e) {
+              console.error('Fix place error:', fix, e);
+            }
+          }
+
+          results.push({ type: 'fix_coordinates', success: true, fixed: fixedCount, cleared: clearedCount, geocoded: geocodedCount, total: fixes.length });
         } else if (action.type === 'update_plan' && action.changes) {
           // Update plan info (title, region, dates)
           const changes = action.changes;
@@ -459,8 +576,10 @@ Examples:
 
     // Collect modified schedule IDs for scroll/highlight
     const modifiedIds = results
-      .filter(r => r.success && r.id && ['add', 'update', 'delete'].includes(r.type))
+      .filter(r => r.success && r.id && ['add', 'update', 'delete', 'fix_coordinates'].includes(r.type))
       .map(r => r.id);
+
+    const hasCoordFixes = results.some(r => r.success && r.type === 'fix_coordinates');
 
     const hasMemoChanges = results.some(r => 
       r.success && ['add_memo', 'update_memo', 'delete_memo', 'generate_memos'].includes(r.type)
@@ -479,6 +598,7 @@ Examples:
       reply, 
       actions: results,
       hasChanges: results.length > 0,
+      hasCoordFixes,
       hasMemoChanges,
       hasMomentChanges,
       hasMemberChanges,
