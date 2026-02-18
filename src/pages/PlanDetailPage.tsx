@@ -916,44 +916,8 @@ export function PlanDetailPage() {
                             </p>
                             <button
                               onClick={async () => {
-                                if (!selectedPlan) return;
                                 const btn = document.activeElement as HTMLButtonElement;
-                                btn.disabled = true;
-                                btn.textContent = '보정 중...';
-                                try {
-                                  const res = await fetch(`/api/plans/${selectedPlan.id}/geocode-schedules`, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ mode: 'missing' }),
-                                  });
-                                  const data = await res.json();
-                                  if (data.success) {
-                                    const failedItems = (data.results || []).filter((r: any) => r.status === 'not_found');
-                                    const skipped = (data.results || []).filter((r: any) => r.status === 'skipped').length;
-                                    const updated = data.updated || 0;
-                                    // 스케줄만 다시 로드 (전체 로딩 없이)
-                                    try {
-                                      const freshData = await plansAPI.getById(selectedPlan.id);
-                                      setSchedules(sortSchedulesByDateTime(freshData.schedules));
-                                    } catch {}
-                                    setGeocodeFailed(failedItems);
-                                    alert(`📍 좌표 보정 완료!\n✅ 보정: ${updated}개\n❌ 실패: ${failedItems.length}개${skipped > 0 ? `\n⏭ 건너뜀: ${skipped}개` : ''}`);
-                                  }
-                                } catch (e) {
-                                  alert('좌표 보정 실패');
-                                } finally {
-                                  btn.disabled = false;
-                                  btn.textContent = '📍 좌표 보정';
-                                }
-                              }}
-                              className="btn btn-xs btn-primary"
-                            >
-                              📍 좌표 보정
-                            </button>
-                            <button
-                              onClick={async () => {
-                                const btn = document.activeElement as HTMLButtonElement;
-                                if (btn) { btn.disabled = true; btn.textContent = '🤖 AI 보정 중...'; }
+                                if (btn) { btn.disabled = true; btn.textContent = '보정 중...'; }
                                 try {
                                   // 1단계: AI에게 장소명 영문 번역 + 보정 요청
                                   const schedulesWithPlace = schedules.filter(s => s.place && s.place.trim());
@@ -994,22 +958,22 @@ export function PlanDetailPage() {
                                   } catch {}
                                   const failedItems = (data.results || []).filter((r: any) => r.status === 'not_found');
                                   setGeocodeFailed(failedItems);
-                                  alert(`🤖 AI 좌표 보정 완료!\n✅ 보정: ${data.updated || 0}개\n❌ 실패: ${failedItems.length}개`);
+                                  alert(`📍 좌표 보정 완료!\n✅ 보정: ${data.updated || 0}개\n❌ 실패: ${failedItems.length}개`);
                                 } catch {
-                                  alert('AI 좌표 보정 실패');
+                                  alert('좌표 보정 실패');
                                 }
-                                if (btn) { btn.disabled = false; btn.textContent = '🤖 AI 좌표 보정'; }
+                                if (btn) { btn.disabled = false; btn.textContent = '📍 좌표 보정'; }
                               }}
-                              className="btn btn-xs btn-secondary"
+                              className="btn btn-xs btn-primary"
                             >
-                              🤖 AI 좌표 보정
+                              📍 좌표 보정
                             </button>
                           </div>
 
                           {/* 보정 안내 메시지 */}
                           {missingCoords.length > 0 && geocodeFailed.length === 0 && (
                             <div className="alert alert-warning py-2 text-sm">
-                              <span>📍 {missingCoords.length}개 장소 좌표 없음 — 장소명을 정확히 수정 후 보정 버튼을 눌러주세요</span>
+                              <span>📍 {missingCoords.length}개 장소 좌표 없음 — 좌표 보정 버튼을 눌러주세요</span>
                             </div>
                           )}
 
@@ -1097,6 +1061,27 @@ export function PlanDetailPage() {
                     const btn = document.activeElement as HTMLButtonElement;
                     if (btn) { btn.disabled = true; btn.textContent = '보정 중...'; }
                     try {
+                      // AI 장소명 검증 + 영문 변환
+                      const schedulesWithPlace = schedules.filter(s => s.place && s.place.trim());
+                      const places = schedulesWithPlace.map(s => ({ id: s.id, place: s.place, place_en: (s as any).place_en }));
+                      const aiRes = await fetch('/api/assistant/verify-places', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ places, region: selectedPlan!.region }),
+                      });
+                      if (aiRes.ok) {
+                        const aiData = await aiRes.json() as any;
+                        if (aiData.corrections?.length > 0) {
+                          for (const c of aiData.corrections) {
+                            await fetch(`/api/schedules/${c.id}`, {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ place_en: c.place_en }),
+                            });
+                          }
+                        }
+                      }
+                      // 좌표 보정
                       const res = await fetch(`/api/plans/${selectedPlan!.id}/geocode-schedules`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -1104,7 +1089,7 @@ export function PlanDetailPage() {
                       });
                       const data = await res.json() as any;
                       if (data.updated > 0) {
-                        alert(`${data.updated}개 좌표 보정 완료! 페이지를 새로고침합니다.`);
+                        alert(`📍 ${data.updated}개 좌표 보정 완료!`);
                         window.location.reload();
                       } else {
                         alert('보정할 수 있는 장소가 없습니다. 장소명을 더 구체적으로 수정해보세요.');
@@ -1112,11 +1097,11 @@ export function PlanDetailPage() {
                     } catch {
                       alert('좌표 보정 실패');
                     }
-                    if (btn) { btn.disabled = false; btn.textContent = '📍 전체 좌표 보정'; }
+                    if (btn) { btn.disabled = false; btn.textContent = '📍 좌표 보정'; }
                   }}
                   className="btn btn-sm btn-primary"
                 >
-                  📍 전체 좌표 보정
+                  📍 좌표 보정
                 </button>
               </div>
             );
