@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://travel-mvp.pages.dev/sitemap.xml
