@@ -23,6 +23,7 @@ interface PlaceAutocompleteProps {
   onSelect: (place: { name: string; lat: number; lng: number; countryCode?: string; city?: string }) => void;
   placeholder?: string;
   className?: string;
+  regionHint?: string; // e.g. "홍콩", "미국" — Photon 검색 정확도 향상
 }
 
 export function PlaceAutocomplete({
@@ -31,6 +32,7 @@ export function PlaceAutocomplete({
   onSelect,
   placeholder = '장소 검색...',
   className = '',
+  regionHint = '',
 }: PlaceAutocompleteProps) {
   const [query, setQuery] = useState(value);
   const [results, setResults] = useState<PhotonResult[]>([]);
@@ -66,10 +68,11 @@ export function PlaceAutocomplete({
 
     setIsLoading(true);
     try {
-      // Build Photon API URL
-      let url = `https://photon.komoot.io/api/?q=${encodeURIComponent(searchQuery)}&limit=7`;
-      
-      // Photon only supports: default, de, en, fr (not ko)
+      // Build Photon API URL — append region hint for accuracy
+      const q = regionHint && !searchQuery.includes(regionHint)
+        ? `${searchQuery}, ${regionHint}`
+        : searchQuery;
+      let url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=7`;
       
       const response = await fetch(url);
       if (!response.ok) throw new Error('Search failed');

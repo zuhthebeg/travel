@@ -1013,6 +1013,47 @@ export function PlanDetailPage() {
               </div>
             );
           }
+          // 좌표 없어도 보정 UI는 표시
+          const missingAll = schedules.filter(s => s.place && s.place.trim() && (!s.latitude || !s.longitude));
+          if (canEditPlan && missingAll.length > 0) {
+            return (
+              <div className="mb-8 p-4 bg-base-100 shadow-lg rounded-lg">
+                <div className="flex items-center gap-2 mb-3">
+                  <MapPin className="w-5 h-5 text-warning" />
+                  <span className="font-medium">지도에 표시할 좌표가 없습니다</span>
+                </div>
+                <p className="text-sm text-base-content/60 mb-3">
+                  {missingAll.length}개 장소의 좌표를 보정하면 지도에 동선이 표시됩니다.
+                </p>
+                <button
+                  onClick={async () => {
+                    const btn = document.activeElement as HTMLButtonElement;
+                    if (btn) { btn.disabled = true; btn.textContent = '보정 중...'; }
+                    try {
+                      const res = await fetch(`/api/plans/${selectedPlan!.id}/geocode-schedules`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ mode: 'all' }),
+                      });
+                      const data = await res.json() as any;
+                      if (data.updated > 0) {
+                        alert(`${data.updated}개 좌표 보정 완료! 페이지를 새로고침합니다.`);
+                        window.location.reload();
+                      } else {
+                        alert('보정할 수 있는 장소가 없습니다. 장소명을 더 구체적으로 수정해보세요.');
+                      }
+                    } catch {
+                      alert('좌표 보정 실패');
+                    }
+                    if (btn) { btn.disabled = false; btn.textContent = '📍 전체 좌표 보정'; }
+                  }}
+                  className="btn btn-sm btn-primary"
+                >
+                  📍 전체 좌표 보정
+                </button>
+              </div>
+            );
+          }
           return null;
         })()}
 
@@ -2168,6 +2209,7 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
                       }}
                       placeholder="장소 검색..."
                       className="flex-1"
+                      regionHint={selectedPlan?.region || ''}
                     />
                     <button
                       onClick={handleSavePlace}

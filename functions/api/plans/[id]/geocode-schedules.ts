@@ -126,9 +126,12 @@ async function translateToEnglish(text: string): Promise<string | null> {
 }
 
 // Photon 지오코딩 (무료)
-async function geocodePhoton(query: string): Promise<{ lat: number; lng: number } | null> {
+async function geocodePhoton(query: string, regionContext?: string): Promise<{ lat: number; lng: number } | null> {
   try {
-    const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1`);
+    const q = regionContext && !query.toLowerCase().includes(regionContext.toLowerCase())
+      ? `${query}, ${regionContext}`
+      : query;
+    const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=1`);
     if (!res.ok) return null;
     const data = await res.json() as any;
     if (data.features?.length > 0) {
@@ -202,12 +205,12 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       
       // 1차: place_en (영어) 있으면 바로 사용
       if (placeEn) {
-        coords = await geocodePhoton(placeEn);
+        coords = await geocodePhoton(placeEn, regionContext);
       }
       
       // 2차: OpenAI 번역 결과 사용
       if (!coords && translations[place]) {
-        coords = await geocodePhoton(translations[place]);
+        coords = await geocodePhoton(translations[place], regionContext);
         if (coords) {
           await context.env.DB.prepare(
             `UPDATE schedules SET place_en = ? WHERE id = ? AND place_en IS NULL`
@@ -219,7 +222,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       if (!coords && hasKorean(place)) {
         const english = await translateToEnglish(place);
         if (english) {
-          coords = await geocodePhoton(english);
+          coords = await geocodePhoton(english, regionContext);
           if (coords) {
             await context.env.DB.prepare(
               `UPDATE schedules SET place_en = ? WHERE id = ? AND place_en IS NULL`
@@ -230,7 +233,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       
       // 4차: 원본으로 직접 검색
       if (!coords) {
-        coords = await geocodePhoton(place);
+        coords = await geocodePhoton(place, regionContext);
       }
 
       if (coords) {
