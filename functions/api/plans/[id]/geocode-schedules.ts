@@ -44,6 +44,21 @@ const REGION_COUNTRY_CODES: Record<string, string> = {
   '중국': 'cn', '베이징': 'cn', '상하이': 'cn', '홍콩': 'hk',
   '태국': 'th', '방콕': 'th', '베트남': 'vn', '싱가포르': 'sg',
   '대만': 'tw', '타이베이': 'tw',
+  '몽골': 'mn', '울란바토르': 'mn', '고비': 'mn',
+  '인도': 'in', '뉴델리': 'in', '인도네시아': 'id', '발리': 'id',
+  '필리핀': 'ph', '세부': 'ph', '보라카이': 'ph',
+  '호주': 'au', '시드니': 'au', '멜버른': 'au',
+  '캐나다': 'ca', '밴쿠버': 'ca', '토론토': 'ca',
+  '터키': 'tr', '이스탄불': 'tr', '카파도키아': 'tr',
+  '이집트': 'eg', '카이로': 'eg', '그리스': 'gr', '아테네': 'gr',
+  '스위스': 'ch', '체코': 'cz', '프라하': 'cz',
+  '네덜란드': 'nl', '암스테르담': 'nl', '포르투갈': 'pt',
+  '크로아티아': 'hr', '두브로브니크': 'hr',
+  '뉴질랜드': 'nz', '멕시코': 'mx', '칸쿤': 'mx',
+  '브라질': 'br', '페루': 'pe', '쿠바': 'cu',
+  '러시아': 'ru', '모스크바': 'ru', '카자흐스탄': 'kz',
+  '네팔': 'np', '캄보디아': 'kh', '미얀마': 'mm', '라오스': 'la',
+  '말레이시아': 'my', '쿠알라룸푸르': 'my',
 };
 
 function getCountryCode(region: string): string | null {
@@ -125,18 +140,54 @@ async function translateToEnglish(text: string): Promise<string | null> {
   return null;
 }
 
-// Photon 지오코딩 (무료)
-async function geocodePhoton(query: string, regionContext?: string): Promise<{ lat: number; lng: number } | null> {
+interface GeoResult {
+  lat: number;
+  lng: number;
+  countryCode?: string;
+}
+
+// Nominatim geocoding (supports countrycodes filter)
+async function geocodeNominatim(query: string, countryCode?: string): Promise<GeoResult | null> {
+  try {
+    let url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=3`;
+    if (countryCode) url += `&countrycodes=${countryCode}`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Travly/1.0 (travel planner app)' },
+    });
+    if (!res.ok) return null;
+    const data = await res.json() as any;
+    if (data?.length > 0) {
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    }
+  } catch (e) {
+    console.error('Nominatim geocode error:', e);
+  }
+  return null;
+}
+
+// Photon 지오코딩 (무료, country 선호 필터링)
+async function geocodePhoton(query: string, regionContext?: string, expectedCountry?: string): Promise<GeoResult | null> {
   try {
     const q = regionContext && !query.toLowerCase().includes(regionContext.toLowerCase())
       ? `${query}, ${regionContext}`
       : query;
-    const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=1`);
+    const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=5`);
     if (!res.ok) return null;
     const data = await res.json() as any;
     if (data.features?.length > 0) {
-      const [lng, lat] = data.features[0].geometry.coordinates;
-      return { lat, lng };
+      // If expected country, find matching result
+      if (expectedCountry) {
+        const match = data.features.find((f: any) =>
+          f.properties?.countrycode?.toLowerCase() === expectedCountry.toLowerCase()
+        );
+        if (match) {
+          const [lng, lat] = match.geometry.coordinates;
+          return { lat, lng, countryCode: match.properties.countrycode?.toUpperCase() };
+        }
+      }
+      const first = data.features[0];
+      const [lng, lat] = first.geometry.coordinates;
+      return { lat, lng, countryCode: first.properties?.countrycode?.toUpperCase() };
     }
   } catch (e) {
     console.error('Photon geocode error:', e);
@@ -201,16 +252,36 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       }
       
       const placeEn = schedule.place_en as string | null;
-      let coords: { lat: number; lng: number } | null = null;
+      let coords: GeoResult | null = null;
       
-      // 1차: place_en (영어) 있으면 바로 사용
-      if (placeEn) {
-        coords = await geocodePhoton(placeEn, regionContext);
+      // Helper: validate country matches expected
+      const isValidCountry = (result: GeoResult | null): boolean => {
+        if (!result || !countryCode) return true; // no filter = accept
+        if (!result.countryCode) return true; // unknown = accept
+        return result.countryCode.toLowerCase() === countryCode.toLowerCase();
+      };
+
+      // 1차: Nominatim with country filter (most accurate for specific countries)
+      if (countryCode) {
+        const searchTerm = placeEn || translations[place] || place;
+        coords = await geocodeNominatim(searchTerm, countryCode);
+        if (coords && !placeEn && translations[place]) {
+          await context.env.DB.prepare(
+            `UPDATE schedules SET place_en = ? WHERE id = ? AND place_en IS NULL`
+          ).bind(translations[place], schedule.id).run();
+        }
+      }
+
+      // 2차: Photon with country preference
+      if (!coords && placeEn) {
+        coords = await geocodePhoton(placeEn, regionContext, countryCode || undefined);
+        if (!isValidCountry(coords)) coords = null;
       }
       
-      // 2차: OpenAI 번역 결과 사용
+      // 3차: OpenAI 번역 결과로 Photon
       if (!coords && translations[place]) {
-        coords = await geocodePhoton(translations[place], regionContext);
+        coords = await geocodePhoton(translations[place], regionContext, countryCode || undefined);
+        if (!isValidCountry(coords)) coords = null;
         if (coords) {
           await context.env.DB.prepare(
             `UPDATE schedules SET place_en = ? WHERE id = ? AND place_en IS NULL`
@@ -218,11 +289,17 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         }
       }
 
-      // 3차: 한국어면 MyMemory 폴백
+      // 4차: 한국어면 MyMemory 번역 → Nominatim/Photon
       if (!coords && hasKorean(place)) {
         const english = await translateToEnglish(place);
         if (english) {
-          coords = await geocodePhoton(english, regionContext);
+          if (countryCode) {
+            coords = await geocodeNominatim(english, countryCode);
+          }
+          if (!coords) {
+            coords = await geocodePhoton(english, regionContext, countryCode || undefined);
+            if (!isValidCountry(coords)) coords = null;
+          }
           if (coords) {
             await context.env.DB.prepare(
               `UPDATE schedules SET place_en = ? WHERE id = ? AND place_en IS NULL`
@@ -231,15 +308,22 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         }
       }
       
-      // 4차: 원본으로 직접 검색
+      // 5차: 원본으로 직접 검색
       if (!coords) {
-        coords = await geocodePhoton(place, regionContext);
+        if (countryCode) {
+          coords = await geocodeNominatim(place, countryCode);
+        }
+        if (!coords) {
+          coords = await geocodePhoton(place, regionContext, countryCode || undefined);
+          if (!isValidCountry(coords)) coords = null;
+        }
       }
 
       if (coords) {
+        const cc = coords.countryCode || (countryCode ? countryCode.toUpperCase() : null);
         await context.env.DB.prepare(
-          `UPDATE schedules SET latitude = ?, longitude = ? WHERE id = ?`
-        ).bind(coords.lat, coords.lng, schedule.id).run();
+          `UPDATE schedules SET latitude = ?, longitude = ?, country_code = COALESCE(?, country_code) WHERE id = ?`
+        ).bind(coords.lat, coords.lng, cc, schedule.id).run();
         
         updated++;
         results.push({
