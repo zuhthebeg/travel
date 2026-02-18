@@ -905,7 +905,7 @@ export function PlanDetailPage() {
                           {/* 보정 안내 메시지 */}
                           {missingCoords.length > 0 && geocodeFailed.length === 0 && (
                             <div className="alert alert-warning py-2 text-sm">
-                              <span>📍 좌표가 없는 일정이 {missingCoords.length}개 있어요. 위 버튼으로 보정해주세요!</span>
+                              <span>📍 {missingCoords.length}개 장소 좌표 없음 — 장소명을 정확히 수정 후 보정 버튼을 눌러주세요</span>
                             </div>
                           )}
 
