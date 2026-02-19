@@ -319,30 +319,7 @@ export function TravelAssistantChat({
       }
     };
 
-    const systemPrompt = `You are a friendly and helpful travel assistant. Your goal is to help users plan their trips.
-
-  LANGUAGE: User's preferred language is ${userLanguage.name} (${userLanguage.stt})
-  Current time: ${currentTime}${locationInfo}
-
-  The current travel plan is for "${planTitle}" in "${planRegion}" from ${planStartDate} to ${planEndDate}.
-  The plan currently has the following schedules:
-  ${(schedules || []).map(s => {
-    let scheduleInfo = `- ${s.date}${s.time ? ` ${s.time}` : ''}: ${s.title}`;
-    if (s.place) scheduleInfo += ` at ${s.place}`;
-    if (s.memo) scheduleInfo += ` (메모: ${s.memo})`;
-    if (s.plan_b) scheduleInfo += ` [대안B: ${s.plan_b}]`;
-    if (s.plan_c) scheduleInfo += ` [대안C: ${s.plan_c}]`;
-    if (s.rating) scheduleInfo += ` [평점: ${s.rating}/5]`;
-    if (s.review) scheduleInfo += ` [리뷰: ${s.review}]`;
-    return scheduleInfo;
-  }).join('\n')}
-
-  You can provide information about destinations, suggest activities, and help with scheduling.
-  Use the current time, user location, and detailed schedule information (including time, memo, alternatives, ratings, reviews) to provide more relevant and contextual answers.
-
-  IMPORTANT: Keep your answers VERY concise and brief (1-2 sentences maximum). Use simple, natural language that sounds good when spoken aloud.
-  Avoid long explanations, lists, or formatting. Focus on the most essential information only.
-  ${getLanguageInstructions()}`;
+    // systemPrompt is now generated server-side in /api/assistant/index.ts
 
     // Capture current image and clear it before sending
     const currentImage = imageData;
@@ -410,16 +387,15 @@ Rules:
         },
         body: JSON.stringify({
           message: messageToSend,
-          history: messages.map(msg => ({ role: msg.role, parts: [{ text: msg.content }] })),
+          history: messages.slice(-6).map(msg => ({ role: msg.role, parts: [{ text: msg.content }] })),
           planId,
           planTitle,
           planRegion,
           planStartDate,
           planEndDate,
-          schedules,
-          memos, // Include travel memos
-          systemPrompt, // Pass the systemPrompt to the backend
-          image: currentImage, // Include image if present
+          schedules: schedules.map(s => ({ id: s.id, date: s.date, time: s.time, title: s.title, place: s.place, memo: s.memo, latitude: s.latitude, longitude: s.longitude, country_code: s.country_code })),
+          memos,
+          image: currentImage || undefined,
         }),
       });
 
