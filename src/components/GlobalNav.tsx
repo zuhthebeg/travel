@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import GoogleLoginButton from './GoogleLoginButton';
+import GuestLoginButton from './GuestLoginButton';
 import { Map, ClipboardList, Plane, LogOut, User } from 'lucide-react';
 import { runSync } from '../lib/offline/syncEngine';
 
@@ -141,7 +142,10 @@ export function GlobalNav() {
               </ul>
             </div>
           ) : (
-            <GoogleLoginButton />
+            <div className="flex items-center gap-1">
+              <GoogleLoginButton />
+              <GuestLoginButton />
+            </div>
           )}
         </div>
 
@@ -214,8 +218,9 @@ export function GlobalNav() {
                 </li>
               </>
             ) : (
-              <li className="px-2 py-2">
-                <GoogleLoginButton />
+              <li className="px-2 py-2 flex flex-col gap-2">
+                <GoogleLoginButton fullWidth />
+                <GuestLoginButton fullWidth />
               </li>
             )}
           </ul>

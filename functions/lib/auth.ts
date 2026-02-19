@@ -17,6 +17,18 @@ export async function getRequestUser(
     const payload = decodeGoogleJWT(credential);
     if (!payload?.sub) return null;
 
+    // Guest auth: sub starts with "guest_"
+    if (typeof payload.sub === 'string' && payload.sub.startsWith('guest_')) {
+      const guestId = parseInt(payload.sub.replace('guest_', ''), 10);
+      if (isNaN(guestId)) return null;
+      const user = await db
+        .prepare("SELECT * FROM users WHERE id = ? AND auth_provider = 'guest'")
+        .bind(guestId)
+        .first<User>();
+      return user ?? null;
+    }
+
+    // Google auth
     const { results } = await db
       .prepare('SELECT * FROM users WHERE google_id = ?')
       .bind(payload.sub)

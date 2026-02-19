@@ -23,6 +23,7 @@ import { downloadICS } from '../lib/ics';
 import MemberAvatars from '../components/MemberAvatars';
 import ForkButton from '../components/ForkButton';
 import GoogleLoginButton from '../components/GoogleLoginButton';
+import GuestLoginButton from '../components/GuestLoginButton';
 import { TravelMemoList } from '../components/travel/TravelMemoList';
 import type { Schedule, Plan, Comment } from '../store/types';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
@@ -829,7 +830,10 @@ export function PlanDetailPage() {
           <div className="alert alert-info mb-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full">
               <span>이 여행이 마음에 드시나요? 로그인하면 내 여행으로 가져올 수 있어요</span>
-              <GoogleLoginButton onSuccess={() => window.location.reload()} />
+              <div className="flex gap-2">
+                <GoogleLoginButton onSuccess={() => window.location.reload()} />
+                <GuestLoginButton onSuccess={() => window.location.reload()} />
+              </div>
             </div>
           </div>
         )}

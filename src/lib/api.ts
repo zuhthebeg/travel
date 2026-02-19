@@ -280,6 +280,15 @@ export const authAPI = {
     });
     return result.user;
   },
+
+  // 게스트 로그인
+  guestLogin: async (nickname: string) => {
+    const result = await apiRequest<{ user: User; credential: string }>('/api/auth/guest', {
+      method: 'POST',
+      body: JSON.stringify({ nickname }),
+    });
+    return result;
+  },
 };
 
 // Moments API

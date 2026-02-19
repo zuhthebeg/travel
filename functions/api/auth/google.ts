@@ -100,23 +100,23 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   }
 };
 
+function base64ToUtf8(b64: string): string {
+  const binary = atob(b64);
+  const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
 // Decode credential (supports both JWT and base64 JSON)
-// In production, verify JWT signature with Google's public keys
 function decodeJWT(token: string): any {
   try {
     const parts = token.split('.');
 
-    // If it's a JWT (3 parts separated by dots)
     if (parts.length === 3) {
-      const payload = parts[1];
-      const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
-      return JSON.parse(decoded);
+      return JSON.parse(base64ToUtf8(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
     }
 
-    // If it's base64 encoded JSON (custom format)
     try {
-      const decoded = atob(token);
-      return JSON.parse(decoded);
+      return JSON.parse(base64ToUtf8(token));
     } catch {
       return null;
     }

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import GoogleLoginButton from './GoogleLoginButton';
+import GuestLoginButton from './GuestLoginButton';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -59,12 +60,19 @@ export default function LoginModal({
             {message}
           </p>
 
-          {/* Google Login Button */}
-          <GoogleLoginButton
-            onSuccess={handleSuccess}
-            redirectTo={redirectTo}
-            fullWidth
-          />
+          {/* Login Buttons */}
+          <div className="flex flex-col gap-3 w-full">
+            <GoogleLoginButton
+              onSuccess={handleSuccess}
+              redirectTo={redirectTo}
+              fullWidth
+            />
+            <div className="divider my-0 text-xs">또는</div>
+            <GuestLoginButton
+              onSuccess={handleSuccess}
+              fullWidth
+            />
+          </div>
 
           {/* Info */}
           <div className="mt-6 text-xs text-base-content/60">
