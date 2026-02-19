@@ -44,7 +44,12 @@ export function TravelAssistantChat({
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; city?: string } | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null); // Base64 preview
   const [imageData, setImageData] = useState<string | null>(null); // Compressed base64 for API
-  const [offlineMode] = useState(() => localStorage.getItem('offline_mode') === 'true');
+  const [offlineMode] = useState(() => {
+    if (localStorage.getItem('offline_mode') !== 'true') return false;
+    // Offline mode only works in PWA (standalone)
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+    return standalone;
+  });
   const [offlineState, setOfflineState] = useState<OfflineEngineState>(offlineEngine.getState());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);

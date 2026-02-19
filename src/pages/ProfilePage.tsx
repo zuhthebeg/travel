@@ -5,8 +5,9 @@ import { GlobalNav } from '../components/GlobalNav';
 import LevelCard from '../components/LevelCard';
 import AlbumTimeline from '../components/AlbumTimeline';
 import { OfflineModelManager } from '../components/OfflineModelManager';
-import { Trophy, MapPin, Camera, Plane, Calendar, LogOut, ChevronRight, Wifi, WifiOff } from 'lucide-react';
+import { Trophy, MapPin, Camera, Plane, Calendar, LogOut, ChevronRight, Wifi, WifiOff, Download } from 'lucide-react';
 import { getCachedPlans, getCachedMomentsBySchedule, getCachedSchedulesByPlan } from '../lib/db';
+import { isPWA } from '../lib/isPWA';
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:8788' : '';
 
@@ -224,7 +225,24 @@ export default function ProfilePage() {
         )}
 
         {activeTab === 'offline' && (
-          <OfflineModelManager />
+          isPWA() ? (
+            <OfflineModelManager />
+          ) : (
+            <div className="bg-base-100 rounded-xl p-6 text-center space-y-4">
+              <Download className="w-12 h-12 mx-auto text-orange-400" />
+              <h3 className="font-bold text-lg">앱 설치가 필요해요</h3>
+              <p className="text-sm text-base-content/70">
+                오프라인 모드는 PWA(앱) 설치 후 사용할 수 있어요.<br />
+                인터넷 없이도 여행 일정을 확인하고 AI와 대화할 수 있습니다.
+              </p>
+              <div className="bg-base-200 rounded-lg p-4 text-left text-xs space-y-2">
+                <p className="font-semibold">📱 설치 방법</p>
+                <p><strong>Android:</strong> 주소창 옆 <kbd className="kbd kbd-xs">⋮</kbd> → "홈 화면에 추가"</p>
+                <p><strong>iOS Safari:</strong> 하단 <kbd className="kbd kbd-xs">↑</kbd> 공유 → "홈 화면에 추가"</p>
+                <p><strong>PC Chrome:</strong> 주소창 우측 설치 아이콘 클릭</p>
+              </div>
+            </div>
+          )
         )}
 
         {/* 로그아웃 */}
