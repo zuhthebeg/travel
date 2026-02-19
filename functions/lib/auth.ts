@@ -81,14 +81,19 @@ export async function requirePlanOwner(
   return plan?.user_id === userId;
 }
 
+function base64ToUtf8(b64: string): string {
+  const binary = atob(b64);
+  const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
 function decodeGoogleJWT(token: string): any {
   try {
     const parts = token.split('.');
     if (parts.length === 3) {
-      const decoded = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
-      return JSON.parse(decoded);
+      return JSON.parse(base64ToUtf8(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
     }
-    return JSON.parse(atob(token));
+    return JSON.parse(base64ToUtf8(token));
   } catch {
     return null;
   }

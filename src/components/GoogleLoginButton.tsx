@@ -28,12 +28,17 @@ export default function GoogleLoginButton({
         const userInfo = await userInfoResponse.json();
 
         // Create a simple JWT-like payload for our backend
-        const credential = btoa(JSON.stringify({
+        // btoa doesn't support non-Latin1 chars (e.g. Korean names)
+        // Use TextEncoder → base64 for Unicode safety
+        const jsonStr = JSON.stringify({
           sub: userInfo.sub,
           email: userInfo.email,
           name: userInfo.name,
           picture: userInfo.picture,
-        }));
+        });
+        const credential = btoa(
+          Array.from(new TextEncoder().encode(jsonStr), b => String.fromCharCode(b)).join('')
+        );
 
         const user = await authAPI.googleLogin(credential);
         setCurrentUser(user);
