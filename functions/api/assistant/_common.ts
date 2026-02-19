@@ -1,7 +1,10 @@
 /**
- * OpenAI API 공통 호출 함수
- * Gemini에서 OpenAI로 전환
+ * OpenAI API 공통 호출 함수 (Cloudflare AI Gateway 경유)
+ * HKG colo에서 OpenAI 직접 호출 시 홍콩 IP로 인식되어 403 차단됨
+ * AI Gateway를 통해 US 라우팅으로 해결
  */
+
+const OPENAI_BASE_URL = 'https://gateway.ai.cloudflare.com/v1/3d0681b782422e56226a0a1df4a0e8b2/travly-ai-gateway/openai';
 
 export interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant';
@@ -28,7 +31,7 @@ export async function callOpenAI(
 ): Promise<string> {
   const { temperature = 0.7, maxTokens = 2000, responseFormat = 'text' } = options;
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
@@ -71,7 +74,7 @@ export async function callOpenAIWithVision(
 ): Promise<string> {
   const { temperature = 0.7, maxTokens = 2000, responseFormat = 'text' } = options;
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,

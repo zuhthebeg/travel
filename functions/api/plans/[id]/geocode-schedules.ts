@@ -98,7 +98,8 @@ async function batchTranslateWithOpenAI(
 ): Promise<Record<string, string>> {
   if (!places.length || !apiKey) return {};
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const OPENAI_GW = 'https://gateway.ai.cloudflare.com/v1/3d0681b782422e56226a0a1df4a0e8b2/travly-ai-gateway/openai';
+    const res = await fetch(`${OPENAI_GW}/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
       body: JSON.stringify({
