@@ -610,7 +610,8 @@ Examples:
 
   } catch (error) {
     console.error('Assistant error:', error);
-    return new Response(JSON.stringify({ error: 'Failed to get response' }), {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: 'Failed to get response', detail: errMsg }), {
       status: 500,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     });

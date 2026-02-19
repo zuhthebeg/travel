@@ -45,8 +45,8 @@ export async function callOpenAI(
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('OpenAI API error:', errorText);
-    throw new Error(`OpenAI API request failed with status ${response.status}: ${errorText}`);
+    console.error('OpenAI API error:', response.status, errorText);
+    throw new Error(`OpenAI ${response.status}: ${errorText.substring(0, 200)}`);
   }
 
   const data = await response.json() as {
@@ -88,8 +88,8 @@ export async function callOpenAIWithVision(
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('OpenAI Vision API error:', errorText);
-    throw new Error(`OpenAI Vision API request failed with status ${response.status}: ${errorText}`);
+    console.error('OpenAI Vision API error:', response.status, errorText);
+    throw new Error(`OpenAI Vision ${response.status}: ${errorText.substring(0, 200)}`);
   }
 
   const data = await response.json() as {
