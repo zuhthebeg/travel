@@ -424,7 +424,9 @@ Rules:
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get response from assistant');
+        const errBody = await response.json().catch(() => ({}));
+        console.error('Assistant API error:', response.status, errBody);
+        throw new Error(errBody.detail || errBody.error || `Assistant error ${response.status}`);
       }
 
       const data = await response.json();
