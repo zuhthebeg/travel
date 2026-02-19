@@ -428,8 +428,12 @@ Rules:
       if (ttsEnabled) {
         speak(assistantMessage.content);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending message to assistant:', error);
+      console.error('Error name:', error?.name);
+      console.error('Error message:', error?.message);
+      console.error('Error stack:', error?.stack);
+      console.error('Error type:', typeof error, Object.keys(error || {}));
       console.error('Request details:', { 
         origin: window.location.origin, 
         url: `${window.location.origin}/api/assistant`,
