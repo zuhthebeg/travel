@@ -162,8 +162,9 @@ export function CreatePlanPage() {
           }
         },
         (error) => {
-          console.error('Failed to get user location:', error);
-        }
+          console.debug('Geolocation unavailable:', error.code, error.message);
+        },
+        { timeout: 5000 }
       );
     }
   }, []);

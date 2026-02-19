@@ -278,8 +278,10 @@ export function PlanDetailPage() {
           }
         },
         (error) => {
-          console.error('Failed to get user location:', error);
-        }
+          // Silently ignore - location is optional (weather feature)
+          console.debug('Geolocation unavailable:', error.code, error.message);
+        },
+        { timeout: 5000 }
       );
     }
   }, []);
