@@ -99,6 +99,11 @@ CRITICAL RULES:
       memos = values.filter((v: any) => v && typeof v === 'object' && v.category);
     }
 
+    // 레거시 일반정보 카테고리 정리 (일정 기반 메모로 대체)
+    await context.env.DB.prepare(
+      `DELETE FROM travel_memos WHERE plan_id = ? AND category IN ('visa','timezone','weather','currency','emergency')`
+    ).bind(planId).run();
+
     // Insert or update memos by category (기존 내용 자동 업데이트)
     let appliedCount = 0;
     let idx = 0;
