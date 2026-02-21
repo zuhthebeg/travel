@@ -1427,7 +1427,7 @@ export function PlanDetailPage() {
             planStartDate={selectedPlan.start_date}
             planEndDate={selectedPlan.end_date}
             schedule={editingSchedule}
-            onClose={() => setEditingSchedule(null)}
+            onClose={() => { editModalRef.current?.close(); setEditingSchedule(null); }}
             onSave={async (schedule) => {
               if (editingSchedule?.id) {
                 // Update existing schedule and sort
