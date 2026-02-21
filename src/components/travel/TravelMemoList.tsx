@@ -174,7 +174,7 @@ export function TravelMemoList({ planId, planRegion }: TravelMemoListProps) {
                 className="gap-1"
               >
                 {isGenerating ? <Loading /> : <Sparkles className="w-4 h-4" />}
-                AI 자동 생성
+                AI 일정기반 업데이트
               </Button>
             )}
           </div>
@@ -193,7 +193,7 @@ export function TravelMemoList({ planId, planRegion }: TravelMemoListProps) {
             <div className="text-center py-8 text-base-content/60">
               <FileText className="w-12 h-12 mx-auto mb-2 opacity-30" />
               <p>아직 여행 정보가 없습니다.</p>
-              <p className="text-sm">비자, 시차, 환율 등의 정보를 추가해보세요!</p>
+              <p className="text-sm">일정 기반 체크리스트(예약/예산/준비물/연락처)를 추가해보세요.</p>
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">

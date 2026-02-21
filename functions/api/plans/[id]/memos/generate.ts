@@ -21,11 +21,11 @@ export const onRequestOptions: PagesFunction = async () => {
 };
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
-  const planId = context.params.id;
+  const planId = Number(context.params.id);
   const { region } = await context.request.json<{ region: string }>();
 
-  if (!region) {
-    return new Response(JSON.stringify({ error: 'Region is required' }), {
+  if (!planId || !region) {
+    return new Response(JSON.stringify({ error: 'Plan ID and region are required' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
@@ -39,34 +39,45 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     });
   }
 
-  const systemPrompt = `You are a travel information assistant. Generate helpful travel memos for a trip to ${region}.
+  // 일정 기반 컨텍스트 수집
+  const { results: scheduleRows } = await context.env.DB.prepare(
+    `SELECT date, time, title, place, memo FROM schedules WHERE plan_id = ? ORDER BY date, time LIMIT 300`
+  ).bind(planId).all();
+
+  const scheduleContext = (scheduleRows || [])
+    .map((s: any) => `${s.date} ${s.time || '--:--'} | ${s.title || ''} | ${s.place || ''} | ${s.memo || ''}`)
+    .join('\n');
+
+  const systemPrompt = `You are a travel planning assistant.
+Generate practical travel memos based on the existing schedule data.
 
 Output JSON object with "memos" array:
 {
   "memos": [
-    {"category": "visa", "title": "비자 정보", "content": "...", "icon": "🛂"},
-    {"category": "timezone", "title": "시차", "content": "...", "icon": "🕐"},
-    {"category": "weather", "title": "현재 날씨/기후", "content": "...", "icon": "🌤️"},
-    {"category": "currency", "title": "환율/통화", "content": "...", "icon": "💱"},
-    {"category": "emergency", "title": "비상연락처", "content": "...", "icon": "🆘"},
-    {"category": "transportation", "title": "주요 교통수단", "content": "...", "icon": "🚗"}
+    {"category": "reservation", "title": "예약/확인 필요", "content": "...", "icon": "📌"},
+    {"category": "transportation", "title": "이동 체크포인트", "content": "...", "icon": "🚆"},
+    {"category": "budget", "title": "예산 체크", "content": "...", "icon": "💳"},
+    {"category": "packing", "title": "준비물", "content": "...", "icon": "🎒"},
+    {"category": "contact", "title": "연락처/비상대응", "content": "...", "icon": "🆘"}
   ]
 }
 
-Rules:
-1. All text in Korean
-2. Be concise but informative (2-4 sentences per memo)
-3. Include practical, useful information
-4. For visa, include whether Korean passport holders need visa/ESTA/etc.
-5. For timezone, include time difference from Korea (KST/UTC+9)
-6. For currency, include exchange rate estimate and payment tips
-7. For emergency, include local emergency numbers and Korean embassy if applicable
-8. Generate at least 4 relevant memos`;
+CRITICAL RULES:
+1) All text must be in Korean.
+2) Use schedule-derived, actionable points only.
+3) If a fact is uncertain (exchange rate, policy, emergency number, weather), DO NOT guess. Write "현지/출발 전 확인 필요".
+4) Do NOT output generic encyclopedia-style destination info.
+5) Prefer checklist style with short bullet-like sentences.
+6) At least 4 memos, max 8 memos.
+7) Currency memo must be "환율 수치"를 쓰지 말고, 결제수단/수수료/ATM 확인 같은 할 일 중심으로 작성.`;
 
   try {
     const messages: OpenAIMessage[] = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: `Generate travel information memos for: ${region}` },
+      {
+        role: 'user',
+        content: `여행 지역: ${region}\n\n등록된 일정 데이터:\n${scheduleContext || '(일정 없음)'}\n\n위 일정을 바탕으로 실사용 가능한 메모를 생성해줘.`,
+      },
     ];
 
     const response = await callOpenAI(apiKey, messages, {
@@ -88,32 +99,52 @@ Rules:
       memos = values.filter((v: any) => v && typeof v === 'object' && v.category);
     }
 
-    // Insert memos into database
-    let insertedCount = 0;
+    // Insert or update memos by category (기존 내용 자동 업데이트)
+    let appliedCount = 0;
+    let idx = 0;
     for (const memo of memos) {
       if (memo.category && memo.title) {
         try {
-          await context.env.DB.prepare(
-            `INSERT INTO travel_memos (plan_id, category, title, content, icon, order_index)
-             VALUES (?, ?, ?, ?, ?, ?)`
-          ).bind(
-            planId,
-            memo.category,
-            memo.title,
-            memo.content || null,
-            memo.icon || null,
-            insertedCount
-          ).run();
-          insertedCount++;
+          const existing = await context.env.DB.prepare(
+            `SELECT id FROM travel_memos WHERE plan_id = ? AND category = ? ORDER BY id LIMIT 1`
+          ).bind(planId, memo.category).first<any>();
+
+          if (existing?.id) {
+            await context.env.DB.prepare(
+              `UPDATE travel_memos
+               SET title = ?, content = ?, icon = ?, order_index = ?, updated_at = datetime('now')
+               WHERE id = ?`
+            ).bind(
+              memo.title,
+              memo.content || null,
+              memo.icon || null,
+              idx,
+              existing.id
+            ).run();
+          } else {
+            await context.env.DB.prepare(
+              `INSERT INTO travel_memos (plan_id, category, title, content, icon, order_index)
+               VALUES (?, ?, ?, ?, ?, ?)`
+            ).bind(
+              planId,
+              memo.category,
+              memo.title,
+              memo.content || null,
+              memo.icon || null,
+              idx
+            ).run();
+          }
+          appliedCount++;
+          idx++;
         } catch (e) {
-          console.error('Failed to insert memo:', memo, e);
+          console.error('Failed to upsert memo:', memo, e);
         }
       }
     }
 
     return new Response(JSON.stringify({ 
       success: true, 
-      count: insertedCount 
+      count: appliedCount 
     }), {
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
