@@ -71,6 +71,7 @@ interface PlanUIState {
   mainTab: MainTab;
   viewMode: ViewMode;
   scrollX: number;
+  focusedDate: string | null;
 }
 
 const DEFAULT_PLAN_UI_STATE: PlanUIState = {
@@ -78,6 +79,7 @@ const DEFAULT_PLAN_UI_STATE: PlanUIState = {
   mainTab: 'schedule',
   viewMode: 'horizontal',
   scrollX: 0,
+  focusedDate: null,
 };
 
 function readPlanUIState(planId?: string): PlanUIState {
@@ -93,6 +95,7 @@ function readPlanUIState(planId?: string): PlanUIState {
       mainTab: ['schedule', 'notes', 'album'].includes(parsed?.mainTab) ? parsed.mainTab : DEFAULT_PLAN_UI_STATE.mainTab,
       viewMode: ['vertical', 'horizontal', 'calendar', 'daily'].includes(parsed?.viewMode) ? parsed.viewMode : DEFAULT_PLAN_UI_STATE.viewMode,
       scrollX: typeof parsed?.scrollX === 'number' ? parsed.scrollX : DEFAULT_PLAN_UI_STATE.scrollX,
+      focusedDate: typeof parsed?.focusedDate === 'string' ? parsed.focusedDate : null,
     } as PlanUIState;
   } catch {
     return DEFAULT_PLAN_UI_STATE;
@@ -210,7 +213,7 @@ export function PlanDetailPage() {
     } catch { return []; }
   });
   const [mainTab, setMainTab] = useState<MainTab>(() => readPlanUIState(id).mainTab);
-  const [focusedDate, setFocusedDate] = useState<string | null>(null);
+  const [focusedDate, setFocusedDate] = useState<string | null>(() => readPlanUIState(id).focusedDate);
   const [geocodeFailed, setGeocodeFailed] = useState<any[]>([]);
   const [geocodeFailedCollapsed, setGeocodeFailedCollapsed] = useState(() => {
     try { return localStorage.getItem('geocodeFailed_collapsed') === 'true'; } catch { return false; }
@@ -306,6 +309,7 @@ export function PlanDetailPage() {
     setMainTab(uiState.mainTab);
     setViewMode(uiState.viewMode);
     setTimelineScrollX(uiState.scrollX);
+    setFocusedDate(uiState.focusedDate);
   }, [id]);
 
   useEffect(() => {
@@ -316,10 +320,11 @@ export function PlanDetailPage() {
       mainTab,
       viewMode,
       scrollX: timelineScrollX,
+      focusedDate,
     };
 
     localStorage.setItem(`plan-ui-${id}`, JSON.stringify(uiState));
-  }, [id, mapOpen, mainTab, viewMode, timelineScrollX]);
+  }, [id, mapOpen, mainTab, viewMode, timelineScrollX, focusedDate]);
 
   useEffect(() => {
     if (mainTab !== 'schedule' || viewMode !== 'horizontal') return;
@@ -1223,6 +1228,7 @@ export function PlanDetailPage() {
               planId={selectedPlan.id}
               onScheduleClick={setViewingSchedule}
               onDateChange={setFocusedDate}
+              initialDate={focusedDate}
             />
           ) : viewMode === 'calendar' ? (
             <div className="card bg-base-100 shadow-sm p-4">
@@ -1314,6 +1320,7 @@ export function PlanDetailPage() {
               planId={selectedPlan.id}
               onScheduleClick={setViewingSchedule}
               onDateChange={setFocusedDate}
+              initialDate={focusedDate}
             />
           ) : viewMode === 'calendar' ? (
             <div className="card bg-base-100 shadow-sm p-4">

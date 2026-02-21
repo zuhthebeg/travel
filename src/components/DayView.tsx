@@ -22,6 +22,7 @@ interface DayViewProps {
   planId: number;
   onScheduleClick: (schedule: Schedule) => void;
   onDateChange?: (date: string) => void;
+  initialDate?: string | null;
 }
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:8788' : '';
@@ -41,7 +42,7 @@ function isFlightSchedule(title: string): boolean {
   return /\b[A-Z]{2,3}\d{1,4}\b/.test(title);
 }
 
-export default function DayView({ schedules, startDate, endDate, planId, onScheduleClick, onDateChange }: DayViewProps) {
+export default function DayView({ schedules, startDate, endDate, planId, onScheduleClick, onDateChange, initialDate }: DayViewProps) {
   // 날짜 리스트 생성 (로컬 타임존 기준)
   const dates = useMemo(() => {
     const result: string[] = [];
@@ -58,7 +59,15 @@ export default function DayView({ schedules, startDate, endDate, planId, onSched
     return result;
   }, [startDate, endDate]);
 
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const initialIndex = useMemo(() => {
+    if (initialDate) {
+      const idx = dates.indexOf(initialDate);
+      if (idx >= 0) return idx;
+    }
+    return 0;
+  }, [dates, initialDate]);
+
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [dayNotes, setDayNotes] = useState<Record<string, DayNote>>({});
   const [editingNote, setEditingNote] = useState(false);
   const [noteContent, setNoteContent] = useState('');
@@ -156,10 +165,15 @@ export default function DayView({ schedules, startDate, endDate, planId, onSched
     }
   };
 
-  // 초기 마운트 시 콜백
+  // initialDate 또는 날짜 범위가 바뀌면 인덱스 동기화
   useEffect(() => {
-    onDateChange?.(dates[currentIndex]);
-  }, []);
+    setCurrentIndex(initialIndex);
+  }, [initialIndex]);
+
+  // 현재 선택 날짜를 상위로 전달
+  useEffect(() => {
+    if (dates[currentIndex]) onDateChange?.(dates[currentIndex]);
+  }, [currentIndex, dates, onDateChange]);
 
   // 지도 번호 매핑 (좌표 있는 일정만 순서대로 1, 2, 3...)
   const mapOrderMap = useMemo(() => {
