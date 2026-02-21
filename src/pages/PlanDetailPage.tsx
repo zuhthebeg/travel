@@ -902,7 +902,7 @@ export function PlanDetailPage() {
                     <TravelMap 
                       points={mapPoints} 
                       showRoute={true}
-                      height="350px"
+                      height={window.innerWidth < 640 ? '200px' : '300px'}
                       className="mt-2"
                     />
                     {/* 좌표 상태 + 보정 UI */}

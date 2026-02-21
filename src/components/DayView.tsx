@@ -42,14 +42,17 @@ function isFlightSchedule(title: string): boolean {
 }
 
 export default function DayView({ schedules, startDate, endDate, planId, onScheduleClick, onDateChange }: DayViewProps) {
-  // 날짜 리스트 생성
+  // 날짜 리스트 생성 (로컬 타임존 기준)
   const dates = useMemo(() => {
     const result: string[] = [];
     const start = new Date(startDate + 'T00:00:00');
     const end = new Date(endDate + 'T00:00:00');
     const cur = new Date(start);
     while (cur <= end) {
-      result.push(cur.toISOString().split('T')[0]);
+      const y = cur.getFullYear();
+      const m = String(cur.getMonth() + 1).padStart(2, '0');
+      const d = String(cur.getDate()).padStart(2, '0');
+      result.push(`${y}-${m}-${d}`);
       cur.setDate(cur.getDate() + 1);
     }
     return result;
