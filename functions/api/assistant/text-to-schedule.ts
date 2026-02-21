@@ -111,7 +111,7 @@ function isGenericPlace(place: string): boolean {
 }
 
 export async function textToSchedule(apiKey: string, text: string, planContext: any) {
-  const { planTitle, planRegion, planStartDate, planEndDate, currentDate, currentTime, userLocation, userLang } = planContext;
+  const { planTitle, planRegion, planStartDate, planEndDate, currentDate, currentTime, userLocation, userLang, defaultDate } = planContext;
 
   // Detect language from text
   const detectLanguage = (t: string, langHint?: string) => {
@@ -138,7 +138,7 @@ Output ONLY valid JSON with this format:
 
 CRITICAL RULES:
 1. ALL text must be in ${outputLang}
-2. If no date specified, use current date: ${currentDate}
+2. If no date specified, use this default date: ${defaultDate || currentDate}
 3. If no time specified but context suggests timing (점심, lunch, 저녁, dinner), use appropriate time
 4. If ambiguous timing, use current time: ${currentTime}
 5. **ONLY use place names that you are CERTAIN actually exist.** Do NOT invent or hallucinate place names. If the user mentions a specific place, use it as-is. If the user describes a generic activity (e.g. "점심 먹기", "산책"), set place to "" (empty string).
@@ -147,8 +147,9 @@ CRITICAL RULES:
 8. Extract any tips or notes for the memo field`;
 
   const userPrompt = `Current context:
-- Date: ${currentDate}
+- Today: ${currentDate}
 - Time: ${currentTime}
+- Default date (use when user doesn't specify a date): ${defaultDate || currentDate}
 - Travel: "${planTitle}" in ${planRegion} (${planStartDate} to ${planEndDate})${locationInfo}
 
 Parse this into a schedule:

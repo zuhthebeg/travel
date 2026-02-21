@@ -1712,7 +1712,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
       const destLang = 'en'; // Placeholder, ideally from plan details
 
       const response = await fetch('/api/schedules/from-text', {
-        method: 'POST', // Still POST to generate new schedule data
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: textInputForAI,
@@ -1723,6 +1723,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
           planRegion,
           planStartDate,
           planEndDate,
+          defaultDate: formData.date, // 날짜 미지정 시 이 날짜 사용
         }),
       });
 

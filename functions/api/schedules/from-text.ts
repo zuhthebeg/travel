@@ -17,7 +17,7 @@ export const onRequestOptions: PagesFunction = async () => {
 };
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
-  const { text, planId, userLang, destLang, planTitle, planRegion, planStartDate, planEndDate, userLocation } = await context.request.json<{
+  const { text, planId, userLang, destLang, planTitle, planRegion, planStartDate, planEndDate, userLocation, defaultDate } = await context.request.json<{
     text: string;
     planId: number;
     userLang: string;
@@ -27,6 +27,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     planStartDate: string;
     planEndDate: string;
     userLocation?: { lat: number; lng: number; city?: string };
+    defaultDate?: string;
   }>();
 
   if (!text || !planId || !userLang || !destLang || !planTitle || !planRegion || !planStartDate || !planEndDate) {
@@ -67,6 +68,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       currentDate,
       currentTime,
       userLocation,
+      defaultDate,
     });
 
     // Here you would typically save the schedule to your database
