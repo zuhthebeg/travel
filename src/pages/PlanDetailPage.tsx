@@ -19,6 +19,7 @@ import MomentSection from '../components/MomentSection'; // Album - 순간 기�
 import { PlaceAutocomplete } from '../components/PlaceAutocomplete';
 import TripNotes from '../components/TripNotes'; // Import TripNotes
 import CalendarView from '../components/CalendarView';
+import DayView from '../components/DayView';
 import { downloadICS } from '../lib/ics';
 import MemberAvatars from '../components/MemberAvatars';
 import ForkButton from '../components/ForkButton';
@@ -33,7 +34,7 @@ import ConflictBanner from '../components/ConflictBanner';
 import ConflictResolver from '../components/ConflictResolver';
 import type { OpLogEntry } from '../lib/offline/types';
 
-type ViewMode = 'vertical' | 'horizontal' | 'calendar';
+type ViewMode = 'vertical' | 'horizontal' | 'calendar' | 'daily';
 type MainTab = 'schedule' | 'notes' | 'album';
 
 // AI 처리 중 롤링 팁
@@ -89,7 +90,7 @@ function readPlanUIState(planId?: string): PlanUIState {
     return {
       mapOpen: typeof parsed?.mapOpen === 'boolean' ? parsed.mapOpen : DEFAULT_PLAN_UI_STATE.mapOpen,
       mainTab: ['schedule', 'notes', 'album'].includes(parsed?.mainTab) ? parsed.mainTab : DEFAULT_PLAN_UI_STATE.mainTab,
-      viewMode: ['vertical', 'horizontal', 'calendar'].includes(parsed?.viewMode) ? parsed.viewMode : DEFAULT_PLAN_UI_STATE.viewMode,
+      viewMode: ['vertical', 'horizontal', 'calendar', 'daily'].includes(parsed?.viewMode) ? parsed.viewMode : DEFAULT_PLAN_UI_STATE.viewMode,
       scrollX: typeof parsed?.scrollX === 'number' ? parsed.scrollX : DEFAULT_PLAN_UI_STATE.scrollX,
     } as PlanUIState;
   } catch {
@@ -1203,6 +1204,7 @@ export function PlanDetailPage() {
                 <div className="tabs tabs-boxed tabs-sm">
                   <a className={`tab ${viewMode === 'vertical' ? 'tab-active' : ''}`} onClick={() => setViewMode('vertical')}>목록</a>
                   <a className={`tab ${viewMode === 'horizontal' ? 'tab-active' : ''}`} onClick={() => setViewMode('horizontal')}>타임라인</a>
+                  <a className={`tab ${viewMode === 'daily' ? 'tab-active' : ''}`} onClick={() => setViewMode('daily')}>일별</a>
                   <a className={`tab ${viewMode === 'calendar' ? 'tab-active' : ''}`} onClick={() => setViewMode('calendar')}>📅</a>
                 </div>
                 {canEditPlan && (
@@ -1227,6 +1229,14 @@ export function PlanDetailPage() {
                 </Card.Actions>
               </Card.Body>
             </Card>
+          ) : viewMode === 'daily' ? (
+            <DayView
+              schedules={schedules}
+              startDate={selectedPlan.start_date}
+              endDate={selectedPlan.end_date}
+              planId={selectedPlan.id}
+              onScheduleClick={setViewingSchedule}
+            />
           ) : viewMode === 'calendar' ? (
             <div className="card bg-base-100 shadow-sm p-4">
               <CalendarView
@@ -1307,6 +1317,14 @@ export function PlanDetailPage() {
                 <p className="text-lg">아직 일정이 없습니다</p>
               </Card.Body>
             </Card>
+          ) : viewMode === 'daily' ? (
+            <DayView
+              schedules={schedules}
+              startDate={selectedPlan.start_date}
+              endDate={selectedPlan.end_date}
+              planId={selectedPlan.id}
+              onScheduleClick={setViewingSchedule}
+            />
           ) : viewMode === 'calendar' ? (
             <div className="card bg-base-100 shadow-sm p-4">
               <CalendarView
