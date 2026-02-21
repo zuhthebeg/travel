@@ -141,6 +141,18 @@ export default function DayView({ schedules, startDate, endDate, planId, onSched
     if (idx >= 0 && idx < dates.length) setCurrentIndex(idx);
   };
 
+  // 지도 번호 매핑 (좌표 있는 일정만 순서대로 1, 2, 3...)
+  const mapOrderMap = useMemo(() => {
+    const map = new Map<number, number>();
+    let order = 1;
+    daySchedules.forEach(s => {
+      if (s.latitude != null && s.longitude != null && !(s.latitude === 0 && s.longitude === 0)) {
+        map.set(s.id, order++);
+      }
+    });
+    return map;
+  }, [daySchedules]);
+
   const currentNote = dayNotes[currentDate];
 
   return (
@@ -252,7 +264,8 @@ export default function DayView({ schedules, startDate, endDate, planId, onSched
 
       {/* 일별 지도 */}
       {(() => {
-        const mapPoints = schedulesToMapPoints(daySchedules);
+        // 좌표 있는 일정만 필터 + 일별 순서 1부터 부여
+        const mapPoints = schedulesToMapPoints(daySchedules).map((p, i) => ({ ...p, order: i + 1 }));
         if (mapPoints.length === 0) return null;
         return (
           <div className="rounded-xl overflow-hidden shadow-sm border border-base-200">
@@ -335,7 +348,13 @@ export default function DayView({ schedules, startDate, endDate, planId, onSched
                       </div>
                       {schedule.place && (
                         <div className="flex items-center gap-1 mt-0.5">
-                          <MapPin className="w-3 h-3 text-base-content/40 flex-shrink-0" />
+                          {mapOrderMap.has(schedule.id) ? (
+                            <span className="flex-shrink-0 w-4 h-4 rounded-full bg-primary text-white text-[9px] font-bold flex items-center justify-center">
+                              {mapOrderMap.get(schedule.id)}
+                            </span>
+                          ) : (
+                            <MapPin className="w-3 h-3 text-base-content/40 flex-shrink-0" />
+                          )}
                           <span className="text-xs text-base-content/50 truncate">{schedule.place}</span>
                         </div>
                       )}
