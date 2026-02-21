@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, MapPin, FileText, Plane, StickyNote } from 'lucide-react';
 import { formatDisplayDate } from '../lib/utils';
+import { TravelMap, schedulesToMapPoints } from './TravelMap';
 import type { Schedule } from '../store/types';
 
 interface DayNote {
@@ -248,6 +249,24 @@ export default function DayView({ schedules, startDate, endDate, planId, onSched
           </div>
         ) : null}
       </div>
+
+      {/* 일별 지도 */}
+      {(() => {
+        const mapPoints = schedulesToMapPoints(daySchedules);
+        if (mapPoints.length === 0) return null;
+        return (
+          <div className="rounded-xl overflow-hidden shadow-sm border border-base-200">
+            <TravelMap
+              points={mapPoints}
+              showRoute={true}
+              height="200px"
+            />
+            <div className="bg-base-100 px-3 py-1.5 text-xs text-base-content/50 text-center">
+              📍 {mapPoints.length}곳 · Day {currentIndex + 1} 동선
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 컴팩트 타임라인 */}
       {daySchedules.length === 0 ? (
