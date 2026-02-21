@@ -280,7 +280,12 @@ export default function TripNotes({ planId }: TripNotesProps) {
 
       {/* 카테고리별 메모 */}
       <div className="space-y-3">
-        {CATEGORIES.map((category) => {
+        {CATEGORIES.every((c) => (grouped[c] || []).length === 0) && (
+          <div className="text-center py-6 text-sm text-gray-400">
+            아직 작성된 메모가 없어. 상단 "메모 추가"로 필요한 항목만 만들어줘.
+          </div>
+        )}
+        {CATEGORIES.filter((c) => (grouped[c] || []).length > 0).map((category) => {
           const config = CATEGORY_CONFIG[category];
           const categoryNotes = grouped[category] || [];
           const categorySummary = summary[category] || { total: 0, checked: 0 };

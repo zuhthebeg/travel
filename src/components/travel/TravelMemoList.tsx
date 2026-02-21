@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Plus, Sparkles, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 import { TravelMemoCard } from './TravelMemoCard';
 import { TravelMemoForm } from './TravelMemoForm';
@@ -18,6 +18,7 @@ export function TravelMemoList({ planId, planRegion }: TravelMemoListProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingMemo, setEditingMemo] = useState<TravelMemo | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [scheduleSig, setScheduleSig] = useState<string>('');
 
   // Fetch memos
   const fetchMemos = async () => {
@@ -36,7 +37,30 @@ export function TravelMemoList({ planId, planRegion }: TravelMemoListProps) {
 
   useEffect(() => {
     fetchMemos();
+    fetchScheduleSignature();
   }, [planId]);
+
+  const getSavedSig = () => localStorage.getItem(`memo-ai-sig-${planId}`) || '';
+
+  const hasScheduleChanged = useMemo(() => {
+    if (!scheduleSig) return false;
+    return getSavedSig() !== scheduleSig;
+  }, [scheduleSig, planId]);
+
+  const fetchScheduleSignature = async () => {
+    try {
+      const res = await fetch(`/api/plans/${planId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const schedules = (data.schedules || []) as any[];
+      const sig = schedules
+        .map(s => `${s.id}|${s.date}|${s.time || ''}|${s.title || ''}|${s.place || ''}|${s.memo || ''}`)
+        .join('||');
+      setScheduleSig(sig);
+    } catch (e) {
+      console.error('Failed to fetch schedule signature:', e);
+    }
+  };
 
   // Add memo
   const handleAdd = async (data: {
@@ -116,6 +140,8 @@ export function TravelMemoList({ planId, planRegion }: TravelMemoListProps) {
       });
       if (res.ok) {
         fetchMemos();
+        // 현재 일정 상태를 "AI 반영 기준점"으로 저장
+        if (scheduleSig) localStorage.setItem(`memo-ai-sig-${planId}`, scheduleSig);
       } else {
         const error = await res.json();
         alert(error.error || '자동 생성에 실패했습니다.');
@@ -155,6 +181,12 @@ export function TravelMemoList({ planId, planRegion }: TravelMemoListProps) {
 
       {isExpanded && (
         <>
+          {hasScheduleChanged && (
+            <div className="alert alert-warning py-2 text-sm">
+              <span>일정이 바뀌었어. 여행 정보도 다시 업데이트하는 걸 추천해.</span>
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex flex-wrap gap-2">
             <Button
@@ -174,7 +206,7 @@ export function TravelMemoList({ planId, planRegion }: TravelMemoListProps) {
                 className="gap-1"
               >
                 {isGenerating ? <Loading /> : <Sparkles className="w-4 h-4" />}
-                AI 일정기반 업데이트
+                {hasScheduleChanged ? 'AI 재업데이트 추천' : 'AI 일정기반 업데이트'}
               </Button>
             )}
           </div>
