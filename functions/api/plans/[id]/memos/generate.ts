@@ -22,7 +22,7 @@ export const onRequestOptions: PagesFunction = async () => {
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   const planId = Number(context.params.id);
-  const { region } = await context.request.json<{ region: string }>();
+  const { region, mode, changedSchedules } = await context.request.json<{ region: string; mode?: 'full' | 'partial'; changedSchedules?: any[] }>();
 
   if (!planId || !region) {
     return new Response(JSON.stringify({ error: 'Plan ID and region are required' }), {
@@ -49,7 +49,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     .join('\n');
 
   const systemPrompt = `You are a travel planning assistant.
-Generate practical travel memos based on the existing schedule data.
+Generate practical travel memos based on schedule data.
 
 Output JSON object with "memos" array:
 {
@@ -63,20 +63,27 @@ Output JSON object with "memos" array:
 }
 
 CRITICAL RULES:
-1) All text must be in Korean.
-2) Use schedule-derived, actionable points only.
-3) If a fact is uncertain (exchange rate, policy, emergency number, weather), DO NOT guess. Write "현지/출발 전 확인 필요".
-4) Do NOT output generic encyclopedia-style destination info.
-5) Prefer checklist style with short bullet-like sentences.
-6) At least 4 memos, max 8 memos.
-7) Currency memo must be "환율 수치"를 쓰지 말고, 결제수단/수수료/ATM 확인 같은 할 일 중심으로 작성.`;
+1) All text in Korean.
+2) Only schedule-derived actionable info.
+3) If uncertain, write "확인 필요" (never guess facts/rates).
+4) No generic destination encyclopedia info.
+5) Keep concise checklist style.
+6) FULL mode: 4~8 memos. PARTIAL mode: 1~4 memos only, and ONLY categories impacted by changed schedules.`;
 
   try {
+    const changedContext = (changedSchedules || [])
+      .map((s: any) => `${s.date} ${s.time || '--:--'} | ${s.title || ''} | ${s.place || ''} | ${s.memo || ''}`)
+      .join('\n');
+
+    const isPartial = mode === 'partial' && changedContext.length > 0;
+
     const messages: OpenAIMessage[] = [
       { role: 'system', content: systemPrompt },
       {
         role: 'user',
-        content: `여행 지역: ${region}\n\n등록된 일정 데이터:\n${scheduleContext || '(일정 없음)'}\n\n위 일정을 바탕으로 실사용 가능한 메모를 생성해줘.`,
+        content: isPartial
+          ? `MODE: PARTIAL\n여행 지역: ${region}\n\n변경된 일정만:\n${changedContext}\n\n변경된 일정과 직접 관련된 카테고리만 부분 업데이트용 메모를 생성해줘.`
+          : `MODE: FULL\n여행 지역: ${region}\n\n등록된 전체 일정 데이터:\n${scheduleContext || '(일정 없음)'}\n\n위 일정을 바탕으로 실사용 가능한 메모를 생성해줘.`,
       },
     ];
 

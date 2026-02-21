@@ -19,6 +19,7 @@ export function TravelMemoList({ planId, planRegion }: TravelMemoListProps) {
   const [editingMemo, setEditingMemo] = useState<TravelMemo | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [scheduleSig, setScheduleSig] = useState<string>('');
+  const [schedulesSnapshot, setSchedulesSnapshot] = useState<any[]>([]);
 
   // Fetch memos
   const fetchMemos = async () => {
@@ -53,6 +54,7 @@ export function TravelMemoList({ planId, planRegion }: TravelMemoListProps) {
       if (!res.ok) return;
       const data = await res.json();
       const schedules = (data.schedules || []) as any[];
+      setSchedulesSnapshot(schedules);
       const sig = schedules
         .map(s => `${s.id}|${s.date}|${s.time || ''}|${s.title || ''}|${s.place || ''}|${s.memo || ''}`)
         .join('||');
@@ -124,24 +126,40 @@ export function TravelMemoList({ planId, planRegion }: TravelMemoListProps) {
     }
   };
 
-  // AI로 자동 생성
+  // AI로 자동 생성 (변경분 우선 부분 업데이트)
   const handleGenerate = async () => {
     if (!planRegion) {
       alert('여행 지역이 설정되어야 자동 생성이 가능합니다.');
       return;
     }
-    
+
+    const snapshotKey = `memo-ai-snapshot-${planId}`;
+    const lastSnapshotRaw = localStorage.getItem(snapshotKey);
+    const lastSnapshot: any[] = lastSnapshotRaw ? JSON.parse(lastSnapshotRaw) : [];
+
+    const changedSchedules = schedulesSnapshot.filter((s: any) => {
+      const prev = lastSnapshot.find((p: any) => p.id === s.id);
+      if (!prev) return true;
+      return [s.date, s.time || '', s.title || '', s.place || '', s.memo || ''].join('|') !==
+        [prev.date, prev.time || '', prev.title || '', prev.place || '', prev.memo || ''].join('|');
+    });
+
     setIsGenerating(true);
     try {
+      const partialMode = !!lastSnapshotRaw && changedSchedules.length > 0;
       const res = await fetch(`/api/plans/${planId}/memos/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ region: planRegion }),
+        body: JSON.stringify({
+          region: planRegion,
+          mode: partialMode ? 'partial' : 'full',
+          changedSchedules: partialMode ? changedSchedules.slice(0, 30) : [],
+        }),
       });
       if (res.ok) {
         fetchMemos();
-        // 현재 일정 상태를 "AI 반영 기준점"으로 저장
         if (scheduleSig) localStorage.setItem(`memo-ai-sig-${planId}`, scheduleSig);
+        localStorage.setItem(snapshotKey, JSON.stringify(schedulesSnapshot));
       } else {
         const error = await res.json();
         alert(error.error || '자동 생성에 실패했습니다.');
