@@ -1388,6 +1388,7 @@ export function PlanDetailPage() {
           <ScheduleDetailModal
             modalRef={viewModalRef}
             schedule={viewingSchedule}
+            schedules={schedules}
             onClose={() => setViewingSchedule(null)}
             onEdit={() => {
               setEditingSchedule(viewingSchedule);
@@ -2118,6 +2119,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
 interface ScheduleDetailModalProps {
   modalRef: React.RefObject<HTMLDialogElement>;
   schedule: Schedule;
+  schedules: Schedule[];
   onClose: () => void;
   onEdit: () => void;
   onDelete: (id: number) => void;
@@ -2129,7 +2131,7 @@ interface ScheduleDetailModalProps {
   planRegion?: string | null;
 }
 
-function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, onUpdate, canEdit, isLoggedIn, onLogin: _onLogin, userLocation, planRegion }: ScheduleDetailModalProps) {
+function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, onDelete, onUpdate, canEdit, isLoggedIn, onLogin: _onLogin, userLocation, planRegion }: ScheduleDetailModalProps) {
   // Tab state
   const [detailTab, setDetailTab] = useState<'moments' | 'comments'>('moments');
 
@@ -2306,6 +2308,24 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
     return scheduleDateTime.getTime() < now.getTime();
   }, [schedule.date, schedule.time]);
 
+  const sameDayMapPoints = useMemo(() => {
+    const sameDay = schedules
+      .filter(s => s.date === schedule.date && s.latitude != null && s.longitude != null)
+      .sort((a, b) => {
+        if ((a.time || '') !== (b.time || '')) return (a.time || '').localeCompare(b.time || '');
+        return (a.order_index || 0) - (b.order_index || 0);
+      });
+
+    return sameDay.map((s, idx) => ({
+      id: s.id,
+      lat: s.latitude as number,
+      lng: s.longitude as number,
+      title: (s.place as string) || (s.title as string),
+      date: s.date,
+      order: idx + 1,
+    }));
+  }, [schedules, schedule.date]);
+
   return (
     <dialog ref={modalRef} className="modal modal-bottom sm:modal-middle">
       <div className="modal-box max-w-2xl">
@@ -2410,20 +2430,17 @@ function ScheduleDetailModal({ modalRef, schedule, onClose, onEdit, onDelete, on
                       </button>
                     )}
                   </div>
-                  {schedule.latitude && schedule.longitude && (
+                  {sameDayMapPoints.length > 0 && (
                     <div className="mt-2 rounded-lg overflow-hidden border border-base-300">
                       <TravelMap
-                        points={[{
-                          id: schedule.id,
-                          lat: schedule.latitude,
-                          lng: schedule.longitude,
-                          title: (schedule.place as string) || schedule.title as string,
-                          date: schedule.date,
-                          order: 1,
-                        }]}
-                        height="120px"
-                        showRoute={false}
+                        points={sameDayMapPoints}
+                        height="140px"
+                        showRoute={true}
+                        highlightPointId={schedule.id}
                       />
+                      <div className="px-2 py-1 text-[10px] text-base-content/50 bg-base-200 border-t border-base-300">
+                        같은 날짜 핀 {sameDayMapPoints.length}개 · 현재 일정 핀은 빨간색
+                      </div>
                     </div>
                   )}
                 </>

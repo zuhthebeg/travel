@@ -32,6 +32,7 @@ interface TravelMapProps {
   height?: string;
   className?: string;
   onPointClick?: (point: MapPoint) => void;
+  highlightPointId?: number;
 }
 
 // 날짜별 색상 생성 (무지개 그라데이션)
@@ -41,27 +42,27 @@ function getColorForDay(dayIndex: number, totalDays: number): string {
 }
 
 // 커스텀 마커 아이콘 생성
-function createNumberedIcon(number: number, color: string): L.DivIcon {
+function createNumberedIcon(number: number, color: string, highlighted: boolean = false): L.DivIcon {
   return L.divIcon({
     className: 'custom-marker',
     html: `
       <div style="
         background-color: ${color};
         color: white;
-        width: 28px;
-        height: 28px;
+        width: ${highlighted ? 34 : 28}px;
+        height: ${highlighted ? 34 : 28}px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: bold;
-        font-size: 12px;
-        border: 2px solid white;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        font-size: ${highlighted ? 13 : 12}px;
+        border: ${highlighted ? 3 : 2}px solid white;
+        box-shadow: ${highlighted ? '0 0 0 2px rgba(239,68,68,0.35), 0 4px 10px rgba(0,0,0,0.35)' : '0 2px 5px rgba(0,0,0,0.3)'};
       ">${number}</div>
     `,
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
+    iconSize: [highlighted ? 34 : 28, highlighted ? 34 : 28],
+    iconAnchor: [highlighted ? 17 : 14, highlighted ? 17 : 14],
     popupAnchor: [0, -14],
   });
 }
@@ -100,7 +101,8 @@ export function TravelMap({
   showRoute = true, 
   height = '400px',
   className = '',
-  onPointClick 
+  onPointClick,
+  highlightPointId
 }: TravelMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -154,10 +156,11 @@ export function TravelMap({
     const markers: L.Marker[] = [];
     sortedPoints.forEach((point, index) => {
       const dayIndex = uniqueDates.indexOf(point.date);
-      const color = getColorForDay(dayIndex, totalDays);
+      const isHighlighted = highlightPointId === point.id;
+      const color = isHighlighted ? '#ef4444' : getColorForDay(dayIndex, totalDays);
       const icon = point.label
-        ? createNumberedIcon(parseInt(point.label) || (index + 1), color)
-        : createNumberedIcon(index + 1, color);
+        ? createNumberedIcon(parseInt(point.label) || (index + 1), color, isHighlighted)
+        : createNumberedIcon(index + 1, color, isHighlighted);
 
       const marker = L.marker([point.lat, point.lng], { icon })
         .addTo(map)
@@ -215,7 +218,7 @@ export function TravelMap({
         mapInstanceRef.current = null;
       }
     };
-  }, [points, showRoute, onPointClick]);
+  }, [points, showRoute, onPointClick, highlightPointId]);
 
   const refitBounds = () => {
     if (mapInstanceRef.current && points.length > 0) {
