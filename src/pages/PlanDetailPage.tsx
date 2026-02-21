@@ -20,6 +20,7 @@ import { PlaceAutocomplete } from '../components/PlaceAutocomplete';
 import TripNotes from '../components/TripNotes'; // Import TripNotes
 import CalendarView from '../components/CalendarView';
 import DayView from '../components/DayView';
+import useSpeechRecognition from '../hooks/useSpeechRecognition';
 import { downloadICS } from '../lib/ics';
 import MemberAvatars from '../components/MemberAvatars';
 import ForkButton from '../components/ForkButton';
@@ -1117,19 +1118,19 @@ export function PlanDetailPage() {
 
         {/* 메인 탭 */}
         <div className="tabs tabs-bordered w-full mb-3">
-          <a className={`tab tab-sm flex-1 ${mainTab === 'schedule' ? 'tab-active font-bold' : ''}`} onClick={() => setMainTab('schedule')}>📅 일정</a>
-          <a className={`tab tab-sm flex-1 ${mainTab === 'notes' ? 'tab-active font-bold' : ''}`} onClick={() => setMainTab('notes')}>📝 메모</a>
-          <a className={`tab tab-sm flex-1 ${mainTab === 'album' ? 'tab-active font-bold' : ''}`} onClick={() => setMainTab('album')}>📸 앨범</a>
+          <a className={`tab tab-sm flex-1 ${mainTab === 'schedule' ? 'tab-active !text-primary font-bold' : 'text-base-content/50'}`} onClick={() => setMainTab('schedule')}>📅 일정</a>
+          <a className={`tab tab-sm flex-1 ${mainTab === 'notes' ? 'tab-active !text-primary font-bold' : 'text-base-content/50'}`} onClick={() => setMainTab('notes')}>📝 메모</a>
+          <a className={`tab tab-sm flex-1 ${mainTab === 'album' ? 'tab-active !text-primary font-bold' : 'text-base-content/50'}`} onClick={() => setMainTab('album')}>📸 앨범</a>
         </div>
 
         {/* 뷰 컨트롤 (일정 탭일 때만) */}
         {mainTab === 'schedule' && (
           <div className="flex items-center justify-between mb-3">
-            <div className="tabs tabs-boxed tabs-xs bg-base-200">
-              <a className={`tab tab-xs ${viewMode === 'vertical' ? 'tab-active' : ''}`} onClick={() => { setViewMode('vertical'); setFocusedDate(null); }}>목록</a>
-              <a className={`tab tab-xs ${viewMode === 'horizontal' ? 'tab-active' : ''}`} onClick={() => { setViewMode('horizontal'); setFocusedDate(null); }}>타임라인</a>
-              <a className={`tab tab-xs ${viewMode === 'daily' ? 'tab-active' : ''}`} onClick={() => setViewMode('daily')}>일별</a>
-              <a className={`tab tab-xs ${viewMode === 'calendar' ? 'tab-active' : ''}`} onClick={() => { setViewMode('calendar'); setFocusedDate(null); }}>캘린더</a>
+            <div className="tabs tabs-boxed tabs-xs bg-base-200/80">
+              <a className={`tab tab-xs ${viewMode === 'vertical' ? 'tab-active !bg-primary !text-primary-content font-bold' : 'text-base-content/60'}`} onClick={() => { setViewMode('vertical'); setFocusedDate(null); }}>목록</a>
+              <a className={`tab tab-xs ${viewMode === 'horizontal' ? 'tab-active !bg-primary !text-primary-content font-bold' : 'text-base-content/60'}`} onClick={() => { setViewMode('horizontal'); setFocusedDate(null); }}>타임라인</a>
+              <a className={`tab tab-xs ${viewMode === 'daily' ? 'tab-active !bg-primary !text-primary-content font-bold' : 'text-base-content/60'}`} onClick={() => setViewMode('daily')}>일별</a>
+              <a className={`tab tab-xs ${viewMode === 'calendar' ? 'tab-active !bg-primary !text-primary-content font-bold' : 'text-base-content/60'}`} onClick={() => { setViewMode('calendar'); setFocusedDate(null); }}>캘린더</a>
             </div>
             {canEditPlan && (
               <button className="btn btn-primary btn-xs gap-1" onClick={() => setEditingSchedule({} as Schedule)}>
@@ -1591,6 +1592,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error' | null>(null);
 
   const [textInputForAI, setTextInputForAI] = useState('');
+  const { transcript: aiSttTranscript, isListening: aiSttListening, startListening: aiSttStart, stopListening: aiSttStop, browserSupportsSpeechRecognition: aiSttSupported } = useSpeechRecognition();
   const [isAIProcessing, setIsAIProcessing] = useState(false);
 
   // 장소 검색 상태
@@ -1693,6 +1695,13 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
     setShowPlaceResults(false);
     setPlaceResults([]);
   };
+
+  // STT 결과를 AI 입력에 반영
+  useEffect(() => {
+    if (aiSttTranscript) {
+      setTextInputForAI(prev => prev ? prev + ' ' + aiSttTranscript : aiSttTranscript);
+    }
+  }, [aiSttTranscript]);
 
   const handleAICreateSchedule = async () => {
     if (!textInputForAI.trim()) return;
@@ -1848,20 +1857,35 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
               "내일 10시 에펠탑 구경" 처럼 자연어로 입력하세요
             </p>
             <div className="flex gap-2 items-end">
-              <textarea
-                value={textInputForAI}
-                onChange={(e) => setTextInputForAI(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                    e.preventDefault();
-                    handleAICreateSchedule();
-                  }
-                }}
-                placeholder={"예: 모레 오후 3시 루브르 박물관\n여러 일정을 줄바꿈으로 한번에 입력 가능"}
-                className="textarea textarea-bordered text-sm flex-1 min-h-[56px] leading-relaxed"
-                rows={2}
-                disabled={isAIProcessing}
-              />
+              <div className="flex-1 relative">
+                <textarea
+                  value={textInputForAI}
+                  onChange={(e) => setTextInputForAI(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                      e.preventDefault();
+                      handleAICreateSchedule();
+                    }
+                  }}
+                  placeholder={"예: 모레 오후 3시 루브르 박물관\n여러 일정을 줄바꿈으로 한번에 입력 가능"}
+                  className="textarea textarea-bordered text-sm w-full min-h-[56px] leading-relaxed pr-10"
+                  rows={2}
+                  disabled={isAIProcessing}
+                />
+                {aiSttSupported && (
+                  <button
+                    type="button"
+                    onClick={aiSttListening ? aiSttStop : aiSttStart}
+                    className={`absolute right-2 bottom-2 btn btn-ghost btn-xs btn-circle ${aiSttListening ? 'text-error animate-pulse' : 'text-base-content/40 hover:text-primary'}`}
+                    title={aiSttListening ? '음성 입력 중지' : '음성으로 입력'}
+                    disabled={isAIProcessing}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+                    </svg>
+                  </button>
+                )}
+              </div>
               <Button 
                 onClick={handleAICreateSchedule} 
                 disabled={isAIProcessing || !textInputForAI.trim()} 
@@ -1872,7 +1896,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
                 {isAIProcessing ? <Loading /> : <><Sparkles className="w-4 h-4" /> 생성</>}
               </Button>
             </div>
-            <p className="text-[10px] text-base-content/40 mt-1">Ctrl+Enter로 생성</p>
+            <p className="text-[10px] text-base-content/40 mt-1">{aiSttListening ? '🎤 듣고 있어요...' : 'Ctrl+Enter로 생성 · 🎤 음성 입력 가능'}</p>
             {isAIProcessing && <AIProcessingTip />}
           </div>
 
