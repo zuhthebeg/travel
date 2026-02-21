@@ -707,126 +707,112 @@ export function PlanDetailPage() {
         />
       )}
 
-      {/* Header - Compact version */}
+      {/* Header */}
       <header className="bg-base-100 shadow-sm sticky top-0 z-10">
-        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <h1 className="text-base sm:text-lg md:text-xl font-bold truncate flex-1 min-w-0">{selectedPlan.title}</h1>
-                {localStorage.getItem('offline_mode') === 'true' && (
-                  <span
-                    className="badge badge-warning badge-xs font-bold flex-shrink-0 cursor-pointer hover:badge-outline transition-all"
-                    onClick={() => navigate('/profile')}
-                    title="오프라인 모드 설정으로 이동"
-                  >⚡오프라인</span>
-                )}
-                {isOwner ? (
-                  <div className="dropdown dropdown-end flex-shrink-0">
-                    <label tabIndex={0} className="btn btn-xs btn-ghost gap-0.5 px-1.5 h-6 min-h-0">
-                      <span className="text-sm">{
-                        (selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'private' ? '🔒' :
-                        (selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'shared' ? '👥' : '🌍'
-                      }</span>
-                      <svg className="w-3 h-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                    </label>
-                    <ul tabIndex={0} className="dropdown-content menu menu-sm p-1 shadow-lg bg-base-100 rounded-lg w-32 z-50 border border-base-200">
-                      {([
-                        { value: 'private', label: '🔒 나만', desc: '비공개' },
-                        { value: 'shared', label: '👥 동행만', desc: '멤버 공유' },
-                        { value: 'public', label: '🌍 공개', desc: '누구나' },
-                      ] as const).map(opt => (
-                        <li key={opt.value}>
-                          <a
-                            className={`text-xs py-1.5 ${(selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === opt.value ? 'active' : ''}`}
-                            onClick={async () => {
-                              try {
-                                await plansAPI.update(selectedPlan.id, { visibility: opt.value });
-                                setSelectedPlan({ ...selectedPlan, visibility: opt.value });
-                                // 드롭다운 닫기
-                                (document.activeElement as HTMLElement)?.blur();
-                              } catch (err) {
-                                console.error('Failed to update visibility:', err);
-                              }
-                            }}
-                          >
-                            {opt.label}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : (
-                  <span className="text-sm flex-shrink-0" title={
-                    (selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'private' ? '비공개' :
-                    (selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'shared' ? '동행만' : '공개'
-                  }>
-                    {(selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'private' ? '🔒' :
-                     (selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'shared' ? '👥' : '🌍'}
-                  </span>
-                )}
+        <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-3">
+          {/* 1줄: 제목 + 공개여부 + ... 설정 */}
+          <div className="flex items-center gap-2">
+            <h1 className="text-base sm:text-lg font-bold truncate flex-1 min-w-0">{selectedPlan.title}</h1>
+            {localStorage.getItem('offline_mode') === 'true' && (
+              <span className="badge badge-warning badge-xs font-bold flex-shrink-0 cursor-pointer" onClick={() => navigate('/profile')}>⚡오프라인</span>
+            )}
+            {isOwner ? (
+              <div className="dropdown dropdown-end flex-shrink-0">
+                <label tabIndex={0} className="btn btn-xs btn-ghost gap-0.5 px-1.5 h-6 min-h-0">
+                  <span className="text-sm">{
+                    (selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'private' ? '🔒' :
+                    (selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'shared' ? '👥' : '🌍'
+                  }</span>
+                  <svg className="w-3 h-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </label>
+                <ul tabIndex={0} className="dropdown-content menu menu-sm p-1 shadow-lg bg-base-100 rounded-lg w-32 z-50 border border-base-200">
+                  {([
+                    { value: 'private', label: '🔒 나만', desc: '비공개' },
+                    { value: 'shared', label: '👥 동행만', desc: '멤버 공유' },
+                    { value: 'public', label: '🌍 공개', desc: '누구나' },
+                  ] as const).map(opt => (
+                    <li key={opt.value}>
+                      <a
+                        className={`text-xs py-1.5 ${(selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === opt.value ? 'active' : ''}`}
+                        onClick={async () => {
+                          try {
+                            await plansAPI.update(selectedPlan.id, { visibility: opt.value });
+                            setSelectedPlan({ ...selectedPlan, visibility: opt.value });
+                            (document.activeElement as HTMLElement)?.blur();
+                          } catch (err) {
+                            console.error('Failed to update visibility:', err);
+                          }
+                        }}
+                      >
+                        {opt.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-base-content/70 flex-wrap">
-                {selectedPlan.region && (
-                  <span className="whitespace-nowrap flex items-center gap-0.5"><MapPin className="w-3 h-3" /> {selectedPlan.region}</span>
-                )}
-                {(userLocation?.city || selectedPlan.region) && (
-                  <a
-                    href={`https://www.google.com/search?q=weather+${encodeURIComponent(userLocation?.city || selectedPlan.region || '')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="whitespace-nowrap hover:text-primary transition-colors flex items-center gap-0.5"
-                    title={`${userLocation?.city ? `${userLocation.city} (현재 위치)` : selectedPlan.region} 날씨 보기`}
-                  >
-                    <Cloud className="w-3 h-3" /> <span className="hidden xs:inline">{userLocation?.city ? '현재 날씨' : '날씨'}</span>
-                  </a>
-                )}
-                <span className="whitespace-nowrap flex items-center gap-0.5"><Calendar className="w-3 h-3" /> {formatDateRange(selectedPlan.start_date, selectedPlan.end_date)}</span>
-                <span className="font-medium whitespace-nowrap">{days}일</span>
+            ) : (
+              <span className="text-sm flex-shrink-0">
+                {(selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'private' ? '🔒' :
+                 (selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'shared' ? '👥' : '🌍'}
+              </span>
+            )}
+            {isOwner && (
+              <div className="dropdown dropdown-end flex-shrink-0">
+                <label tabIndex={0} className="btn btn-ghost btn-xs btn-circle" title="설정">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
+                  </svg>
+                </label>
+                <ul tabIndex={0} className="dropdown-content z-50 menu p-2 shadow-lg bg-base-100 rounded-box w-52 border border-base-200">
+                  <li><a onClick={() => { setEditingPlan(true); (document.activeElement as HTMLElement)?.blur(); }}>⚙️ 여행 설정</a></li>
+                  {selectedPlan.visibility !== 'private' && (
+                    <li><a onClick={() => { handleCopyInviteLink(); (document.activeElement as HTMLElement)?.blur(); }}>🔗 초대 링크 복사</a></li>
+                  )}
+                  <li><a onClick={() => { downloadICS(selectedPlan.title, schedules); (document.activeElement as HTMLElement)?.blur(); }}>📅 캘린더 내보내기</a></li>
+                </ul>
               </div>
+            )}
+          </div>
 
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <div className="w-full sm:w-auto">
-                  <MemberAvatars planId={selectedPlan.id} isOwner={isOwner} />
-                </div>
-                {/* 비소유자 안내 배너는 본문 상단에서 표시 */}
+          {/* 2줄: 메타정보 + 멤버 + 뒤로가기 */}
+          <div className="flex items-center justify-between mt-1.5">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-base-content/70 flex-wrap flex-1 min-w-0">
+              {selectedPlan.region && (
+                <span className="whitespace-nowrap flex items-center gap-0.5"><MapPin className="w-3 h-3" /> {selectedPlan.region}</span>
+              )}
+              {(userLocation?.city || selectedPlan.region) && (
+                <a
+                  href={`https://www.google.com/search?q=weather+${encodeURIComponent(userLocation?.city || selectedPlan.region || '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="whitespace-nowrap hover:text-primary transition-colors flex items-center gap-0.5"
+                >
+                  <Cloud className="w-3 h-3" /> <span className="hidden xs:inline">{userLocation?.city ? '현재 날씨' : '날씨'}</span>
+                </a>
+              )}
+              <span className="whitespace-nowrap flex items-center gap-0.5"><Calendar className="w-3 h-3" /> {formatDateRange(selectedPlan.start_date, selectedPlan.end_date)}</span>
+              <span className="font-medium whitespace-nowrap">{days}일</span>
+              <div className="ml-1">
+                <MemberAvatars planId={selectedPlan.id} isOwner={isOwner} />
               </div>
             </div>
-            <div className="flex gap-1 flex-shrink-0">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate(-1)}
-                className="btn-circle btn-xs sm:btn-sm"
-                title="뒤로"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-                </svg>
-              </Button>
-              {isOwner && (
-                <div className="dropdown dropdown-end">
-                  <label tabIndex={0} className="btn btn-secondary btn-circle btn-xs sm:btn-sm" title="설정">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
-                    </svg>
-                  </label>
-                  <ul tabIndex={0} className="dropdown-content z-50 menu p-2 shadow-lg bg-base-100 rounded-box w-52 border border-base-200">
-                    <li><a onClick={() => { setEditingPlan(true); (document.activeElement as HTMLElement)?.blur(); }}>⚙️ 여행 설정</a></li>
-                    {selectedPlan.visibility !== 'private' && (
-                      <li><a onClick={() => { handleCopyInviteLink(); (document.activeElement as HTMLElement)?.blur(); }}>🔗 초대 링크 복사</a></li>
-                    )}
-                    <li><a onClick={() => { downloadICS(selectedPlan.title, schedules); (document.activeElement as HTMLElement)?.blur(); }}>📅 캘린더 내보내기</a></li>
-                  </ul>
-                </div>
-              )}
-            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate(-1)}
+              className="btn-circle btn-xs flex-shrink-0"
+              title="뒤로"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+              </svg>
+            </Button>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8 pb-32">
+      <main className="container mx-auto px-3 sm:px-4 py-4 pb-32">
 
         {!isOwner && !isLoggedIn && (
           <div className="alert alert-info mb-6">
@@ -872,12 +858,12 @@ export function PlanDetailPage() {
           );
           if (schedulesToMapPoints(schedules).length > 0) {
             return (
-              <div className="mb-8">
-                <div className="collapse collapse-arrow bg-base-100 shadow-lg rounded-lg">
+              <div className="mb-4">
+                <div className="collapse collapse-arrow bg-base-100 shadow-sm rounded-lg">
                   <input type="checkbox" checked={mapOpen} onChange={(e) => setMapOpen(e.target.checked)} />
-                  <div className="collapse-title text-xl font-medium flex items-center gap-2">
-                    <Map className="w-5 h-5" /> 여행 동선
-                    <span className="badge badge-primary badge-sm">{mapPoints.length}곳</span>
+                  <div className="collapse-title text-sm font-medium flex items-center gap-2 min-h-0 py-2">
+                    <Map className="w-4 h-4" /> 동선
+                    <span className="badge badge-primary badge-xs">{mapPoints.length}곳</span>
                     {focusedDate && (
                       <button
                         className="badge badge-warning badge-sm gap-1 cursor-pointer"
@@ -1129,29 +1115,30 @@ export function PlanDetailPage() {
           return null;
         })()}
 
-        {/* 메인 탭 + 뷰 컨트롤 */}
-        <div className="flex items-center justify-between mb-4 gap-2">
-          <div className="tabs tabs-boxed tabs-sm">
-            <a className={`tab ${mainTab === 'schedule' ? 'tab-active' : ''}`} onClick={() => setMainTab('schedule')}>📅 일정</a>
-            <a className={`tab ${mainTab === 'notes' ? 'tab-active' : ''}`} onClick={() => setMainTab('notes')}>📝 메모</a>
-            <a className={`tab ${mainTab === 'album' ? 'tab-active' : ''}`} onClick={() => setMainTab('album')}>📸 앨범</a>
-          </div>
-          {mainTab === 'schedule' && (
-            <div className="flex items-center gap-2">
-              <div className="tabs tabs-boxed tabs-xs bg-base-200">
-                <a className={`tab tab-xs ${viewMode === 'vertical' ? 'tab-active' : ''}`} onClick={() => { setViewMode('vertical'); setFocusedDate(null); }}>목록</a>
-                <a className={`tab tab-xs ${viewMode === 'horizontal' ? 'tab-active' : ''}`} onClick={() => { setViewMode('horizontal'); setFocusedDate(null); }}>타임라인</a>
-                <a className={`tab tab-xs ${viewMode === 'daily' ? 'tab-active' : ''}`} onClick={() => setViewMode('daily')}>일별</a>
-                <a className={`tab tab-xs ${viewMode === 'calendar' ? 'tab-active' : ''}`} onClick={() => { setViewMode('calendar'); setFocusedDate(null); }}>캘린더</a>
-              </div>
-              {canEditPlan && (
-                <button className="btn btn-primary btn-sm btn-square" onClick={() => setEditingSchedule({} as Schedule)} title="일정 추가">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                </button>
-              )}
-            </div>
-          )}
+        {/* 메인 탭 */}
+        <div className="tabs tabs-bordered w-full mb-3">
+          <a className={`tab tab-sm flex-1 ${mainTab === 'schedule' ? 'tab-active font-bold' : ''}`} onClick={() => setMainTab('schedule')}>📅 일정</a>
+          <a className={`tab tab-sm flex-1 ${mainTab === 'notes' ? 'tab-active font-bold' : ''}`} onClick={() => setMainTab('notes')}>📝 메모</a>
+          <a className={`tab tab-sm flex-1 ${mainTab === 'album' ? 'tab-active font-bold' : ''}`} onClick={() => setMainTab('album')}>📸 앨범</a>
         </div>
+
+        {/* 뷰 컨트롤 (일정 탭일 때만) */}
+        {mainTab === 'schedule' && (
+          <div className="flex items-center justify-between mb-3">
+            <div className="tabs tabs-boxed tabs-xs bg-base-200">
+              <a className={`tab tab-xs ${viewMode === 'vertical' ? 'tab-active' : ''}`} onClick={() => { setViewMode('vertical'); setFocusedDate(null); }}>목록</a>
+              <a className={`tab tab-xs ${viewMode === 'horizontal' ? 'tab-active' : ''}`} onClick={() => { setViewMode('horizontal'); setFocusedDate(null); }}>타임라인</a>
+              <a className={`tab tab-xs ${viewMode === 'daily' ? 'tab-active' : ''}`} onClick={() => setViewMode('daily')}>일별</a>
+              <a className={`tab tab-xs ${viewMode === 'calendar' ? 'tab-active' : ''}`} onClick={() => { setViewMode('calendar'); setFocusedDate(null); }}>캘린더</a>
+            </div>
+            {canEditPlan && (
+              <button className="btn btn-primary btn-xs gap-1" onClick={() => setEditingSchedule({} as Schedule)}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                추가
+              </button>
+            )}
+          </div>
+        )}
 
         {/* 메모 탭 */}
         {mainTab === 'notes' && selectedPlan && (

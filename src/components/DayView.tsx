@@ -1,6 +1,11 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, MapPin, FileText, Plane, StickyNote } from 'lucide-react';
-import { formatDisplayDate } from '../lib/utils';
+// 년도 없는 날짜 표시: "3월 20일 (목)"
+function formatShortDate(date: string): string {
+  const d = new Date(date + 'T00:00:00');
+  const days = ['일', '월', '화', '수', '목', '금', '토'];
+  return `${d.getMonth() + 1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
+}
 import type { Schedule } from '../store/types';
 
 interface DayNote {
@@ -186,7 +191,7 @@ export default function DayView({ schedules, startDate, endDate, planId, onSched
         
         <div className="text-center">
           <div className="font-bold text-lg">Day {currentIndex + 1}</div>
-          <div className="text-sm text-base-content/60">{formatDisplayDate(currentDate)}</div>
+          <div className="text-sm text-base-content/60">{formatShortDate(currentDate)}</div>
         </div>
 
         <button
