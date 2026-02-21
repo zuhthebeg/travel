@@ -379,37 +379,45 @@ export function MainPage() {
       <main className="container mx-auto px-4 py-6">
         {/* 내 여행 섹션 (로그인 시) */}
         {currentUser && upcomingPlans.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold flex items-center gap-2 mb-4">
+          <div className="mb-6">
+            <h2 className="text-lg font-bold flex items-center gap-2 mb-3">
               ✈️ 다가오는 여행
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {upcomingPlans.map((plan) => (
-                <div
-                  key={plan.id}
-                  onClick={() => navigate(`/plans/${plan.id}`)}
-                  className="card bg-base-100 shadow-md hover:shadow-lg transition-shadow cursor-pointer"
-                >
-                  <div className="card-body p-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="card-title text-base">{plan.title}</h3>
-                      {plan.access_type === 'shared' && (
-                        <span className="badge badge-info badge-sm">공유받음</span>
-                      )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {upcomingPlans
+                .sort((a, b) => a.start_date.localeCompare(b.start_date))
+                .slice(0, 2)
+                .map((plan) => {
+                  const daysUntil = Math.ceil((new Date(plan.start_date).getTime() - new Date().getTime()) / 86400000);
+                  return (
+                    <div
+                      key={plan.id}
+                      onClick={() => navigate(`/plans/${plan.id}`)}
+                      className="card bg-base-100 shadow-md hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-primary"
+                    >
+                      <div className="card-body p-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="card-title text-base">{plan.title}</h3>
+                          <span className={`badge badge-sm ${daysUntil <= 7 ? 'badge-warning' : 'badge-ghost'}`}>
+                            {daysUntil <= 0 ? '여행 중!' : `D-${daysUntil}`}
+                          </span>
+                        </div>
+                        <p className="text-sm text-base-content/60">
+                          {plan.region && <span className="mr-2">📍 {plan.region}</span>}
+                          {plan.start_date} ~ {plan.end_date}
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-sm text-base-content/60">
-                      {plan.region && <span className="mr-2">📍 {plan.region}</span>}
-                      {plan.start_date} ~ {plan.end_date}
-                    </p>
-                    <div className="flex gap-1 mt-1">
-                      {plan.visibility === 'public' && <span className="badge badge-ghost badge-xs">🌍 공개</span>}
-                      {plan.visibility === 'shared' && <span className="badge badge-ghost badge-xs">👥 공유</span>}
-                      {plan.visibility === 'private' && <span className="badge badge-ghost badge-xs">🔒 비공개</span>}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                  );
+                })}
             </div>
+            {upcomingPlans.length > 2 && (
+              <div className="text-center mt-2">
+                <button className="btn btn-ghost btn-xs text-primary" onClick={() => navigate('/my')}>
+                  +{upcomingPlans.length - 2}개 더보기 →
+                </button>
+              </div>
+            )}
           </div>
         )}
 
