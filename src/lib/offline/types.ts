@@ -31,6 +31,17 @@ export type CachedSchedule = Schedule & { __local: LocalMeta };
 export type CachedMoment = Moment & { __local: LocalMeta };
 export type CachedMemo = TravelMemo & { __local: LocalMeta };
 
+// day_notes: per-day memo
+export interface DayNote {
+  id: number;
+  plan_id: number;
+  date: string;
+  content: string;
+  created_at?: string;
+  updated_at?: string;
+}
+export type CachedDayNote = DayNote & { __local: LocalMeta };
+
 // plan_members: read-only cache, no __local needed
 export interface CachedPlanMember {
   id: string; // `${plan_id}:${user_id}`

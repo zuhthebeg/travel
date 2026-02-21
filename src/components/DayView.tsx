@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { dayNotesOffline } from '../lib/offlineAPI';
 import { ChevronLeft, ChevronRight, MapPin, FileText, Plane, StickyNote } from 'lucide-react';
 // 년도 없는 날짜 표시: "3월 20일 (목)"
 function formatShortDate(date: string): string {
@@ -24,8 +25,6 @@ interface DayViewProps {
   onDateChange?: (date: string) => void;
   initialDate?: string | null;
 }
-
-const API_BASE = import.meta.env.DEV ? 'http://localhost:8788' : '';
 
 // 시간대 아이콘
 function getTimeIcon(time: string | null) {
@@ -89,13 +88,10 @@ export default function DayView({ schedules, startDate, endDate, planId, onSched
 
   const loadDayNotes = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/day-notes?plan_id=${planId}`);
-      if (res.ok) {
-        const data = await res.json();
-        const map: Record<string, DayNote> = {};
-        (data.notes || []).forEach((n: DayNote) => { map[n.date] = n; });
-        setDayNotes(map);
-      }
+      const data = await dayNotesOffline.getAll(planId);
+      const map: Record<string, DayNote> = {};
+      (data.notes || []).forEach((n: DayNote) => { map[n.date] = n; });
+      setDayNotes(map);
     } catch (e) {
       console.error('Failed to load day notes:', e);
     }
@@ -104,16 +100,9 @@ export default function DayView({ schedules, startDate, endDate, planId, onSched
   const saveDayNote = async () => {
     setSavingNote(true);
     try {
-      const res = await fetch(`${API_BASE}/api/day-notes`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan_id: planId, date: currentDate, content: noteContent }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setDayNotes(prev => ({ ...prev, [currentDate]: data.note }));
-        setEditingNote(false);
-      }
+      const data = await dayNotesOffline.upsert(planId, currentDate, noteContent);
+      setDayNotes(prev => ({ ...prev, [currentDate]: data.note }));
+      setEditingNote(false);
     } catch (e) {
       console.error('Failed to save day note:', e);
     } finally {
@@ -123,7 +112,7 @@ export default function DayView({ schedules, startDate, endDate, planId, onSched
 
   const deleteDayNote = async () => {
     try {
-      await fetch(`${API_BASE}/api/day-notes?plan_id=${planId}&date=${currentDate}`, { method: 'DELETE' });
+      await dayNotesOffline.delete(planId, currentDate);
       setDayNotes(prev => {
         const next = { ...prev };
         delete next[currentDate];

@@ -10,6 +10,7 @@ import type {
   CachedSchedule,
   CachedMoment,
   CachedMemo,
+  CachedDayNote,
   CachedPlanMember,
   CachedUserProfile,
   OpLogEntry,
@@ -22,7 +23,7 @@ import type {
 // ─── Schema ───
 
 const DB_NAME = 'travly-offline';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 interface TravlyDB extends DBSchema {
   plans: {
@@ -56,6 +57,14 @@ interface TravlyDB extends DBSchema {
     indexes: {
       by_plan_id: number;
       by_plan_category: [number, string];
+    };
+  };
+  day_notes: {
+    key: number;
+    value: CachedDayNote;
+    indexes: {
+      by_plan_id: number;
+      by_plan_date: [number, string];
     };
   };
   plan_members: {
@@ -118,7 +127,15 @@ export function getDB(): Promise<IDBPDatabase<TravlyDB>> {
   if (!dbPromise) {
     dbPromise = openDB<TravlyDB>(DB_NAME, DB_VERSION, {
       upgrade(db, oldVersion) {
-        // Fresh install or upgrade
+        // V3→V4: add day_notes store
+        if (oldVersion === 3) {
+          const dayNotes = db.createObjectStore('day_notes', { keyPath: 'id' });
+          dayNotes.createIndex('by_plan_id', 'plan_id');
+          dayNotes.createIndex('by_plan_date', ['plan_id', 'date']);
+          return;
+        }
+
+        // Fresh install or upgrade from V1/V2
         if (oldVersion < 3) {
           // Drop old stores if upgrading from V1/V2
           for (const name of db.objectStoreNames) {
@@ -143,6 +160,10 @@ export function getDB(): Promise<IDBPDatabase<TravlyDB>> {
           const memos = db.createObjectStore('travel_memos', { keyPath: 'id' });
           memos.createIndex('by_plan_id', 'plan_id');
           memos.createIndex('by_plan_category', ['plan_id', 'category']);
+
+          const dayNotes2 = db.createObjectStore('day_notes', { keyPath: 'id' });
+          dayNotes2.createIndex('by_plan_id', 'plan_id');
+          dayNotes2.createIndex('by_plan_date', ['plan_id', 'date']);
 
           const members = db.createObjectStore('plan_members', { keyPath: 'id' });
           members.createIndex('by_plan_id', 'plan_id');
@@ -289,6 +310,27 @@ export async function cacheMoments(moments: CachedMoment[]): Promise<void> {
   await tx.done;
 }
 
+export async function cacheDayNotes(notes: CachedDayNote[]): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction('day_notes', 'readwrite');
+  for (const n of notes) {
+    await tx.store.put(n);
+  }
+  await tx.done;
+}
+
+export async function getCachedDayNotesByPlan(planId: number): Promise<CachedDayNote[]> {
+  const db = await getDB();
+  const all = await db.getAllFromIndex('day_notes', 'by_plan_id', planId);
+  return all.filter(n => !n.__local?.deleted);
+}
+
+export async function getCachedDayNote(planId: number, date: string): Promise<CachedDayNote | undefined> {
+  const db = await getDB();
+  const all = await db.getAllFromIndex('day_notes', 'by_plan_date', [planId, date]);
+  return all.find(n => !n.__local?.deleted);
+}
+
 export async function cacheMemos(memos: CachedMemo[]): Promise<void> {
   const db = await getDB();
   const tx = db.transaction('travel_memos', 'readwrite');
@@ -363,6 +405,14 @@ export async function clearPlanCache(planId: number): Promise<void> {
   }
   await tx1.done;
 
+  // Clear day notes
+  const dayNotes3 = await db.getAllFromIndex('day_notes', 'by_plan_id', planId);
+  const txDN = db.transaction('day_notes', 'readwrite');
+  for (const n of dayNotes3) {
+    await txDN.store.delete(n.id);
+  }
+  await txDN.done;
+
   // Clear memos
   const memos = await db.getAllFromIndex('travel_memos', 'by_plan_id', planId);
   const tx2 = db.transaction('travel_memos', 'readwrite');
@@ -394,6 +444,7 @@ export async function clearAllOfflineData(): Promise<void> {
   await db.clear('schedules');
   await db.clear('moments');
   await db.clear('travel_memos');
+  await db.clear('day_notes');
   await db.clear('plan_members');
   await db.clear('user_profile');
   await db.clear('planSnapshots');

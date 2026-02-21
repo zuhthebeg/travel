@@ -9,12 +9,14 @@ import {
   cachePlans,
   cacheSchedules,
   cacheMemos,
+  cacheDayNotes,
   cacheMoments,
   cacheMembers,
   setSyncMeta,
   getSyncMeta,
   setPlanSnapshot,
 } from '../db';
+import type { CachedDayNote } from './types';
 import type {
   CachedPlan,
   CachedSchedule,
@@ -145,6 +147,21 @@ export async function runBootstrap(): Promise<void> {
         if (memos.length > 0) {
           const cachedMemos = memos.map(m => withLocal(m)) as CachedMemo[];
           await cacheMemos(cachedMemos);
+        }
+
+        // Fetch day notes
+        try {
+          const dnRes = await fetch(`${API_BASE_URL}/api/day-notes?plan_id=${plan.id}`, {
+            headers: { ...getAuthHeaders() },
+          });
+          if (dnRes.ok) {
+            const dnData = await dnRes.json();
+            if (dnData.notes?.length) {
+              await cacheDayNotes(dnData.notes.map((n: any) => withLocal(n)) as CachedDayNote[]);
+            }
+          }
+        } catch {
+          // day_notes fetch failure is non-critical
         }
 
         // Fetch members (read-only)

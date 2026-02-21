@@ -15,11 +15,14 @@ import {
   getCachedPlan,
   getCachedSchedulesByPlan,
   getCachedMemosByPlan,
+  getCachedDayNotesByPlan,
+  getCachedDayNote,
   getCachedMomentsBySchedule,
   getCachedMembersByPlan,
   cachePlans,
   cacheSchedules,
   cacheMemos,
+  cacheDayNotes,
   cacheMoments,
   addOp,
   countOpsByStatus,
@@ -30,6 +33,7 @@ import type {
   CachedSchedule,
   CachedMoment,
   CachedMemo,
+  CachedDayNote,
   OpLogEntry,
   LocalMeta,
 } from './offline/types';
@@ -619,6 +623,120 @@ export const offlineMemosAPI = {
             payload: {},
           }));
         }
+      },
+    );
+  },
+};
+
+// ─── Day Notes (offline-aware) ───
+
+export const dayNotesOffline = {
+  async getAll(planId: number): Promise<{ notes: any[] }> {
+    return serverFirstRead(
+      async () => {
+        const res = await fetch(`/api/day-notes?plan_id=${planId}`);
+        if (!res.ok) throw new Error('fetch failed');
+        const data = await res.json();
+        // cache
+        if (data.notes?.length) {
+          await cacheDayNotes(data.notes.map((n: any) => withLocal(n)));
+        }
+        return data;
+      },
+      async () => {
+        const cached = await getCachedDayNotesByPlan(planId);
+        return { notes: cached };
+      },
+    );
+  },
+
+  async get(planId: number, date: string): Promise<{ note: any | null }> {
+    return serverFirstRead(
+      async () => {
+        const res = await fetch(`/api/day-notes?plan_id=${planId}&date=${date}`);
+        if (!res.ok) throw new Error('fetch failed');
+        const data = await res.json();
+        if (data.note) {
+          await cacheDayNotes([withLocal(data.note)]);
+        }
+        return data;
+      },
+      async () => {
+        const cached = await getCachedDayNote(planId, date);
+        return { note: cached || null };
+      },
+    );
+  },
+
+  async upsert(planId: number, date: string, content: string): Promise<{ note: any }> {
+    return serverFirstWrite(
+      async () => {
+        const res = await fetch('/api/day-notes', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ plan_id: planId, date, content }),
+        });
+        if (!res.ok) throw new Error('upsert failed');
+        const data = await res.json();
+        if (data.note) {
+          await cacheDayNotes([withLocal(data.note)]);
+        }
+        return data;
+      },
+      async () => {
+        const db = await getDB();
+        const existing = await getCachedDayNote(planId, date);
+        const id = existing?.id || -(Date.now());
+        const note: CachedDayNote = {
+          id,
+          plan_id: planId,
+          date,
+          content,
+          created_at: existing?.created_at || new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          __local: { ...defaultLocalMeta, dirty: true, pendingSync: true, localUpdatedAt: Date.now() },
+        };
+        await db.put('day_notes', note);
+        await addOp(makeOp({
+          planId,
+          entity: 'travel_memos', // reuse entity type for opLog
+          entityId: id,
+          action: existing ? 'update' : 'create',
+          payload: { plan_id: planId, date, content },
+        }));
+        return { note };
+      },
+    );
+  },
+
+  async delete(planId: number, date: string): Promise<{ success: boolean }> {
+    return serverFirstWrite(
+      async () => {
+        const res = await fetch(`/api/day-notes?plan_id=${planId}&date=${date}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('delete failed');
+        // remove from cache
+        const cached = await getCachedDayNote(planId, date);
+        if (cached) {
+          const db = await getDB();
+          await db.delete('day_notes', cached.id);
+        }
+        return { success: true };
+      },
+      async () => {
+        const cached = await getCachedDayNote(planId, date);
+        if (cached) {
+          const db = await getDB();
+          cached.__local = { ...cached.__local, deleted: true, dirty: true, pendingSync: true, localUpdatedAt: Date.now() };
+          await db.put('day_notes', cached);
+          await addOp(makeOp({
+            planId,
+            entity: 'travel_memos',
+            entityId: cached.id,
+            action: 'delete',
+            payload: {},
+          }));
+        }
+        return { success: true };
       },
     );
   },
