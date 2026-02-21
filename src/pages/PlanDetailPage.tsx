@@ -214,6 +214,9 @@ export function PlanDetailPage() {
   });
   const [mainTab, setMainTab] = useState<MainTab>(() => readPlanUIState(id).mainTab);
   const [focusedDate, setFocusedDate] = useState<string | null>(() => readPlanUIState(id).focusedDate);
+  const [cleanupLoading, setCleanupLoading] = useState(false);
+  const [cleanupSuggestions, setCleanupSuggestions] = useState<any[]>([]);
+  const [selectedCleanupIds, setSelectedCleanupIds] = useState<string[]>([]);
   const [geocodeFailed, setGeocodeFailed] = useState<any[]>([]);
   const [geocodeFailedCollapsed, setGeocodeFailedCollapsed] = useState(() => {
     try { return localStorage.getItem('geocodeFailed_collapsed') === 'true'; } catch { return false; }
@@ -624,6 +627,50 @@ export function PlanDetailPage() {
     scrollSaveTimeoutRef.current = setTimeout(() => {
       setTimelineScrollX(nextScrollX);
     }, 200);
+  };
+
+  const handleCleanupPreview = async () => {
+    if (!selectedPlan?.id) return;
+    setCleanupLoading(true);
+    try {
+      const res = await fetch(`/api/plans/${selectedPlan.id}/cleanup-assistant`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'preview' }),
+      });
+      const data = await res.json();
+      const suggestions = data.suggestions || [];
+      setCleanupSuggestions(suggestions);
+      setSelectedCleanupIds(suggestions.map((s: any) => s.id));
+    } catch (e) {
+      console.error(e);
+      alert('보정 제안 생성에 실패했어');
+    } finally {
+      setCleanupLoading(false);
+    }
+  };
+
+  const handleCleanupApply = async () => {
+    if (!selectedPlan?.id) return;
+    if (selectedCleanupIds.length === 0) return alert('적용할 항목을 선택해줘');
+    if (!confirm(`선택한 ${selectedCleanupIds.length}개 항목을 적용할까?`)) return;
+    setCleanupLoading(true);
+    try {
+      const res = await fetch(`/api/plans/${selectedPlan.id}/cleanup-assistant`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'apply', selectedIds: selectedCleanupIds }),
+      });
+      const data = await res.json();
+      alert(`보정 적용 완료: ${data.applied || 0}건`);
+      await loadPlanDetail(Number(id));
+      await handleCleanupPreview();
+    } catch (e) {
+      console.error(e);
+      alert('보정 적용에 실패했어');
+    } finally {
+      setCleanupLoading(false);
+    }
   };
 
   if (isLoading) {
@@ -1154,6 +1201,51 @@ export function PlanDetailPage() {
             
             {/* 기존 메모/체크리스트 */}
             <TripNotes planId={selectedPlan.id} />
+
+            {/* 데이터 보정 비서 (검토/승인형) */}
+            <div className="card bg-base-100 shadow-sm border border-base-300">
+              <div className="card-body p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <h3 className="font-semibold">🧹 데이터 보정 비서 (Beta)</h3>
+                    <p className="text-xs text-base-content/60">자동 수정 전에 제안 목록을 먼저 보여주고, 승인한 항목만 적용해.</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button className="btn btn-xs btn-outline" onClick={handleCleanupPreview} disabled={cleanupLoading}>
+                      {cleanupLoading ? '생성 중...' : '제안 생성'}
+                    </button>
+                    <button className="btn btn-xs btn-primary" onClick={handleCleanupApply} disabled={cleanupLoading || cleanupSuggestions.length === 0}>
+                      선택 적용
+                    </button>
+                  </div>
+                </div>
+
+                {cleanupSuggestions.length > 0 && (
+                  <div className="mt-3 max-h-64 overflow-y-auto space-y-2">
+                    {cleanupSuggestions.map((s: any) => {
+                      const checked = selectedCleanupIds.includes(s.id);
+                      return (
+                        <label key={s.id} className="flex items-start gap-2 p-2 rounded border border-base-300 cursor-pointer hover:bg-base-200/50">
+                          <input
+                            type="checkbox"
+                            className="checkbox checkbox-xs mt-0.5"
+                            checked={checked}
+                            onChange={(e) => {
+                              setSelectedCleanupIds(prev => e.target.checked ? [...prev, s.id] : prev.filter(id => id !== s.id));
+                            }}
+                          />
+                          <div className="min-w-0">
+                            <div className="text-xs font-medium">{s.table} #{s.rowId} · {s.field} · {s.reason}</div>
+                            <div className="text-[11px] text-base-content/60 truncate">전: {s.before}</div>
+                            <div className="text-[11px] text-primary truncate">후: {s.after}</div>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
