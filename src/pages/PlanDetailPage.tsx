@@ -209,6 +209,7 @@ export function PlanDetailPage() {
     } catch { return []; }
   });
   const [mainTab, setMainTab] = useState<MainTab>(() => readPlanUIState(id).mainTab);
+  const [focusedDate, setFocusedDate] = useState<string | null>(null);
   const [geocodeFailed, setGeocodeFailed] = useState<any[]>([]);
   const [geocodeFailedCollapsed, setGeocodeFailedCollapsed] = useState(() => {
     try { return localStorage.getItem('geocodeFailed_collapsed') === 'true'; } catch { return false; }
@@ -863,7 +864,10 @@ export function PlanDetailPage() {
           const countries = Object.entries(countryCounts).sort((a, b) => b[1] - a[1]);
           // 가장 많은 국가가 주요 여행지, 나머지는 기본 숨김 후보
           const _mainCountry = countries[0]?.[0]; void _mainCountry;
-          const mapPoints = schedulesToMapPoints(schedules, 
+          const filteredForMap = focusedDate 
+            ? schedules.filter(s => s.date === focusedDate)
+            : schedules;
+          const mapPoints = schedulesToMapPoints(filteredForMap, 
             mapExcludeCountries.length > 0 ? mapExcludeCountries : undefined
           );
           if (schedulesToMapPoints(schedules).length > 0) {
@@ -874,6 +878,15 @@ export function PlanDetailPage() {
                   <div className="collapse-title text-xl font-medium flex items-center gap-2">
                     <Map className="w-5 h-5" /> 여행 동선
                     <span className="badge badge-primary badge-sm">{mapPoints.length}곳</span>
+                    {focusedDate && (
+                      <button
+                        className="badge badge-warning badge-sm gap-1 cursor-pointer"
+                        onClick={(e) => { e.stopPropagation(); setFocusedDate(null); }}
+                        title="전체 보기"
+                      >
+                        Day {getDaysDifference(selectedPlan.start_date, focusedDate) + 1} ✕
+                      </button>
+                    )}
                   </div>
                   <div className="collapse-content">
                     {/* 국가 필터 (2개국 이상일 때만 표시) */}
@@ -1116,26 +1129,28 @@ export function PlanDetailPage() {
           return null;
         })()}
 
-        {/* 메인 탭: 일정 / 메모 */}
-        <div className="tabs tabs-boxed mb-6 w-fit">
-          <a 
-            className={`tab gap-2 ${mainTab === 'schedule' ? 'tab-active' : ''}`} 
-            onClick={() => setMainTab('schedule')}
-          >
-            📅 일정
-          </a>
-          <a 
-            className={`tab gap-2 ${mainTab === 'notes' ? 'tab-active' : ''}`} 
-            onClick={() => setMainTab('notes')}
-          >
-            📝 메모
-          </a>
-          <a 
-            className={`tab gap-2 ${mainTab === 'album' ? 'tab-active' : ''}`} 
-            onClick={() => setMainTab('album')}
-          >
-            📸 앨범
-          </a>
+        {/* 메인 탭 + 뷰 컨트롤 */}
+        <div className="flex items-center justify-between mb-4 gap-2">
+          <div className="tabs tabs-boxed tabs-sm">
+            <a className={`tab ${mainTab === 'schedule' ? 'tab-active' : ''}`} onClick={() => setMainTab('schedule')}>📅 일정</a>
+            <a className={`tab ${mainTab === 'notes' ? 'tab-active' : ''}`} onClick={() => setMainTab('notes')}>📝 메모</a>
+            <a className={`tab ${mainTab === 'album' ? 'tab-active' : ''}`} onClick={() => setMainTab('album')}>📸 앨범</a>
+          </div>
+          {mainTab === 'schedule' && (
+            <div className="flex items-center gap-2">
+              <div className="tabs tabs-boxed tabs-xs bg-base-200">
+                <a className={`tab tab-xs ${viewMode === 'vertical' ? 'tab-active' : ''}`} onClick={() => { setViewMode('vertical'); setFocusedDate(null); }}>목록</a>
+                <a className={`tab tab-xs ${viewMode === 'horizontal' ? 'tab-active' : ''}`} onClick={() => { setViewMode('horizontal'); setFocusedDate(null); }}>타임라인</a>
+                <a className={`tab tab-xs ${viewMode === 'daily' ? 'tab-active' : ''}`} onClick={() => setViewMode('daily')}>일별</a>
+                <a className={`tab tab-xs ${viewMode === 'calendar' ? 'tab-active' : ''}`} onClick={() => { setViewMode('calendar'); setFocusedDate(null); }}>캘린더</a>
+              </div>
+              {canEditPlan && (
+                <button className="btn btn-primary btn-sm btn-square" onClick={() => setEditingSchedule({} as Schedule)} title="일정 추가">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* 메모 탭 */}
@@ -1198,23 +1213,6 @@ export function PlanDetailPage() {
         {/* 일정 탭 */}
         {mainTab === 'schedule' && (
           <>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">일정</h2>
-              <div className="flex items-center gap-4">
-                <div className="tabs tabs-boxed tabs-sm">
-                  <a className={`tab ${viewMode === 'vertical' ? 'tab-active' : ''}`} onClick={() => setViewMode('vertical')}>목록</a>
-                  <a className={`tab ${viewMode === 'horizontal' ? 'tab-active' : ''}`} onClick={() => setViewMode('horizontal')}>타임라인</a>
-                  <a className={`tab ${viewMode === 'daily' ? 'tab-active' : ''}`} onClick={() => setViewMode('daily')}>일별</a>
-                  <a className={`tab ${viewMode === 'calendar' ? 'tab-active' : ''}`} onClick={() => setViewMode('calendar')}>📅</a>
-                </div>
-                {canEditPlan && (
-                  <Button variant="primary" onClick={() => setEditingSchedule({} as Schedule)}>
-                    일정 추가
-                  </Button>
-                )}
-              </div>
-            </div>
-
             {canEditPlan ? <DragDropContext onDragEnd={onDragEnd}>
           {schedules.length === 0 ? (
             <Card>
@@ -1236,6 +1234,7 @@ export function PlanDetailPage() {
               endDate={selectedPlan.end_date}
               planId={selectedPlan.id}
               onScheduleClick={setViewingSchedule}
+              onDateChange={setFocusedDate}
             />
           ) : viewMode === 'calendar' ? (
             <div className="card bg-base-100 shadow-sm p-4">
@@ -1247,56 +1246,58 @@ export function PlanDetailPage() {
               />
             </div>
           ) : viewMode === 'vertical' ? (
-            <Droppable droppableId="schedules">
-              {(provided) => (
-                <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4">
-                  {schedules.map((schedule, index) => (
-                    <Draggable key={schedule.id} draggableId={schedule.id.toString()} index={index}>
-                      {(provided) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.dragHandleProps}
-                          data-schedule-id={schedule.id}
-                        >
-                          <ScheduleCard
-                            schedule={schedule}
-                            onEdit={setEditingSchedule}
-                            onDelete={handleDeleteSchedule}
-                            onView={setViewingSchedule}
-                          />
-                        </div>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
+            <div className="space-y-6">
+              {Object.entries(groupedSchedules).sort(([a], [b]) => a.localeCompare(b)).map(([date, schedulesForDate]) => (
+                <div key={date}>
+                  <div
+                    className={`flex items-center gap-2 mb-3 pb-2 border-b border-base-300 cursor-pointer transition-colors ${focusedDate === date ? 'border-primary' : ''}`}
+                    onClick={() => setFocusedDate(prev => prev === date ? null : date)}
+                  >
+                    <span className={`badge ${focusedDate === date ? 'badge-primary' : 'badge-ghost'} badge-sm font-bold`}>Day {getDaysDifference(selectedPlan.start_date, date) + 1}</span>
+                    <span className="text-sm font-medium text-base-content/70">{formatDisplayDate(date)}</span>
+                    <span className="text-xs text-base-content/40">{schedulesForDate.length}개</span>
+                  </div>
+                  <Droppable droppableId={date}>
+                    {(provided) => (
+                      <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-3">
+                        {schedulesForDate.map((schedule, index) => (
+                          <Draggable key={schedule.id} draggableId={schedule.id.toString()} index={index}>
+                            {(provided) => (
+                              <div ref={provided.innerRef} {...provided.dragHandleProps} data-schedule-id={schedule.id}>
+                                <ScheduleCard schedule={schedule} onEdit={setEditingSchedule} onDelete={handleDeleteSchedule} onView={setViewingSchedule} compact />
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
                 </div>
-              )}
-            </Droppable>
+              ))}
+            </div>
           ) : (
             <div ref={horizontalTimelineRef} onScroll={handleHorizontalTimelineScroll} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} className="overflow-x-auto pb-4 cursor-grab">
-              <div className="flex gap-6" style={{ minWidth: 'min-content' }}>
+              <div className="flex gap-4" style={{ minWidth: 'min-content' }}>
                 {Object.entries(groupedSchedules).map(([date, schedulesForDate]) => (
                   <Droppable droppableId={date} key={date}>
                     {(provided) => (
-                      <div {...provided.droppableProps} ref={provided.innerRef} className="flex-shrink-0" style={{ width: '320px' }}>
-                        <h3 className="text-base font-bold mb-3 sticky top-0 bg-base-200 py-2 z-5">{formatDisplayDate(date)}</h3>
-                        <div className="space-y-3 overflow-hidden">
+                      <div {...provided.droppableProps} ref={provided.innerRef} className="flex-shrink-0" style={{ width: '260px' }}>
+                        <div
+                          className={`sticky top-0 bg-base-200 py-2 z-5 mb-2 cursor-pointer rounded px-2 transition-colors ${focusedDate === date ? 'bg-primary/10' : 'hover:bg-base-300'}`}
+                          onClick={() => setFocusedDate(prev => prev === date ? null : date)}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span className={`badge ${focusedDate === date ? 'badge-primary' : 'badge-ghost'} badge-xs font-bold`}>D{getDaysDifference(selectedPlan.start_date, date) + 1}</span>
+                            <span className="text-sm font-bold">{formatDisplayDate(date)}</span>
+                          </div>
+                        </div>
+                        <div className="space-y-2 overflow-hidden">
                           {schedulesForDate.map((schedule, index) => (
                             <Draggable key={schedule.id} draggableId={schedule.id.toString()} index={index}>
                               {(provided) => (
-                                <div
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                  data-schedule-id={schedule.id}
-                                  className="w-full"
-                                >
-                                  <ScheduleCard
-                                    schedule={schedule}
-                                    onEdit={setEditingSchedule}
-                                    onDelete={handleDeleteSchedule}
-                                    onView={setViewingSchedule}
-                                  />
+                                <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} data-schedule-id={schedule.id} className="w-full">
+                                  <ScheduleCard schedule={schedule} onEdit={setEditingSchedule} onDelete={handleDeleteSchedule} onView={setViewingSchedule} compact />
                                 </div>
                               )}
                             </Draggable>
@@ -1324,6 +1325,7 @@ export function PlanDetailPage() {
               endDate={selectedPlan.end_date}
               planId={selectedPlan.id}
               onScheduleClick={setViewingSchedule}
+              onDateChange={setFocusedDate}
             />
           ) : viewMode === 'calendar' ? (
             <div className="card bg-base-100 shadow-sm p-4">
@@ -1335,33 +1337,45 @@ export function PlanDetailPage() {
               />
             </div>
           ) : viewMode === 'vertical' ? (
-            <div className="space-y-4">
-              {schedules.map((schedule) => (
-                <div key={schedule.id} data-schedule-id={schedule.id}>
-                  <ScheduleCard
-                    schedule={schedule}
-                    onEdit={setEditingSchedule}
-                    onDelete={handleDeleteSchedule}
-                    onView={setViewingSchedule}
-                  />
+            <div className="space-y-6">
+              {Object.entries(groupedSchedules).sort(([a], [b]) => a.localeCompare(b)).map(([date, schedulesForDate]) => (
+                <div key={date}>
+                  <div
+                    className={`flex items-center gap-2 mb-3 pb-2 border-b border-base-300 cursor-pointer transition-colors ${focusedDate === date ? 'border-primary' : ''}`}
+                    onClick={() => setFocusedDate(prev => prev === date ? null : date)}
+                  >
+                    <span className={`badge ${focusedDate === date ? 'badge-primary' : 'badge-ghost'} badge-sm font-bold`}>Day {getDaysDifference(selectedPlan.start_date, date) + 1}</span>
+                    <span className="text-sm font-medium text-base-content/70">{formatDisplayDate(date)}</span>
+                    <span className="text-xs text-base-content/40">{schedulesForDate.length}개</span>
+                  </div>
+                  <div className="space-y-3">
+                    {schedulesForDate.map((schedule) => (
+                      <div key={schedule.id} data-schedule-id={schedule.id}>
+                        <ScheduleCard schedule={schedule} onEdit={setEditingSchedule} onDelete={handleDeleteSchedule} onView={setViewingSchedule} compact />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
           ) : (
             <div ref={horizontalTimelineRef} onScroll={handleHorizontalTimelineScroll} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} className="overflow-x-auto pb-4 cursor-grab">
-              <div className="flex gap-6" style={{ minWidth: 'min-content' }}>
+              <div className="flex gap-4" style={{ minWidth: 'min-content' }}>
                 {Object.entries(groupedSchedules).map(([date, schedulesForDate]) => (
-                  <div key={date} className="flex-shrink-0" style={{ width: '320px' }}>
-                    <h3 className="text-base font-bold mb-3 sticky top-0 bg-base-200 py-2 z-5">{formatDisplayDate(date)}</h3>
-                    <div className="space-y-3 overflow-hidden">
+                  <div key={date} className="flex-shrink-0" style={{ width: '260px' }}>
+                    <div
+                      className={`sticky top-0 bg-base-200 py-2 z-5 mb-2 cursor-pointer rounded px-2 transition-colors ${focusedDate === date ? 'bg-primary/10' : 'hover:bg-base-300'}`}
+                      onClick={() => setFocusedDate(prev => prev === date ? null : date)}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span className={`badge ${focusedDate === date ? 'badge-primary' : 'badge-ghost'} badge-xs font-bold`}>D{getDaysDifference(selectedPlan.start_date, date) + 1}</span>
+                        <span className="text-sm font-bold">{formatDisplayDate(date)}</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2 overflow-hidden">
                       {schedulesForDate.map((schedule) => (
                         <div key={schedule.id} data-schedule-id={schedule.id} className="w-full">
-                          <ScheduleCard
-                            schedule={schedule}
-                            onEdit={setEditingSchedule}
-                            onDelete={handleDeleteSchedule}
-                            onView={setViewingSchedule}
-                          />
+                          <ScheduleCard schedule={schedule} onEdit={setEditingSchedule} onDelete={handleDeleteSchedule} onView={setViewingSchedule} compact />
                         </div>
                       ))}
                     </div>
@@ -1846,14 +1860,19 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
             <p className="text-xs text-base-content/70 mb-3">
               "내일 10시 에펠탑 구경" 처럼 자연어로 입력하세요
             </p>
-            <div className="flex gap-2">
-              <input
-                type="text"
+            <div className="flex gap-2 items-end">
+              <textarea
                 value={textInputForAI}
                 onChange={(e) => setTextInputForAI(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleAICreateSchedule()}
-                placeholder="예: 모레 오후 3시 루브르 박물관"
-                className="input input-bordered input-sm flex-1 h-12 text-base"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    handleAICreateSchedule();
+                  }
+                }}
+                placeholder={"예: 모레 오후 3시 루브르 박물관\n여러 일정을 줄바꿈으로 한번에 입력 가능"}
+                className="textarea textarea-bordered text-sm flex-1 min-h-[56px] leading-relaxed"
+                rows={2}
                 disabled={isAIProcessing}
               />
               <Button 
@@ -1861,11 +1880,12 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
                 disabled={isAIProcessing || !textInputForAI.trim()} 
                 variant="primary"
                 size="sm"
-                className="h-12 px-4"
+                className="h-[56px] px-4 flex-shrink-0"
               >
                 {isAIProcessing ? <Loading /> : <><Sparkles className="w-4 h-4" /> 생성</>}
               </Button>
             </div>
+            <p className="text-[10px] text-base-content/40 mt-1">Ctrl+Enter로 생성</p>
             {isAIProcessing && <AIProcessingTip />}
           </div>
 

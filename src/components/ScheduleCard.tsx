@@ -7,6 +7,7 @@ interface ScheduleCardProps {
   onEdit: (schedule: Schedule) => void;
   onDelete: (id: number) => void;
   onView: (schedule: Schedule) => void;
+  compact?: boolean;
 }
 
 // Helper function to detect and linkify flight numbers
@@ -107,10 +108,40 @@ function getStatusStyles(status: string): string {
   }
 }
 
-export function ScheduleCard({ schedule, onView }: ScheduleCardProps) {
+export function ScheduleCard({ schedule, onView, compact }: ScheduleCardProps) {
   const status = getScheduleStatus(schedule);
   const statusStyles = getStatusStyles(status);
   const timePeriod = schedule.time ? getTimePeriod(schedule.time) : null;
+
+  if (compact) {
+    return (
+      <div
+        className={`rounded-lg px-3 py-2.5 cursor-pointer transition-all hover:shadow-md ${statusStyles} ${status === 'past' ? 'opacity-60' : ''}`}
+        onClick={() => onView(schedule)}
+      >
+        <div className="flex items-center gap-2">
+          {schedule.time && timePeriod && (
+            <span className={`badge ${timePeriod.color} badge-sm font-mono gap-0.5 flex-shrink-0`}>
+              {timePeriod.icon}
+              {schedule.time}
+            </span>
+          )}
+          <span className="font-medium text-sm truncate flex-1">
+            {schedule.title ? linkifyFlightNumbers(schedule.title as string) : ''}
+          </span>
+        </div>
+        {schedule.place && (
+          <div className="flex items-center gap-1 mt-1 ml-0.5">
+            <MapPin className={`w-3 h-3 flex-shrink-0 ${schedule.latitude && schedule.longitude ? 'text-primary' : 'text-warning'}`} />
+            <span className="text-xs text-base-content/60 truncate">{schedule.place}</span>
+          </div>
+        )}
+        {schedule.memo && (
+          <p className="text-xs text-base-content/50 mt-1 line-clamp-1 ml-0.5">{schedule.memo}</p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -135,7 +166,6 @@ export function ScheduleCard({ schedule, onView }: ScheduleCardProps) {
               {schedule.title ? linkifyFlightNumbers(schedule.title as string) : ''}
             </h3>
           </div>
-          {/* 삭제 버튼 제거 - 상세보기에서만 삭제 가능 */}
         </div>
 
         {schedule.place && (

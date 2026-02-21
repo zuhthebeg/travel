@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, MapPin, FileText, Plane, StickyNote } from 'lucide-react';
 import { formatDisplayDate } from '../lib/utils';
-import { TravelMap, schedulesToMapPoints } from './TravelMap';
 import type { Schedule } from '../store/types';
 
 interface DayNote {
@@ -17,6 +16,7 @@ interface DayViewProps {
   endDate: string;
   planId: number;
   onScheduleClick: (schedule: Schedule) => void;
+  onDateChange?: (date: string) => void;
 }
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:8788' : '';
@@ -36,7 +36,7 @@ function isFlightSchedule(title: string): boolean {
   return /\b[A-Z]{2,3}\d{1,4}\b/.test(title);
 }
 
-export default function DayView({ schedules, startDate, endDate, planId, onScheduleClick }: DayViewProps) {
+export default function DayView({ schedules, startDate, endDate, planId, onScheduleClick, onDateChange }: DayViewProps) {
   // 날짜 리스트 생성
   const dates = useMemo(() => {
     const result: string[] = [];
@@ -130,16 +130,28 @@ export default function DayView({ schedules, startDate, endDate, planId, onSched
   const handleTouchEnd = () => {
     if (Math.abs(touchDeltaX.current) > 50) {
       if (touchDeltaX.current < 0 && currentIndex < dates.length - 1) {
-        setCurrentIndex(i => i + 1);
+        const next = currentIndex + 1;
+        setCurrentIndex(next);
+        onDateChange?.(dates[next]);
       } else if (touchDeltaX.current > 0 && currentIndex > 0) {
-        setCurrentIndex(i => i - 1);
+        const prev = currentIndex - 1;
+        setCurrentIndex(prev);
+        onDateChange?.(dates[prev]);
       }
     }
   };
 
   const goTo = (idx: number) => {
-    if (idx >= 0 && idx < dates.length) setCurrentIndex(idx);
+    if (idx >= 0 && idx < dates.length) {
+      setCurrentIndex(idx);
+      onDateChange?.(dates[idx]);
+    }
   };
+
+  // 초기 마운트 시 콜백
+  useEffect(() => {
+    onDateChange?.(dates[currentIndex]);
+  }, []);
 
   // 지도 번호 매핑 (좌표 있는 일정만 순서대로 1, 2, 3...)
   const mapOrderMap = useMemo(() => {
@@ -186,24 +198,27 @@ export default function DayView({ schedules, startDate, endDate, planId, onSched
         </button>
       </div>
 
-      {/* Day 인디케이터 (점) */}
-      <div className="flex justify-center gap-1.5 flex-wrap">
+      {/* Day 인디케이터 (pill) */}
+      <div className="flex justify-center gap-1 flex-wrap">
         {dates.map((d, i) => {
-          const hasSchedules = schedules.some(s => s.date === d);
+          const count = schedules.filter(s => s.date === d).length;
           const hasNote = !!dayNotes[d];
+          const isActive = i === currentIndex;
           return (
             <button
               key={d}
               onClick={() => goTo(i)}
-              className={`w-2.5 h-2.5 rounded-full transition-all ${
-                i === currentIndex
-                  ? 'bg-primary scale-125'
-                  : hasSchedules
-                    ? 'bg-primary/40 hover:bg-primary/60'
-                    : 'bg-base-300 hover:bg-base-content/30'
-              } ${hasNote ? 'ring-2 ring-warning ring-offset-1' : ''}`}
-              title={`Day ${i + 1} · ${d}${hasNote ? ' (메모)' : ''}`}
-            />
+              className={`px-2 py-0.5 rounded-full text-xs font-bold transition-all ${
+                isActive
+                  ? 'bg-primary text-primary-content shadow-sm'
+                  : count > 0
+                    ? 'bg-base-300 text-base-content/70 hover:bg-base-content/20'
+                    : 'bg-base-200 text-base-content/30 hover:bg-base-300'
+              } ${hasNote ? 'ring-1 ring-warning' : ''}`}
+              title={`Day ${i + 1} · ${d} · ${count}개 일정${hasNote ? ' + 메모' : ''}`}
+            >
+              D{i + 1}
+            </button>
           );
         })}
       </div>
@@ -261,25 +276,6 @@ export default function DayView({ schedules, startDate, endDate, planId, onSched
           </div>
         ) : null}
       </div>
-
-      {/* 일별 지도 */}
-      {(() => {
-        // 좌표 있는 일정만 필터 + 일별 순서 1부터 부여
-        const mapPoints = schedulesToMapPoints(daySchedules).map((p, i) => ({ ...p, order: i + 1 }));
-        if (mapPoints.length === 0) return null;
-        return (
-          <div className="rounded-xl overflow-hidden shadow-sm border border-base-200">
-            <TravelMap
-              points={mapPoints}
-              showRoute={true}
-              height="200px"
-            />
-            <div className="bg-base-100 px-3 py-1.5 text-xs text-base-content/50 text-center">
-              📍 {mapPoints.length}곳 · Day {currentIndex + 1} 동선
-            </div>
-          </div>
-        );
-      })()}
 
       {/* 컴팩트 타임라인 */}
       {daySchedules.length === 0 ? (
