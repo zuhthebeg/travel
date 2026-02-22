@@ -110,7 +110,7 @@ export default function BulkMomentImporter({ planId, schedules, onDone }: Props)
         if (scheduleIds.length === 0) continue;
 
         // One optimized upload object, multi-schedule reference via URL
-        const optimized = await compressImage(item.file, 1600, 0.82);
+        const optimized = await compressImage(item.file, 900, 0.78);
         const uploadFile = dataUrlToFile(optimized, item.file.name.replace(/\.[^.]+$/, '.webp'));
 
         let photoValue = optimized;
@@ -124,29 +124,14 @@ export default function BulkMomentImporter({ planId, schedules, onDone }: Props)
           }
         }
 
-        const safeReason = String(assigned?.reason || '')
-          .replace(/[\r\n]+/g, ' ')
-          .trim()
-          .slice(0, 36);
-        const metaPayload = {
-          f: (item.meta.fileName || '').slice(0, 28),
-          d: item.meta.datetime || null,
-          a: item.meta.lat ?? null,
-          g: item.meta.lng ?? null,
-          c: typeof assigned?.confidence === 'number' ? Number(assigned.confidence.toFixed(2)) : null,
-          r: safeReason || null,
-        };
-        const metaTag = ` [[m:${JSON.stringify(metaPayload)}]]`;
-
         for (const sid of scheduleIds) {
-          touchedScheduleIds.add(sid);
-          const warn = assigned?.confidence && assigned.confidence < 0.6 ? `자동분류 낮은신뢰` : '';
-          const composed = `${warn}${metaTag}`.trim();
-          const safeNote = composed.length > 190 ? composed.slice(0, 190) : composed;
+          const capturedAt = item.meta.datetime ? `촬영시각: ${item.meta.datetime}` : '';
+          const safeNote = capturedAt ? capturedAt.slice(0, 60) : undefined;
           await offlineMomentsAPI.create(sid, {
             photo_data: photoValue,
-            note: safeNote || undefined,
+            note: safeNote,
           });
+          touchedScheduleIds.add(sid);
         }
       }
 

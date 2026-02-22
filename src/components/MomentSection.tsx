@@ -476,7 +476,7 @@ export default function MomentSection({ scheduleId, schedules = [] }: MomentSect
                 />
               )}
 
-              {schedules.length > 1 && isMyMoment(m) && (
+              {schedules.length > 1 && (
                 <div className="flex items-center gap-2 flex-wrap">
                   <select
                     className="select select-xs select-bordered"
@@ -539,19 +539,11 @@ export default function MomentSection({ scheduleId, schedules = [] }: MomentSect
               alt={t('moment.zoomedImage')}
               className="max-w-full max-h-[70vh] rounded-xl shadow-2xl"
             />
-            {selectedMoment && (() => {
-              const parsed = parseMetaFromNote(selectedMoment.note);
-              const meta = parsed.meta || {};
-              return (
-                <div className="mt-2 bg-base-100/95 rounded-lg p-3 text-xs space-y-1">
-                  <div>파일: {meta.fileName || '-'}</div>
-                  <div>촬영시각: {meta.datetime || '-'}</div>
-                  <div>좌표: {meta.lat && meta.lng ? `${Number(meta.lat).toFixed(5)}, ${Number(meta.lng).toFixed(5)}` : '-'}</div>
-                  <div>AI 신뢰도: {typeof meta.confidence === 'number' ? `${Math.round(meta.confidence * 100)}%` : '-'}</div>
-                  <div>AI 근거: {meta.reason || '-'}</div>
-                </div>
-              );
-            })()}
+            {selectedMoment?.note?.startsWith('촬영시각:') && (
+              <div className="mt-2 bg-base-100/95 rounded-lg p-3 text-xs">
+                <div>{selectedMoment.note}</div>
+              </div>
+            )}
           </div>
         </div>
       )}
