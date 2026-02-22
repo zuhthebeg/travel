@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useStore } from '../store/useStore';
 import { plansAPI as rawPlansAPI, schedulesAPI as rawSchedulesAPI } from '../lib/api';
 import { offlinePlansAPI, offlineSchedulesAPI } from '../lib/offlineAPI';
@@ -39,29 +40,30 @@ type ViewMode = 'vertical' | 'horizontal' | 'calendar' | 'daily';
 type MainTab = 'schedule' | 'notes' | 'album';
 
 // AI 처리 중 롤링 팁
-const AI_TIPS = [
-  '💡 등록 후 시간을 정확한 예약에 맞춰 수정할 수 있어요',
-  '📍 좌표가 틀리면 장소명 수정 후 좌표 보정 버튼을 눌러주세요',
-  '🤖 AI 비서에게 "일정 하루 미뤄줘"라고 요청해보세요',
-  '🔄 일정을 드래그해서 날짜를 쉽게 변경할 수 있어요',
-  '📋 플랜 B, C도 등록해두면 현지에서 유연하게 대응할 수 있어요',
-  '📱 홈 화면에 추가하면 앱처럼 바로 열 수 있어요',
-  '✈️ 오프라인에서도 저장된 일정을 확인할 수 있어요',
+const AI_TIP_KEYS = [
+  'planDetail.aiTips.0',
+  'planDetail.aiTips.1',
+  'planDetail.aiTips.2',
+  'planDetail.aiTips.3',
+  'planDetail.aiTips.4',
+  'planDetail.aiTips.5',
+  'planDetail.aiTips.6',
 ];
 
 function AIProcessingTip() {
+  const { t } = useTranslation();
   const [idx, setIdx] = useState(0);
   const [fade, setFade] = useState(true);
   useEffect(() => {
     const iv = setInterval(() => {
       setFade(false);
-      setTimeout(() => { setIdx(i => (i + 1) % AI_TIPS.length); setFade(true); }, 300);
+      setTimeout(() => { setIdx(i => (i + 1) % AI_TIP_KEYS.length); setFade(true); }, 300);
     }, 3000);
     return () => clearInterval(iv);
   }, []);
   return (
     <p className={`text-xs text-base-content/60 text-center mt-2 transition-opacity duration-300 ${fade ? 'opacity-100' : 'opacity-0'}`}>
-      {AI_TIPS[idx]}
+      {t(AI_TIP_KEYS[idx])}
     </p>
   );
 }
@@ -149,7 +151,7 @@ function linkifyFlightNumbers(text: string): (string | JSX.Element)[] {
         target="_blank"
         rel="noopener noreferrer"
         className="link link-primary font-semibold inline-flex items-center gap-1 hover:gap-2 transition-all"
-        title={`${flightCode} 항공편 정보 보기`}
+        title={`${flightCode} flight info`}
       >
         <Plane className="w-4 h-4 inline" /> {flightCode}
       </a>
@@ -191,6 +193,7 @@ function linkifyText(text: string) {
 }
 
 export function PlanDetailPage() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { currentUser, selectedPlan, setSelectedPlan, schedules, setSchedules } = useStore();
@@ -406,11 +409,11 @@ export function PlanDetailPage() {
 
           // Notify if schedule is within 10 minutes and in the future
           if (minutesDiff > 0 && minutesDiff <= 10) {
-            const scheduleTitle = schedule.title || '일정';
+            const scheduleTitle = schedule.title || t('planDetail.defaultSchedule');
             const schedulePlace = schedule.place || '';
 
-            showNotification(`다가오는 일정: ${scheduleTitle}`, {
-              body: `${minutesDiff}분 후 ${schedulePlace}에서 시작합니다.`,
+            showNotification(t('planDetail.upcomingScheduleTitle', { title: scheduleTitle }), {
+              body: t('planDetail.upcomingScheduleBody', { minutes: minutesDiff, place: schedulePlace }),
               icon: '/favicon.ico', // Optional: add an icon
               onClick: () => navigate(`/plan/${selectedPlan.id}`),
             });
@@ -431,7 +434,7 @@ export function PlanDetailPage() {
       setSelectedPlan(data.plan);
       setSchedules(sortSchedulesByDateTime(data.schedules));
     } catch (err) {
-      setError(err instanceof Error ? err.message : '여행 정보를 불러오는데 실패했습니다.');
+      setError(err instanceof Error ? err.message : t('planDetail.errors.loadFailed'));
       console.error('Failed to load plan detail:', err);
     } finally {
       if (!soft) setIsLoading(false);
@@ -468,14 +471,14 @@ export function PlanDetailPage() {
       }
     } catch (error) {
       console.error('Failed to delete schedule:', error);
-      alert('일정 삭제에 실패했습니다.');
+      alert(t('planDetail.errors.deleteScheduleFailed'));
     }
   };
 
   const handleDeletePlan = async () => {
     if (!selectedPlan) return;
 
-    if (!confirm('이 여행을 삭제하시겠습니까? 모든 일정이 함께 삭제됩니다.')) {
+    if (!confirm(t('planDetail.confirmDeletePlan'))) {
       return;
     }
 
@@ -485,7 +488,7 @@ export function PlanDetailPage() {
       navigate('/my');
     } catch (error) {
       console.error('Failed to delete plan:', error);
-      alert('여행 삭제에 실패했습니다.');
+      alert(t('planDetail.errors.deletePlanFailed'));
       
     }
   };
@@ -568,10 +571,14 @@ export function PlanDetailPage() {
       const newDate = destination.droppableId;
       const formatKo = (d: string) => {
         const dt = new Date(d + 'T00:00:00');
-        return `${dt.getMonth() + 1}월 ${dt.getDate()}일`;
+        return t('planDetail.dateShort', { month: dt.getMonth() + 1, day: dt.getDate() });
       };
       const confirmed = window.confirm(
-        `"${draggedSchedule.title}"을(를)\n${formatKo(draggedSchedule.date)} → ${formatKo(newDate)}로 이동하시겠습니까?`
+        t('planDetail.confirmMoveSchedule', {
+          title: draggedSchedule.title,
+          from: formatKo(draggedSchedule.date),
+          to: formatKo(newDate),
+        })
       );
       if (!confirmed) return;
 
@@ -585,7 +592,7 @@ export function PlanDetailPage() {
         setSchedules(sortSchedulesByDateTime(updatedSchedules));
       } catch (error) {
         console.error('Failed to update schedule date:', error);
-        alert('일정 이동에 실패했습니다.');
+        alert(t('planDetail.errors.moveScheduleFailed'));
       }
     } else {
       // Same date - just reorder and sort
@@ -642,10 +649,10 @@ export function PlanDetailPage() {
         <div className="alert alert-error max-w-md">
           <div>
             <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            <span>{error || '여행을 찾을 수 없습니다.'}</span>
+            <span>{error || t('planDetail.notFound')}</span>
           </div>
           <div className="flex-none">
-            <Button variant="ghost" onClick={() => navigate(-1)}>돌아가기</Button>
+            <Button variant="ghost" onClick={() => navigate(-1)}>{t('planDetail.back')}</Button>
           </div>
         </div>
       </div>
@@ -665,7 +672,7 @@ export function PlanDetailPage() {
       setTimeout(() => setShowShareToast(false), 2000);
     } catch (error) {
       console.error('공유 링크 복사 실패:', error);
-      alert('링크 복사에 실패했습니다.');
+      alert(t('planDetail.errors.copyLinkFailed'));
     }
   };
 
@@ -684,10 +691,10 @@ export function PlanDetailPage() {
         setShowShareToast(true);
         setTimeout(() => setShowShareToast(false), 2000);
       } else {
-        alert(data.error || '초대 링크 생성에 실패했습니다');
+        alert(data.error || t('planDetail.errors.createInviteFailed'));
       }
     } catch {
-      alert('초대 링크 생성에 실패했습니다');
+      alert(t('planDetail.errors.createInviteFailed'));
     }
   };
 
@@ -722,7 +729,7 @@ export function PlanDetailPage() {
           <div className="flex items-center gap-2">
             <h1 className="text-base sm:text-lg font-bold truncate flex-1 min-w-0">{selectedPlan.title}</h1>
             {localStorage.getItem('offline_mode') === 'true' && (
-              <span className="badge badge-warning badge-xs font-bold flex-shrink-0 cursor-pointer" onClick={() => navigate('/profile')}>⚡오프라인</span>
+              <span className="badge badge-warning badge-xs font-bold flex-shrink-0 cursor-pointer" onClick={() => navigate('/profile')}>{t('planDetail.offlineBadge')}</span>
             )}
             {isOwner ? (
               <div className="dropdown dropdown-end flex-shrink-0">
@@ -735,9 +742,9 @@ export function PlanDetailPage() {
                 </label>
                 <ul tabIndex={0} className="dropdown-content menu menu-sm p-1 shadow-lg bg-base-100 rounded-lg w-32 z-50 border border-base-200">
                   {([
-                    { value: 'private', label: '🔒 나만', desc: '비공개' },
-                    { value: 'shared', label: '👥 동행만', desc: '멤버 공유' },
-                    { value: 'public', label: '🌍 공개', desc: '누구나' },
+                    { value: 'private', label: t('planDetail.visibility.private'), desc: t('planDetail.visibilityDesc.private') },
+                    { value: 'shared', label: t('planDetail.visibility.shared'), desc: t('planDetail.visibilityDesc.shared') },
+                    { value: 'public', label: t('planDetail.visibility.public'), desc: t('planDetail.visibilityDesc.public') },
                   ] as const).map(opt => (
                     <li key={opt.value}>
                       <a
@@ -766,17 +773,17 @@ export function PlanDetailPage() {
             )}
             {isOwner && (
               <div className="dropdown dropdown-end flex-shrink-0">
-                <label tabIndex={0} className="btn btn-ghost btn-xs btn-circle" title="설정">
+                <label tabIndex={0} className="btn btn-ghost btn-xs btn-circle" title={t('planDetail.settings')}>
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
                   </svg>
                 </label>
                 <ul tabIndex={0} className="dropdown-content z-50 menu p-2 shadow-lg bg-base-100 rounded-box w-52 border border-base-200">
-                  <li><a onClick={() => { setEditingPlan(true); (document.activeElement as HTMLElement)?.blur(); }}>⚙️ 여행 설정</a></li>
+                  <li><a onClick={() => { setEditingPlan(true); (document.activeElement as HTMLElement)?.blur(); }}>{t('planDetail.tripSettings')}</a></li>
                   {selectedPlan.visibility !== 'private' && (
-                    <li><a onClick={() => { handleCopyInviteLink(); (document.activeElement as HTMLElement)?.blur(); }}>🔗 초대 링크 복사</a></li>
+                    <li><a onClick={() => { handleCopyInviteLink(); (document.activeElement as HTMLElement)?.blur(); }}>{t('planDetail.copyInviteLink')}</a></li>
                   )}
-                  <li><a onClick={() => { downloadICS(selectedPlan.title, schedules); (document.activeElement as HTMLElement)?.blur(); }}>📅 캘린더 내보내기</a></li>
+                  <li><a onClick={() => { downloadICS(selectedPlan.title, schedules); (document.activeElement as HTMLElement)?.blur(); }}>{t('planDetail.exportCalendar')}</a></li>
                 </ul>
               </div>
             )}
@@ -795,11 +802,11 @@ export function PlanDetailPage() {
                   rel="noopener noreferrer"
                   className="whitespace-nowrap hover:text-primary transition-colors flex items-center gap-0.5"
                 >
-                  <Cloud className="w-3 h-3" /> <span className="hidden xs:inline">{userLocation?.city ? '현재 날씨' : '날씨'}</span>
+                  <Cloud className="w-3 h-3" /> <span className="hidden xs:inline">{userLocation?.city ? t('planDetail.currentWeather') : t('planDetail.weather')}</span>
                 </a>
               )}
               <span className="whitespace-nowrap flex items-center gap-0.5"><Calendar className="w-3 h-3" /> {formatDateRange(selectedPlan.start_date, selectedPlan.end_date)}</span>
-              <span className="font-medium whitespace-nowrap">{days}일</span>
+              <span className="font-medium whitespace-nowrap">{t('planDetail.days', { days })}</span>
               <div className="ml-1">
                 <MemberAvatars planId={selectedPlan.id} isOwner={isOwner} />
               </div>
@@ -809,7 +816,7 @@ export function PlanDetailPage() {
               size="sm"
               onClick={() => navigate(-1)}
               className="btn-circle btn-xs flex-shrink-0"
-              title="뒤로"
+              title={t('planDetail.back')}
             >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
@@ -825,7 +832,7 @@ export function PlanDetailPage() {
         {!isOwner && !isLoggedIn && (
           <div className="alert alert-info mb-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full">
-              <span>이 여행이 마음에 드시나요? 로그인하면 내 여행으로 가져올 수 있어요</span>
+              <span>{t('planDetail.loginImportPrompt')}</span>
               <div className="flex gap-2">
                 <GoogleLoginButton onSuccess={() => window.location.reload()} />
                 <GuestLoginButton onSuccess={() => window.location.reload()} />
@@ -837,7 +844,7 @@ export function PlanDetailPage() {
         {!isOwner && isLoggedIn && (
           <div className="alert alert-success mb-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full">
-              <span>이 여행이 마음에 드시나요? 내 여행으로 가져와서 자유롭게 수정해보세요.</span>
+              <span>{t('planDetail.importPrompt')}</span>
               <ForkButton
                 planId={selectedPlan.id}
                 onForked={(newPlan) => navigate(`/plans/${newPlan.id}`)}
@@ -870,13 +877,13 @@ export function PlanDetailPage() {
                 <div className="collapse collapse-arrow bg-base-100 shadow-sm rounded-lg">
                   <input type="checkbox" checked={mapOpen} onChange={(e) => setMapOpen(e.target.checked)} />
                   <div className="collapse-title text-sm font-medium flex items-center gap-2 min-h-0 py-2">
-                    <Map className="w-4 h-4" /> 동선
-                    <span className="badge badge-primary badge-xs">{mapPoints.length}곳</span>
+                    <Map className="w-4 h-4" /> {t('planDetail.route')}
+                    <span className="badge badge-primary badge-xs">{t('planDetail.placesCount', { count: mapPoints.length })}</span>
                     {focusedDate && (
                       <button
                         className="badge badge-warning badge-sm gap-1 cursor-pointer"
                         onClick={(e) => { e.stopPropagation(); setFocusedDate(null); }}
-                        title="전체 보기"
+                        title={t('planDetail.showAll')}
                       >
                         Day {getDaysDifference(selectedPlan.start_date, focusedDate) + 1} ✕
                       </button>
@@ -923,15 +930,15 @@ export function PlanDetailPage() {
                           <div className="flex items-center justify-between">
                             <p className="text-sm text-base-content/60 flex items-center gap-1">
                               <MapPin className="w-4 h-4" />
-                              📍 {withCoords}/{schedules.length}개 좌표
+                              {t('planDetail.coordsSummary', { withCoords, total: schedules.length })}
                               {missingCoords.length > 0 && (
-                                <span className="text-warning"> · {missingCoords.length}개 미보정</span>
+                                <span className="text-warning">{t('planDetail.coordsMissing', { count: missingCoords.length })}</span>
                               )}
                             </p>
                             <button
                               onClick={async () => {
                                 const btn = document.activeElement as HTMLButtonElement;
-                                if (btn) { btn.disabled = true; btn.textContent = '보정 중...'; }
+                                if (btn) { btn.disabled = true; btn.textContent = t('planDetail.geocodeProcessing'); }
                                 try {
                                   // 1단계: AI에게 장소명 영문 번역 + 보정 요청
                                   const schedulesWithPlace = schedules.filter(s => s.place && s.place.trim());
@@ -972,22 +979,22 @@ export function PlanDetailPage() {
                                   } catch {}
                                   const failedItems = (data.results || []).filter((r: any) => r.status === 'not_found');
                                   setGeocodeFailed(failedItems);
-                                  alert(`📍 좌표 보정 완료!\n✅ 보정: ${data.updated || 0}개\n❌ 실패: ${failedItems.length}개`);
+                                  alert(t('planDetail.geocodeDone', { updated: data.updated || 0, failed: failedItems.length }));
                                 } catch {
-                                  alert('좌표 보정 실패');
+                                  alert(t('planDetail.errors.geocodeFailed'));
                                 }
-                                if (btn) { btn.disabled = false; btn.textContent = '📍 좌표 보정'; }
+                                if (btn) { btn.disabled = false; btn.textContent = t('planDetail.geocodeButton'); }
                               }}
                               className="btn btn-xs btn-primary"
                             >
-                              📍 좌표 보정
+                              {t('planDetail.geocodeButton')}
                             </button>
                           </div>
 
                           {/* 보정 안내 메시지 */}
                           {missingCoords.length > 0 && geocodeFailed.length === 0 && (
                             <div className="alert alert-warning py-2 text-sm">
-                              <span>📍 {missingCoords.length}개 장소 좌표 없음 — 좌표 보정 버튼을 눌러주세요</span>
+                              <span>{t('planDetail.missingCoordsNotice', { count: missingCoords.length })}</span>
                             </div>
                           )}
 
@@ -1001,10 +1008,10 @@ export function PlanDetailPage() {
                               }} className="flex items-center gap-2 w-full text-left">
                                 <span className={`transition-transform ${geocodeFailedCollapsed ? '' : 'rotate-90'}`}>▶</span>
                                 <span className="text-sm font-medium text-warning flex-1">
-                                  ⚠️ {geocodeFailed.length}개 장소를 찾지 못했어요
+                                  {t('planDetail.geocodeNotFoundCount', { count: geocodeFailed.length })}
                                 </span>
                               </button>
-                              {!geocodeFailedCollapsed && <p className="text-xs text-base-content/60 ml-5">장소명을 수정해서 Enter로 다시 시도해보세요</p>}
+                              {!geocodeFailedCollapsed && <p className="text-xs text-base-content/60 ml-5">{t('planDetail.editPlaceRetry')}</p>}
                               {!geocodeFailedCollapsed && geocodeFailed.map((item: any) => (
                                 <div key={item.id} className="flex items-center gap-2">
                                   <input
@@ -1038,14 +1045,14 @@ export function PlanDetailPage() {
                                           setSchedules(sortSchedulesByDateTime(freshData.schedules));
                                         } catch {}
                                       } catch {
-                                        alert('업데이트 실패');
+                                        alert(t('planDetail.errors.updateFailed'));
                                       } finally {
                                         input.disabled = false;
                                       }
                                     }}
-                                    placeholder="장소명, 도시 (예: 에펠탑, 파리)"
+                                    placeholder={t('planDetail.placeCityPlaceholder')}
                                   />
-                                  <span className="text-xs text-base-content/40">Enter로 재검색</span>
+                                  <span className="text-xs text-base-content/40">{t('planDetail.enterToSearch')}</span>
                                 </div>
                               ))}
                             </div>
@@ -1065,15 +1072,15 @@ export function PlanDetailPage() {
               <div className="mb-8 p-4 bg-base-100 shadow-lg rounded-lg">
                 <div className="flex items-center gap-2 mb-3">
                   <MapPin className="w-5 h-5 text-warning" />
-                  <span className="font-medium">지도에 표시할 좌표가 없습니다</span>
+                  <span className="font-medium">{t('planDetail.noMapCoordsTitle')}</span>
                 </div>
                 <p className="text-sm text-base-content/60 mb-3">
-                  {missingAll.length}개 장소의 좌표를 보정하면 지도에 동선이 표시됩니다.
+                  {t('planDetail.noMapCoordsDesc', { count: missingAll.length })}
                 </p>
                 <button
                   onClick={async () => {
                     const btn = document.activeElement as HTMLButtonElement;
-                    if (btn) { btn.disabled = true; btn.textContent = '보정 중...'; }
+                    if (btn) { btn.disabled = true; btn.textContent = t('planDetail.geocodeProcessing'); }
                     try {
                       // AI 장소명 검증 + 영문 변환
                       const schedulesWithPlace = schedules.filter(s => s.place && s.place.trim());
@@ -1103,19 +1110,19 @@ export function PlanDetailPage() {
                       });
                       const data = await res.json() as any;
                       if (data.updated > 0) {
-                        alert(`📍 ${data.updated}개 좌표 보정 완료!`);
+                        alert(t('planDetail.geocodeDoneSimple', { updated: data.updated }));
                         window.location.reload();
                       } else {
-                        alert('보정할 수 있는 장소가 없습니다. 장소명을 더 구체적으로 수정해보세요.');
+                        alert(t('planDetail.noGeocodablePlaces'));
                       }
                     } catch {
-                      alert('좌표 보정 실패');
+                      alert(t('planDetail.errors.geocodeFailed'));
                     }
-                    if (btn) { btn.disabled = false; btn.textContent = '📍 좌표 보정'; }
+                    if (btn) { btn.disabled = false; btn.textContent = t('planDetail.geocodeButton'); }
                   }}
                   className="btn btn-sm btn-primary"
                 >
-                  📍 좌표 보정
+                  {t('planDetail.geocodeButton')}
                 </button>
               </div>
             );
@@ -1125,24 +1132,24 @@ export function PlanDetailPage() {
 
         {/* 메인 탭 */}
         <div className="tabs tabs-bordered w-full mb-3">
-          <a className={`tab tab-sm flex-1 ${mainTab === 'schedule' ? 'tab-active !text-primary font-bold' : 'text-base-content/50'}`} onClick={() => setMainTab('schedule')}>📅 일정</a>
-          <a className={`tab tab-sm flex-1 ${mainTab === 'notes' ? 'tab-active !text-primary font-bold' : 'text-base-content/50'}`} onClick={() => setMainTab('notes')}>📝 메모</a>
-          <a className={`tab tab-sm flex-1 ${mainTab === 'album' ? 'tab-active !text-primary font-bold' : 'text-base-content/50'}`} onClick={() => setMainTab('album')}>📸 앨범</a>
+          <a className={`tab tab-sm flex-1 ${mainTab === 'schedule' ? 'tab-active !text-primary font-bold' : 'text-base-content/50'}`} onClick={() => setMainTab('schedule')}>{t('planDetail.tabs.schedule')}</a>
+          <a className={`tab tab-sm flex-1 ${mainTab === 'notes' ? 'tab-active !text-primary font-bold' : 'text-base-content/50'}`} onClick={() => setMainTab('notes')}>{t('planDetail.tabs.notes')}</a>
+          <a className={`tab tab-sm flex-1 ${mainTab === 'album' ? 'tab-active !text-primary font-bold' : 'text-base-content/50'}`} onClick={() => setMainTab('album')}>{t('planDetail.tabs.album')}</a>
         </div>
 
         {/* 뷰 컨트롤 (일정 탭일 때만) */}
         {mainTab === 'schedule' && (
           <div className="flex items-center justify-between mb-3">
             <div className="tabs tabs-boxed tabs-xs bg-base-200/80">
-              <a className={`tab tab-xs ${viewMode === 'vertical' ? 'tab-active !bg-primary !text-primary-content font-bold' : 'text-base-content/60'}`} onClick={() => { setViewMode('vertical'); setFocusedDate(null); }}>목록</a>
-              <a className={`tab tab-xs ${viewMode === 'horizontal' ? 'tab-active !bg-primary !text-primary-content font-bold' : 'text-base-content/60'}`} onClick={() => { setViewMode('horizontal'); setFocusedDate(null); }}>타임라인</a>
-              <a className={`tab tab-xs ${viewMode === 'daily' ? 'tab-active !bg-primary !text-primary-content font-bold' : 'text-base-content/60'}`} onClick={() => setViewMode('daily')}>일별</a>
-              <a className={`tab tab-xs ${viewMode === 'calendar' ? 'tab-active !bg-primary !text-primary-content font-bold' : 'text-base-content/60'}`} onClick={() => { setViewMode('calendar'); setFocusedDate(null); }}>캘린더</a>
+              <a className={`tab tab-xs ${viewMode === 'vertical' ? 'tab-active !bg-primary !text-primary-content font-bold' : 'text-base-content/60'}`} onClick={() => { setViewMode('vertical'); setFocusedDate(null); }}>{t('planDetail.view.list')}</a>
+              <a className={`tab tab-xs ${viewMode === 'horizontal' ? 'tab-active !bg-primary !text-primary-content font-bold' : 'text-base-content/60'}`} onClick={() => { setViewMode('horizontal'); setFocusedDate(null); }}>{t('planDetail.view.timeline')}</a>
+              <a className={`tab tab-xs ${viewMode === 'daily' ? 'tab-active !bg-primary !text-primary-content font-bold' : 'text-base-content/60'}`} onClick={() => setViewMode('daily')}>{t('planDetail.view.daily')}</a>
+              <a className={`tab tab-xs ${viewMode === 'calendar' ? 'tab-active !bg-primary !text-primary-content font-bold' : 'text-base-content/60'}`} onClick={() => { setViewMode('calendar'); setFocusedDate(null); }}>{t('planDetail.view.calendar')}</a>
             </div>
             {canEditPlan && (
               <button className="btn btn-primary btn-xs gap-1" onClick={() => setEditingSchedule({} as Schedule)}>
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                추가
+                {t('planDetail.add')}
               </button>
             )}
           </div>
@@ -1169,7 +1176,7 @@ export function PlanDetailPage() {
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0-12.814a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0 12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
                 </svg>
-                앨범 공유
+                {t('planDetail.shareAlbum')}
               </Button>
             </div>
             {Object.entries(groupedSchedules).sort(([a], [b]) => a.localeCompare(b)).map(([date, daySchedules]) => (
@@ -1204,7 +1211,7 @@ export function PlanDetailPage() {
         )}
 
         {mainTab === 'album' && (!schedules || schedules.length === 0) && (
-          <p className="text-center text-gray-400 py-10">일정을 먼저 추가해주세요</p>
+          <p className="text-center text-gray-400 py-10">{t('planDetail.addScheduleFirst')}</p>
         )}
 
         {/* 일정 탭 */}
@@ -1215,11 +1222,11 @@ export function PlanDetailPage() {
             <Card>
               <Card.Body className="text-center py-12" centered>
                 <p className="text-lg mb-4">
-                  아직 일정이 없습니다
+                  {t('planDetail.noSchedules')}
                 </p>
                 <Card.Actions>
                   <Button variant="primary" onClick={() => setEditingSchedule({} as Schedule)}>
-                    첫 번째 일정 추가하기
+                    {t('planDetail.addFirstSchedule')}
                   </Button>
                 </Card.Actions>
               </Card.Body>
@@ -1253,7 +1260,7 @@ export function PlanDetailPage() {
                   >
                     <span className={`badge ${focusedDate === date ? 'badge-primary' : 'badge-ghost'} badge-sm font-bold`}>Day {getDaysDifference(selectedPlan.start_date, date) + 1}</span>
                     <span className="text-sm font-medium text-base-content/70">{formatDisplayDate(date)}</span>
-                    <span className="text-xs text-base-content/40">{schedulesForDate.length}개</span>
+                    <span className="text-xs text-base-content/40">{t('planDetail.count', { count: schedulesForDate.length })}</span>
                   </div>
                   <Droppable droppableId={date}>
                     {(provided) => (
@@ -1313,7 +1320,7 @@ export function PlanDetailPage() {
           {schedules.length === 0 ? (
             <Card>
               <Card.Body className="text-center py-12" centered>
-                <p className="text-lg">아직 일정이 없습니다</p>
+                <p className="text-lg">{t('planDetail.noSchedules')}</p>
               </Card.Body>
             </Card>
           ) : viewMode === 'daily' ? (
@@ -1345,7 +1352,7 @@ export function PlanDetailPage() {
                   >
                     <span className={`badge ${focusedDate === date ? 'badge-primary' : 'badge-ghost'} badge-sm font-bold`}>Day {getDaysDifference(selectedPlan.start_date, date) + 1}</span>
                     <span className="text-sm font-medium text-base-content/70">{formatDisplayDate(date)}</span>
-                    <span className="text-xs text-base-content/40">{schedulesForDate.length}개</span>
+                    <span className="text-xs text-base-content/40">{t('planDetail.count', { count: schedulesForDate.length })}</span>
                   </div>
                   <div className="space-y-3">
                     {schedulesForDate.map((schedule) => (
@@ -1498,7 +1505,7 @@ export function PlanDetailPage() {
           <button
             onClick={() => setShowChatbot(true)}
             className="fixed bottom-20 right-6 z-40 w-11 h-11 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-lg shadow-violet-500/30 hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center group"
-            title="AI 여행 비서"
+            title={t('planDetail.aiAssistant')}
           >
             <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth={1.5}>
               <path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" strokeLinecap="round" strokeLinejoin="round" />
@@ -1513,7 +1520,7 @@ export function PlanDetailPage() {
           <dialog ref={chatbotModalRef} className="modal modal-bottom sm:modal-middle">
             <div className="modal-box max-w-4xl h-[80vh] flex flex-col p-0">
               <div className="sticky top-0 bg-base-100 border-b border-base-200 px-6 py-4 flex items-center justify-between z-10">
-                <h3 className="font-bold text-xl">여행 비서</h3>
+                <h3 className="font-bold text-xl">{t('planDetail.travelAssistant')}</h3>
                 <button className="btn btn-sm btn-circle btn-ghost" onClick={() => setShowChatbot(false)}>✕</button>
               </div>
               <div className="flex-1 overflow-hidden">
@@ -1525,7 +1532,7 @@ export function PlanDetailPage() {
                   planEndDate={selectedPlan.end_date}
                   schedules={schedules}
                   onScheduleChange={(modifiedIds) => {
-                    if (confirm('변경사항이 반영되었습니다. 새로고침할까요?')) {
+                    if (confirm(t('planDetail.confirmReloadAfterChange'))) {
                       loadPlanDetail(selectedPlan.id, true);
                       if (modifiedIds && modifiedIds.length > 0) {
                         setPendingScrollIds(modifiedIds);
@@ -1545,7 +1552,7 @@ export function PlanDetailPage() {
       {showShareToast && (
         <div className="toast toast-top toast-center z-50">
           <div className="alert alert-success">
-            <span>링크가 복사되었습니다!</span>
+            <span>{t('planDetail.linkCopied')}</span>
           </div>
         </div>
       )}
@@ -1579,6 +1586,7 @@ interface ScheduleFormModalProps {
 }
 
 function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartDate, planEndDate, schedule, onClose, onSave }: ScheduleFormModalProps) {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState<{
     date: string;
     time: string;
@@ -1765,7 +1773,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
       onClose(); // Close modal after saving
     } catch (error) {
       console.error('Failed to create schedule from text via AI:', error);
-      alert('AI로 일정 생성에 실패했습니다.');
+      alert(t('planDetail.errors.aiCreateFailed'));
     } finally {
       setIsAIProcessing(false);
     }
@@ -1854,7 +1862,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
         <div className="sticky top-0 bg-base-100 border-b px-4 py-3 flex items-center justify-between z-10">
           <h3 className="font-bold text-lg flex items-center gap-2">
             <Calendar className="w-5 h-5 text-primary" />
-            {schedule?.id ? '일정 수정' : '새 일정'}
+            {schedule?.id ? t('planDetail.editSchedule') : t('planDetail.newSchedule')}
           </h3>
           <button className="btn btn-sm btn-circle btn-ghost" onClick={onClose}>✕</button>
         </div>
@@ -1864,10 +1872,10 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
           <div className="mb-6 p-4 bg-gradient-to-r from-primary/10 to-secondary/10 rounded-xl border border-primary/20">
             <div className="flex items-center gap-2 mb-2">
               <Sparkles className="w-5 h-5 text-primary" />
-              <p className="font-semibold">AI로 빠르게 추가</p>
+              <p className="font-semibold">{t('planDetail.aiQuickAdd')}</p>
             </div>
             <p className="text-xs text-base-content/70 mb-3">
-              "내일 10시 에펠탑 구경" 처럼 자연어로 입력하세요
+              {t('planDetail.aiQuickAddHint')}
             </p>
             <div className="flex gap-2 items-end">
               <div className="flex-1 relative">
@@ -1880,7 +1888,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
                       handleAICreateSchedule();
                     }
                   }}
-                  placeholder={"예: 모레 오후 3시 루브르 박물관\n여러 일정을 줄바꿈으로 한번에 입력 가능"}
+                  placeholder={t('planDetail.aiInputPlaceholder')}
                   className="textarea textarea-bordered text-sm w-full min-h-[56px] leading-relaxed pr-10"
                   rows={2}
                   disabled={isAIProcessing}
@@ -1890,7 +1898,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
                     type="button"
                     onClick={aiSttListening ? aiSttStop : aiSttStart}
                     className={`absolute right-2 bottom-2 btn btn-ghost btn-xs btn-circle ${aiSttListening ? 'text-error animate-pulse' : 'text-base-content/40 hover:text-primary'}`}
-                    title={aiSttListening ? '음성 입력 중지' : '음성으로 입력'}
+                    title={aiSttListening ? t('planDetail.stopVoiceInput') : t('planDetail.voiceInput')}
                     disabled={isAIProcessing}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
@@ -1906,14 +1914,14 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
                 size="sm"
                 className="h-[56px] px-4 flex-shrink-0"
               >
-                {isAIProcessing ? <Loading /> : <><Sparkles className="w-4 h-4" /> 생성</>}
+                {isAIProcessing ? <Loading /> : <><Sparkles className="w-4 h-4" /> {t('planDetail.generate')}</>}
               </Button>
             </div>
-            <p className="text-[10px] text-base-content/40 mt-1">{aiSttListening ? '🎤 듣고 있어요...' : 'Ctrl+Enter로 생성 · 🎤 음성 입력 가능'}</p>
+            <p className="text-[10px] text-base-content/40 mt-1">{aiSttListening ? t('planDetail.listening') : t('planDetail.ctrlEnterHint')}</p>
             {isAIProcessing && <AIProcessingTip />}
           </div>
 
-          <div className="divider text-xs text-base-content/50">또는 직접 입력</div>
+          <div className="divider text-xs text-base-content/50">{t('planDetail.orDirectInput')}</div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* 날짜 & 시간 */}
@@ -1921,7 +1929,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
               <div className="form-control">
                 <label className="label py-1">
                   <span className="label-text font-medium flex items-center gap-1.5">
-                    <Calendar className="w-4 h-4 text-primary" /> 날짜 *
+                    <Calendar className="w-4 h-4 text-primary" /> {t('planDetail.dateRequired')}
                   </span>
                 </label>
                 <input
@@ -1936,7 +1944,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
               <div className="form-control">
                 <label className="label py-1">
                   <span className="label-text font-medium flex items-center gap-1.5">
-                    <Clock className="w-4 h-4 text-secondary" /> 시간
+                    <Clock className="w-4 h-4 text-secondary" /> {t('planDetail.time')}
                   </span>
                 </label>
                 <input
@@ -1952,14 +1960,14 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
             <div className="form-control">
               <label className="label py-1">
                 <span className="label-text font-medium flex items-center gap-1.5">
-                  <FileText className="w-4 h-4 text-accent" /> 제목 *
+                  <FileText className="w-4 h-4 text-accent" /> {t('planDetail.titleRequired')}
                 </span>
               </label>
               <input
                 type="text"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="예: 에펠탑 야경 보기"
+                placeholder={t('planDetail.titlePlaceholder')}
                 className="input input-bordered h-12 text-base"
                 required
               />
@@ -1969,11 +1977,11 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
             <div className="form-control relative">
               <label className="label py-1">
                 <span className="label-text font-medium flex items-center gap-1.5">
-                  <MapPin className="w-4 h-4 text-error" /> 장소
+                  <MapPin className="w-4 h-4 text-error" /> {t('planDetail.place')}
                 </span>
                 {formData.latitude && formData.longitude && (
                   <span className="label-text-alt text-success flex items-center gap-1">
-                    <MapPin className="w-3 h-3" /> 위치 저장됨
+                    <MapPin className="w-3 h-3" /> {t('planDetail.locationSaved')}
                   </span>
                 )}
               </label>
@@ -1985,7 +1993,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
                   onChange={(e) => handlePlaceInputChange(e.target.value)}
                   onFocus={() => placeResults.length > 0 && setShowPlaceResults(true)}
                   onBlur={() => setTimeout(() => setShowPlaceResults(false), 200)}
-                  placeholder="장소 검색 (예: 에펠탑, 루브르)"
+                  placeholder={t('planDetail.placeSearchPlaceholder')}
                   className="input input-bordered h-12 text-base w-full pl-10 pr-10"
                 />
                 {isSearchingPlace && (
@@ -2024,7 +2032,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
                       id: 1,
                       lat: formData.latitude,
                       lng: formData.longitude,
-                      title: formData.title || '선택한 위치',
+                      title: formData.title || t('planDetail.selectedLocation'),
                       date: formData.date,
                       order: 1,
                     }]}
@@ -2036,7 +2044,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
               
               <label className="label py-1">
                 <span className="label-text-alt text-base-content/50">
-                  검색 결과에서 선택하면 지도에 핀이 표시됩니다
+                  {t('planDetail.selectFromResults')}
                 </span>
               </label>
             </div>
@@ -2044,12 +2052,12 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
             {/* 메모 */}
             <div className="form-control">
               <label className="label py-1">
-                <span className="label-text font-medium">메모</span>
+                <span className="label-text font-medium">{t('planDetail.memo')}</span>
               </label>
               <textarea
                 value={formData.memo}
                 onChange={(e) => setFormData({ ...formData, memo: e.target.value })}
-                placeholder="상세 내용, 예약 정보, 팁 등"
+                placeholder={t('planDetail.memoPlaceholder')}
                 rows={3}
                 className="textarea textarea-bordered text-base leading-relaxed"
               />
@@ -2060,7 +2068,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
               <input type="checkbox" />
               <div className="collapse-title py-3 min-h-0 flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 text-warning" />
-                <span className="font-medium text-sm">대안 계획 (선택)</span>
+                <span className="font-medium text-sm">{t('planDetail.alternativePlanOptional')}</span>
               </div>
               <div className="collapse-content space-y-3">
                 <div className="form-control">
@@ -2071,7 +2079,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
                     type="text"
                     value={formData.plan_b}
                     onChange={(e) => setFormData({ ...formData, plan_b: e.target.value })}
-                    placeholder="비 오면 실내 카페로"
+                    placeholder={t('planDetail.planBPlaceholder')}
                     className="input input-bordered input-sm h-10"
                   />
                 </div>
@@ -2084,7 +2092,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
                     type="text"
                     value={formData.plan_c}
                     onChange={(e) => setFormData({ ...formData, plan_c: e.target.value })}
-                    placeholder="그것도 안되면..."
+                    placeholder={t('planDetail.planCPlaceholder')}
                     className="input input-bordered input-sm h-10"
                   />
                 </div>
@@ -2095,9 +2103,9 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
             <div className="sticky bottom-0 bg-base-100 pt-3 -mx-4 px-4 -mb-4 pb-4 border-t">
               <div className="flex items-center justify-between">
                 <div className="text-sm">
-                  {saveStatus === 'saving' && <span className="text-primary">저장 중...</span>}
-                  {saveStatus === 'saved' && <span className="text-success">✓ 저장됨</span>}
-                  {saveStatus === 'error' && <span className="text-error">저장 실패</span>}
+                  {saveStatus === 'saving' && <span className="text-primary">{t('planDetail.saving')}</span>}
+                  {saveStatus === 'saved' && <span className="text-success">{t('planDetail.saved')}</span>}
+                  {saveStatus === 'error' && <span className="text-error">{t('planDetail.saveFailed')}</span>}
                 </div>
                 <Button 
                   type="submit" 
@@ -2105,7 +2113,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
                   disabled={saveStatus === 'saving' || !formData.title || !formData.date}
                   className="h-12 px-6"
                 >
-                  {schedule?.id ? '수정 완료' : '일정 추가'}
+                  {schedule?.id ? t('planDetail.updateDone') : t('planDetail.addSchedule')}
                 </Button>
               </div>
             </div>
@@ -2113,7 +2121,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
         </div>
       </div>
       <form method="dialog" className="modal-backdrop">
-        <button onClick={onClose}>닫기</button>
+        <button onClick={onClose}>{t('planDetail.close')}</button>
       </form>
     </dialog>
   );
@@ -2136,6 +2144,7 @@ interface ScheduleDetailModalProps {
 }
 
 function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, onDelete, onUpdate, canEdit, isLoggedIn, onLogin: _onLogin, userLocation, planRegion }: ScheduleDetailModalProps) {
+  const { t } = useTranslation();
   // Tab state
   const [detailTab, setDetailTab] = useState<'moments' | 'comments'>('moments');
 
@@ -2207,7 +2216,7 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
       setPendingCoords(null);
     } catch (e) {
       console.error('Failed to save place:', e);
-      alert('장소 저장에 실패했습니다. 다시 시도해주세요.');
+      alert(t('planDetail.errors.savePlaceFailed'));
     } finally {
       setSavingPlace(false);
     }
@@ -2256,7 +2265,7 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          author_name: authorName.trim() || '익명',
+          author_name: authorName.trim() || t('planDetail.anonymous'),
           content: commentContent.trim(),
         }),
       });
@@ -2271,18 +2280,18 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
           localStorage.setItem('comment_author_name', authorName.trim());
         }
       } else {
-        alert('댓글 작성에 실패했습니다.');
+        alert(t('planDetail.errors.writeCommentFailed'));
       }
     } catch (error) {
       console.error('Failed to submit comment:', error);
-      alert('댓글 작성에 실패했습니다.');
+      alert(t('planDetail.errors.writeCommentFailed'));
     } finally {
       setIsSubmittingComment(false);
     }
   };
 
   const handleDeleteComment = async (commentId: number) => {
-    if (!confirm('이 댓글을 삭제하시겠습니까?')) {
+    if (!confirm(t('planDetail.confirmDeleteComment'))) {
       return;
     }
 
@@ -2294,11 +2303,11 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
       if (response.ok) {
         setComments(comments.filter(c => c.id !== commentId));
       } else {
-        alert('댓글 삭제에 실패했습니다.');
+        alert(t('planDetail.errors.deleteCommentFailed'));
       }
     } catch (error) {
       console.error('Failed to delete comment:', error);
-      alert('댓글 삭제에 실패했습니다.');
+      alert(t('planDetail.errors.deleteCommentFailed'));
     }
   };
 
@@ -2343,13 +2352,13 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
           <div className="flex items-center gap-4">
             <div className="badge badge-lg badge-primary font-mono">{schedule.date}</div>
             {schedule.time && <div className="badge badge-lg font-mono">{schedule.time}</div>}
-            {isPast && <div className="badge badge-success badge-lg">✓ 완료</div>}
+            {isPast && <div className="badge badge-success badge-lg">{t('planDetail.completed')}</div>}
           </div>
 
           <div className="flex items-start gap-2">
             <MapPin className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
             <div className="flex-1">
-              <div className="font-semibold text-sm text-base-content/70 mb-1">장소</div>
+              <div className="font-semibold text-sm text-base-content/70 mb-1">{t('planDetail.place')}</div>
               {canEdit && editingPlace ? (
                 <>
                   <div className="flex items-center gap-2">
@@ -2360,7 +2369,7 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
                         setPlaceValue(place.name);
                         setPendingCoords({ lat: place.lat, lng: place.lng, countryCode: place.countryCode, city: place.city });
                       }}
-                      placeholder="장소 검색..."
+                      placeholder={t('planDetail.placeSearch')}
                       className="flex-1"
                       regionHint={planRegion || ''}
                     />
@@ -2385,7 +2394,7 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
                           id: 1,
                           lat: pendingCoords.lat,
                           lng: pendingCoords.lng,
-                          title: placeValue || '선택한 위치',
+                          title: placeValue || t('planDetail.selectedLocation'),
                           date: schedule.date,
                           order: 1,
                         }]}
@@ -2413,7 +2422,7 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
                           target="_blank"
                           rel="noopener noreferrer"
                           className="link link-secondary hover:link-hover inline-flex items-center gap-1"
-                          title="지도에서 보기"
+                          title={t('planDetail.viewOnMap')}
                         >
                           <Map className="w-4 h-4" />
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
@@ -2422,13 +2431,13 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
                         </a>
                       </>
                     ) : (
-                      <span className="text-base-content/40 text-sm">장소 없음</span>
+                      <span className="text-base-content/40 text-sm">{t('planDetail.noPlace')}</span>
                     )}
                     {canEdit && (
                       <button
                         onClick={() => setEditingPlace(true)}
                         className="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity"
-                        title="장소 수정"
+                        title={t('planDetail.editPlace')}
                       >
                         ✏️
                       </button>
@@ -2443,7 +2452,7 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
                         highlightPointId={schedule.id}
                       />
                       <div className="px-2 py-1 text-[10px] text-base-content/50 bg-base-200 border-t border-base-300">
-                        같은 날짜 핀 {sameDayMapPoints.length}개 · 현재 일정 핀은 빨간색
+                        {t('planDetail.sameDayPins', { count: sameDayMapPoints.length })}
                       </div>
                     </div>
                   )}
@@ -2454,7 +2463,7 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
 
           {schedule.memo && (
             <div>
-              <div className="font-semibold text-sm text-base-content/70 mb-2">메모</div>
+              <div className="font-semibold text-sm text-base-content/70 mb-2">{t('planDetail.memo')}</div>
               <div className="bg-base-200 p-4 rounded-lg whitespace-pre-wrap">
                 {linkifyText(schedule.memo)}
               </div>
@@ -2463,7 +2472,7 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
 
           {(schedule.plan_b || schedule.plan_c) && (
             <>
-              <div className="divider">대안 계획</div>
+              <div className="divider">{t('planDetail.alternativePlan')}</div>
               {schedule.plan_b && (
                 <div className="alert alert-info">
                   <div>
@@ -2494,7 +2503,7 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
                     : 'border-transparent text-base-content/50 hover:text-base-content/80'
                 }`}
               >
-                📸 기록
+                {t('planDetail.recordsTab')}
               </button>
               <button
                 onClick={() => setDetailTab('comments')}
@@ -2504,7 +2513,7 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
                     : 'border-transparent text-base-content/50 hover:text-base-content/80'
                 }`}
               >
-                💬 댓글 {comments.length > 0 && `(${comments.length})`}
+                {t('planDetail.commentsTab')} {comments.length > 0 && `(${comments.length})`}
               </button>
             </div>
 
@@ -2525,13 +2534,13 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
                       type="text"
                       value={authorName}
                       onChange={(e) => setAuthorName(e.target.value)}
-                      placeholder="이름 (선택, 비워두면 익명)"
+                      placeholder={t('planDetail.nameOptional')}
                       className="input input-bordered input-sm w-full max-w-xs"
                     />
                     <textarea
                       value={commentContent}
                       onChange={(e) => setCommentContent(e.target.value)}
-                      placeholder="댓글을 입력하세요..."
+                      placeholder={t('planDetail.commentPlaceholder')}
                       rows={2}
                       className="textarea textarea-bordered w-full"
                     />
@@ -2542,14 +2551,14 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
                         onClick={handleSubmitComment}
                         disabled={isSubmittingComment || !commentContent.trim()}
                       >
-                        {isSubmittingComment ? '작성 중...' : '댓글 작성'}
+                        {isSubmittingComment ? t('planDetail.writing') : t('planDetail.writeComment')}
                       </Button>
                     </div>
                   </div>
                 ) : (
                   <div className="alert alert-info">
                     <div className="flex items-center justify-between gap-3 w-full">
-                      <span>댓글을 작성하려면 로그인해주세요.</span>
+                      <span>{t('planDetail.loginToComment')}</span>
                       <GoogleLoginButton onSuccess={() => window.location.reload()} />
                     </div>
                   </div>
@@ -2560,7 +2569,7 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
                   <div className="text-center py-4"><Loading /></div>
                 ) : comments.length === 0 ? (
                   <div className="text-center py-4 text-base-content/50 text-sm">
-                    아직 댓글이 없어요
+                    {t('planDetail.noComments')}
                   </div>
                 ) : (
                   <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -2579,7 +2588,7 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
                             onClick={() => handleDeleteComment(comment.id)}
                             className="btn btn-ghost btn-xs text-error"
                           >
-                            삭제
+                            {t('planDetail.delete')}
                           </button>
                         </div>
                         <p className="text-sm whitespace-pre-wrap">{comment.content}</p>
@@ -2595,15 +2604,15 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
         {canEdit && (
           <div className="modal-action">
             <Button variant="error" onClick={() => {
-              if (confirm('이 일정을 삭제하시겠습니까?')) {
+              if (confirm(t('planDetail.confirmDeleteSchedule'))) {
                 onDelete(schedule.id);
                 onClose();
               }
             }}>
-              삭제
+              {t('planDetail.delete')}
             </Button>
             <Button variant="primary" onClick={onEdit}>
-              편집
+              {t('planDetail.edit')}
             </Button>
           </div>
         )}
@@ -2622,6 +2631,7 @@ interface PlanEditModalProps {
 }
 
 function PlanEditModal({ modalRef, plan, onClose, onSave, onDelete }: PlanEditModalProps) {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     title: plan.title,
     region: plan.region || '',
@@ -2633,7 +2643,7 @@ function PlanEditModal({ modalRef, plan, onClose, onSave, onDelete }: PlanEditMo
 
   const handleSave = async () => {
     if (!formData.title || !formData.start_date || !formData.end_date) {
-      alert('제목, 시작 날짜, 종료 날짜는 필수 입력 항목입니다.');
+      alert(t('planDetail.errors.requiredPlanFields'));
       return;
     }
 
@@ -2649,7 +2659,7 @@ function PlanEditModal({ modalRef, plan, onClose, onSave, onDelete }: PlanEditMo
       onSave(updatedPlan);
     } catch (error) {
       console.error('Failed to update plan:', error);
-      alert('여행 정보 수정에 실패했습니다.');
+      alert(t('planDetail.errors.updatePlanFailed'));
     } finally {
       setIsSaving(false);
     }
@@ -2667,18 +2677,18 @@ function PlanEditModal({ modalRef, plan, onClose, onSave, onDelete }: PlanEditMo
           <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" onClick={onClose}>✕</button>
         </form>
 
-        <h3 className="font-bold text-2xl mb-6">여행 상세 정보</h3>
+        <h3 className="font-bold text-2xl mb-6">{t('planDetail.tripDetails')}</h3>
 
         <div className="space-y-4">
           <div className="form-control w-full">
             <label className="label">
-              <span className="label-text">여행 제목 *</span>
+              <span className="label-text">{t('planDetail.tripTitleRequired')}</span>
             </label>
             <input
               type="text"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="예: 제주도 여행"
+              placeholder={t('planDetail.tripTitlePlaceholder')}
               className="input input-bordered w-full"
               required
             />
@@ -2686,13 +2696,13 @@ function PlanEditModal({ modalRef, plan, onClose, onSave, onDelete }: PlanEditMo
 
           <div className="form-control w-full">
             <label className="label">
-              <span className="label-text">여행 지역</span>
+              <span className="label-text">{t('planDetail.tripRegion')}</span>
             </label>
             <input
               type="text"
               value={formData.region}
               onChange={(e) => setFormData({ ...formData, region: e.target.value })}
-              placeholder="예: 제주도"
+              placeholder={t('planDetail.tripRegionPlaceholder')}
               className="input input-bordered w-full"
             />
           </div>
@@ -2700,7 +2710,7 @@ function PlanEditModal({ modalRef, plan, onClose, onSave, onDelete }: PlanEditMo
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="form-control w-full">
               <label className="label">
-                <span className="label-text">시작 날짜 *</span>
+                <span className="label-text">{t('planDetail.startDateRequired')}</span>
               </label>
               <input
                 type="date"
@@ -2713,7 +2723,7 @@ function PlanEditModal({ modalRef, plan, onClose, onSave, onDelete }: PlanEditMo
 
             <div className="form-control w-full">
               <label className="label">
-                <span className="label-text">종료 날짜 *</span>
+                <span className="label-text">{t('planDetail.endDateRequired')}</span>
               </label>
               <input
                 type="date"
@@ -2727,7 +2737,7 @@ function PlanEditModal({ modalRef, plan, onClose, onSave, onDelete }: PlanEditMo
 
           <div className="form-control w-full">
             <label className="label">
-              <span className="label-text">공개 범위</span>
+              <span className="label-text">{t('planDetail.visibilityLabel')}</span>
             </label>
             <select
               value={formData.visibility}
@@ -2739,19 +2749,19 @@ function PlanEditModal({ modalRef, plan, onClose, onSave, onDelete }: PlanEditMo
               }
               className="select select-bordered w-full"
             >
-              <option value="public">🌍 공개 (public) — 누구나 볼 수 있어요</option>
-              <option value="shared">👥 동행만 (shared) — 초대된 멤버만</option>
-              <option value="private">🔒 나만 (private) — 나만 볼 수 있어요</option>
+              <option value="public">{t('planDetail.visibilityOption.public')}</option>
+              <option value="shared">{t('planDetail.visibilityOption.shared')}</option>
+              <option value="private">{t('planDetail.visibilityOption.private')}</option>
             </select>
           </div>
         </div>
 
         <div className="modal-action">
           <Button variant="error" onClick={handleDelete}>
-            여행 삭제
+            {t('planDetail.deleteTrip')}
           </Button>
           <Button variant="primary" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? '저장 중...' : '저장'}
+            {isSaving ? t('planDetail.saving') : t('planDetail.save')}
           </Button>
         </div>
       </div>

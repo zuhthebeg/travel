@@ -5,6 +5,7 @@
  * Fires once per trip per day (dedup via localStorage).
  */
 import { useEffect, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { plansAPI } from '../lib/api';
 import type { Plan } from '../store/types';
 
@@ -14,6 +15,7 @@ interface PreTripReminder {
 }
 
 export function usePreTripReminder() {
+  const { t } = useTranslation();
   const [reminder, setReminder] = useState<PreTripReminder | null>(null);
 
   const checkTrips = useCallback(async () => {
@@ -44,7 +46,7 @@ export function usePreTripReminder() {
         const regionText = plan.region || plan.title;
         setReminder({
           plan,
-          message: `내일 "${regionText}" 여행이 시작됩니다! 오프라인 모드를 켜서 여행 데이터를 미리 다운로드하세요.`,
+          message: t('reminder.message', { region: regionText }),
         });
         break; // One reminder at a time
       }
@@ -76,6 +78,7 @@ export function PreTripReminderBanner({
 }: {
   onEnableOffline?: () => void;
 }) {
+  const { t } = useTranslation();
   const { reminder, dismiss } = usePreTripReminder();
 
   if (!reminder) return null;
@@ -94,10 +97,10 @@ export function PreTripReminderBanner({
             dismiss();
           }}
         >
-          오프라인 모드 켜기
+          {t('reminder.enableOffline')}
         </button>
         <button className="btn btn-sm btn-ghost" onClick={dismiss}>
-          닫기
+          {t('reminder.close')}
         </button>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 // 타입 정의
 type NoteCategory = 'reservation' | 'budget' | 'packing' | 'safety' | 'contact' | 'memo';
@@ -27,49 +28,49 @@ interface TripNotesProps {
 // 카테고리 설정
 const CATEGORY_CONFIG: Record<NoteCategory, {
   icon: string;
-  label: string;
+  labelKey: string;
   color: string;
   bgColor: string;
   allowChecklist: boolean;
 }> = {
   reservation: { 
     icon: '📅', 
-    label: '예약 필요', 
+    labelKey: 'tripNotes.categories.reservation', 
     color: '#3b82f6', 
     bgColor: '#eff6ff',
     allowChecklist: true 
   },
   budget: { 
     icon: '💰', 
-    label: '예산', 
+    labelKey: 'tripNotes.categories.budget', 
     color: '#eab308', 
     bgColor: '#fefce8',
     allowChecklist: false 
   },
   packing: { 
     icon: '🎒', 
-    label: '준비물', 
+    labelKey: 'tripNotes.categories.packing', 
     color: '#22c55e', 
     bgColor: '#f0fdf4',
     allowChecklist: true 
   },
   safety: { 
     icon: '🛡️', 
-    label: '안전 팁', 
+    labelKey: 'tripNotes.categories.safety', 
     color: '#ef4444', 
     bgColor: '#fef2f2',
     allowChecklist: false 
   },
   contact: { 
     icon: '📞', 
-    label: '연락처', 
+    labelKey: 'tripNotes.categories.contact', 
     color: '#8b5cf6', 
     bgColor: '#faf5ff',
     allowChecklist: false 
   },
   memo: { 
     icon: '📝', 
-    label: '메모', 
+    labelKey: 'tripNotes.categories.memo', 
     color: '#6b7280', 
     bgColor: '#f9fafb',
     allowChecklist: false 
@@ -79,6 +80,7 @@ const CATEGORY_CONFIG: Record<NoteCategory, {
 const CATEGORIES: NoteCategory[] = ['reservation', 'budget', 'packing', 'safety', 'contact', 'memo'];
 
 export default function TripNotes({ planId }: TripNotesProps) {
+  const { t } = useTranslation();
   const [, setNotes] = useState<TripNote[]>([]);
   const [grouped, setGrouped] = useState<Record<NoteCategory, TripNote[]>>({} as Record<NoteCategory, TripNote[]>);
   const [summary, setSummary] = useState<Record<NoteCategory, NoteSummary>>({} as Record<NoteCategory, NoteSummary>);
@@ -110,7 +112,7 @@ export default function TripNotes({ planId }: TripNotesProps) {
       setGrouped(data.grouped || {});
       setSummary(data.summary || {});
     } catch (e) {
-      setError(e instanceof Error ? e.message : '메모를 불러오는데 실패했습니다');
+      setError(e instanceof Error ? e.message : t('tripNotes.errors.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -144,7 +146,7 @@ export default function TripNotes({ planId }: TripNotesProps) {
       await fetchNotes();
       closeModal();
     } catch (e) {
-      alert(e instanceof Error ? e.message : '메모 추가에 실패했습니다');
+      alert(e instanceof Error ? e.message : t('tripNotes.errors.addFailed'));
     }
   };
 
@@ -168,7 +170,7 @@ export default function TripNotes({ planId }: TripNotesProps) {
       await fetchNotes();
       closeModal();
     } catch (e) {
-      alert(e instanceof Error ? e.message : '메모 수정에 실패했습니다');
+      alert(e instanceof Error ? e.message : t('tripNotes.errors.updateFailed'));
     }
   };
 
@@ -195,7 +197,7 @@ export default function TripNotes({ planId }: TripNotesProps) {
 
   // 메모 삭제
   const handleDeleteNote = async (noteId: number) => {
-    if (!confirm('이 메모를 삭제하시겠습니까?')) return;
+    if (!confirm(t('tripNotes.confirmDelete'))) return;
     
     try {
       const res = await fetch(`/api/notes?id=${noteId}`, {
@@ -207,7 +209,7 @@ export default function TripNotes({ planId }: TripNotesProps) {
       
       await fetchNotes();
     } catch (e) {
-      alert(e instanceof Error ? e.message : '메모 삭제에 실패했습니다');
+      alert(e instanceof Error ? e.message : t('tripNotes.errors.deleteFailed'));
     }
   };
 
@@ -257,7 +259,7 @@ export default function TripNotes({ planId }: TripNotesProps) {
           onClick={fetchNotes}
           className="mt-2 text-blue-500 underline"
         >
-          다시 시도
+          {t('tripNotes.retry')}
         </button>
       </div>
     );
@@ -268,13 +270,13 @@ export default function TripNotes({ planId }: TripNotesProps) {
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold flex items-center gap-2">
-          📝 여행 메모
+          {t('tripNotes.title')}
         </h2>
         <button
           onClick={() => openAddModal('memo')}
           className="px-3 py-1.5 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors"
         >
-          + 메모 추가
+          {t('tripNotes.addMemo')}
         </button>
       </div>
 
@@ -282,7 +284,7 @@ export default function TripNotes({ planId }: TripNotesProps) {
       <div className="space-y-3">
         {CATEGORIES.every((c) => (grouped[c] || []).length === 0) && (
           <div className="text-center py-6 text-sm text-gray-400">
-            아직 작성된 메모가 없어. 상단 "메모 추가"로 필요한 항목만 만들어줘.
+            {t('tripNotes.empty')}
           </div>
         )}
         {CATEGORIES.filter((c) => (grouped[c] || []).length > 0).map((category) => {
@@ -307,16 +309,16 @@ export default function TripNotes({ planId }: TripNotesProps) {
                 <div className="flex items-center gap-2">
                   <span className="text-xl">{config.icon}</span>
                   <span className="font-medium" style={{ color: config.color }}>
-                    {config.label}
+                    {t(config.labelKey)}
                   </span>
                   {hasCheckable && categorySummary.total > 0 && (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-white/80" style={{ color: config.color }}>
-                      {categorySummary.checked}/{categoryNotes.filter(n => n.is_checklist).length} 완료
+                      {t('tripNotes.checklistDone', { checked: categorySummary.checked, total: categoryNotes.filter(n => n.is_checklist).length })}
                     </span>
                   )}
                   {!hasCheckable && categorySummary.total > 0 && (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-white/80" style={{ color: config.color }}>
-                      {categorySummary.total}개
+                      {t('tripNotes.count', { count: categorySummary.total })}
                     </span>
                   )}
                 </div>
@@ -342,7 +344,7 @@ export default function TripNotes({ planId }: TripNotesProps) {
                 <div className="bg-white">
                   {categoryNotes.length === 0 ? (
                     <div className="px-4 py-6 text-center text-gray-400 text-sm">
-                      아직 {config.label}이(가) 없습니다
+                      {t('tripNotes.categoryEmpty', { category: t(config.labelKey) })}
                     </div>
                   ) : (
                     <ul className="divide-y divide-gray-100">
@@ -407,7 +409,7 @@ export default function TripNotes({ planId }: TripNotesProps) {
             {/* 모달 헤더 */}
             <div className="px-6 py-4 border-b flex items-center justify-between">
               <h3 className="text-lg font-bold">
-                {editingNote ? '메모 수정' : '메모 추가'}
+                {editingNote ? t('tripNotes.editMemo') : t('tripNotes.addMemoTitle')}
               </h3>
               <button 
                 onClick={closeModal}
@@ -423,7 +425,7 @@ export default function TripNotes({ planId }: TripNotesProps) {
               {!editingNote && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    카테고리
+                    {t('tripNotes.category')}
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {CATEGORIES.map((cat) => {
@@ -447,7 +449,7 @@ export default function TripNotes({ planId }: TripNotesProps) {
                             boxShadow: isSelected ? `0 0 0 2px ${config.color}` : 'none',
                           }}
                         >
-                          {config.icon} {config.label}
+                          {config.icon} {t(config.labelKey)}
                         </button>
                       );
                     })}
@@ -458,12 +460,12 @@ export default function TripNotes({ planId }: TripNotesProps) {
               {/* 내용 입력 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  내용
+                  {t('tripNotes.content')}
                 </label>
                 <textarea
                   value={noteContent}
                   onChange={(e) => setNoteContent(e.target.value)}
-                  placeholder="메모 내용을 입력하세요"
+                  placeholder={t('tripNotes.contentPlaceholder')}
                   className="w-full px-4 py-3 border rounded-xl resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   rows={3}
                   autoFocus
@@ -479,7 +481,7 @@ export default function TripNotes({ planId }: TripNotesProps) {
                     onChange={(e) => setIsChecklist(e.target.checked)}
                     className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
                   />
-                  <span className="text-sm text-gray-600">체크리스트로 사용</span>
+                  <span className="text-sm text-gray-600">{t('tripNotes.useChecklist')}</span>
                 </label>
               )}
             </div>
@@ -490,14 +492,14 @@ export default function TripNotes({ planId }: TripNotesProps) {
                 onClick={closeModal}
                 className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
               >
-                취소
+                {t('tripNotes.cancel')}
               </button>
               <button
                 onClick={editingNote ? handleUpdateNote : handleAddNote}
                 disabled={!noteContent.trim()}
                 className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {editingNote ? '수정' : '추가'}
+                {editingNote ? t('tripNotes.update') : t('tripNotes.add')}
               </button>
             </div>
           </div>

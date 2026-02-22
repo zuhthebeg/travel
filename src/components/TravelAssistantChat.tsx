@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from './Button';
 import { Loading } from './Loading';
 import type { Schedule, TravelMemo } from '../store/types';
@@ -33,6 +34,7 @@ export function TravelAssistantChat({
   onScheduleChange,
   onMemoChange,
 }: TravelAssistantChatProps) {
+  const { t } = useTranslation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -230,7 +232,7 @@ export function TravelAssistantChat({
 
     // Check file size (max 10MB before compression)
     if (file.size > 10 * 1024 * 1024) {
-      alert('이미지 크기가 너무 큽니다. 10MB 이하의 이미지를 선택해주세요.');
+      alert(t('chat.errors.imageTooLarge'));
       return;
     }
 
@@ -244,7 +246,7 @@ export function TravelAssistantChat({
       setImageData(compressed);
     } catch (error) {
       console.error('Failed to compress image:', error);
-      alert('이미지 처리에 실패했습니다.');
+      alert(t('chat.errors.imageProcessFailed'));
     }
 
     // Reset input
@@ -412,7 +414,7 @@ Rules:
       }
 
       const data = await response.json();
-      const assistantMessage: Message = { role: 'assistant', content: data.reply || data.response || '응답을 받지 못했습니다.' };
+      const assistantMessage: Message = { role: 'assistant', content: data.reply || data.response || t('chat.errors.noResponse') };
       setMessages((prevMessages) => [...prevMessages, assistantMessage]);
 
       // If schedules were modified, notify parent to reload with modified IDs
@@ -457,7 +459,7 @@ Rules:
 
       setMessages((prevMessages) => [
         ...prevMessages,
-        { role: 'assistant', content: '죄송합니다. 메시지를 처리하는 데 문제가 발생했습니다. (3회 재시도 실패)' },
+        { role: 'assistant', content: t('chat.errors.sendFailed') },
       ]);
     } finally {
       setIsLoading(false);
@@ -472,19 +474,19 @@ Rules:
           {offlineMode && (
             <div className={`alert ${useOfflineAI ? 'alert-warning' : 'alert-info'} py-2 text-xs`}>
               {useOfflineAI
-                ? `✈️ 오프라인 모드 (${OfflineEngineManager.getModelInfo(offlineState.modelSize || 'medium').label})`
+                ? t('chat.offline.mode', { model: OfflineEngineManager.getModelInfo(offlineState.modelSize || 'medium').label })
                 : offlineState.status === 'downloading' || offlineState.status === 'loading'
-                  ? `⏳ 오프라인 AI 로딩 중... ${offlineState.progress}%`
+                  ? t('chat.offline.loading', { progress: offlineState.progress })
                   : offlineState.status === 'error'
-                    ? `❌ ${offlineState.error}`
-                    : '⏳ 오프라인 AI 준비 중...'
+                    ? t('chat.offline.error', { error: offlineState.error })
+                    : t('chat.offline.preparing')
               }
               {useOfflineAI && messages.length > 0 && (
                 <button
                   onClick={() => { setMessages([]); offlineEngine.isReady() && offlineEngine.resetChat?.(); }}
                   className="btn btn-xs btn-ghost ml-auto"
-                  title="대화 초기화"
-                >🗑️ 초기화</button>
+                  title={t('chat.resetTitle')}
+                >{t('chat.reset')}</button>
               )}
             </div>
           )}
@@ -493,26 +495,26 @@ Rules:
             <div className="space-y-4">
               <div className="chat chat-start">
                 <div className="chat-bubble chat-bubble-info">
-                  안녕하세요! 여행에 대해 뭐든 물어보세요 🧳<br />
-                  <span className="text-xs opacity-80">일정 수정, 맛집·명소 추천, 현지 정보까지 도와드릴게요.</span>
+                  {t('chat.welcome')}<br />
+                  <span className="text-xs opacity-80">{t('chat.welcomeSub')}</span>
                 </div>
               </div>
               <div className="px-2 space-y-3">
                 {[
-                  { label: '📅 일정 관리', items: [
-                    '일정 모두 10일 뒤로 미뤄줘',
-                    '첫째날 일정 추천해줘',
-                    '하루에 주요 일정 2개만 남겨줘',
+                  { label: t('chat.examples.schedule.label'), items: [
+                    t('chat.examples.schedule.item1'),
+                    t('chat.examples.schedule.item2'),
+                    t('chat.examples.schedule.item3'),
                   ]},
-                  { label: '🍽️ 맛집·명소', items: [
-                    '근처 현지인 맛집 추천해줘',
-                    '비 오는 날 실내 관광지 알려줘',
-                    '꼭 가봐야 할 곳 3곳만 골라줘',
+                  { label: t('chat.examples.food.label'), items: [
+                    t('chat.examples.food.item1'),
+                    t('chat.examples.food.item2'),
+                    t('chat.examples.food.item3'),
                   ]},
-                  { label: '🌤️ 현지 정보', items: [
-                    '여행 기간 날씨 어때?',
-                    '현지 교통수단 뭐가 좋아?',
-                    '환전은 얼마나 해가면 될까?',
+                  { label: t('chat.examples.local.label'), items: [
+                    t('chat.examples.local.item1'),
+                    t('chat.examples.local.item2'),
+                    t('chat.examples.local.item3'),
                   ]},
                 ].map((group) => (
                   <div key={group.label} className="bg-base-200/50 rounded-xl p-3">
@@ -546,7 +548,7 @@ Rules:
                     className="btn btn-xs btn-ghost mt-2"
                     disabled={isSpeaking}
                   >
-                    🔊 다시 듣기
+                    {t('chat.listenAgain')}
                   </button>
                 )}
               </div>
@@ -575,7 +577,7 @@ Rules:
                           await import('../lib/api').then(m => m.schedulesAPI.update(action.scheduleId, patch));
                           onScheduleChange?.([action.scheduleId]);
                         } else if (action.type === 'delete' && action.scheduleId) {
-                          if (confirm('이 일정을 삭제할까요?')) {
+                          if (confirm(t('chat.confirmDeleteSchedule'))) {
                             await import('../lib/api').then(m => m.schedulesAPI.delete(action.scheduleId));
                             onScheduleChange?.();
                           }
@@ -584,13 +586,13 @@ Rules:
                           mi === index ? { ...m, actions: (m as any).actions?.filter((_: any, j: number) => j !== ai) } as any : m
                         ));
                       } catch (err: any) {
-                        alert(`실행 실패: ${err.message || '온라인 상태에서 다시 시도해주세요'}`);
+                        alert(t('chat.actionFailed', { message: err.message || t('chat.retryOnline') }));
                       }
                     }}
                   >
-                    {action.type === 'add' && `📅 추가: ${action.title} (${action.date}${action.time ? ' ' + action.time : ''})`}
-                    {action.type === 'edit' && `✏️ 수정: ${action.title || '일정'}`}
-                    {action.type === 'delete' && `🗑️ 삭제: #${action.scheduleId}`}
+                    {action.type === 'add' && t('chat.actionAdd', { title: action.title, date: action.date, time: action.time ? ` ${action.time}` : '' })}
+                    {action.type === 'edit' && t('chat.actionEdit', { title: action.title || t('chat.schedule') })}
+                    {action.type === 'delete' && t('chat.actionDelete', { id: action.scheduleId })}
                   </button>
                 </div>
               ))}
@@ -614,7 +616,7 @@ Rules:
             <button
               onClick={clearImage}
               className="absolute -top-2 -right-2 btn btn-circle btn-xs btn-error"
-              title="이미지 제거"
+              title={t('chat.removeImage')}
             >
               ✕
             </button>
@@ -640,7 +642,7 @@ Rules:
               disabled={isLoading}
               variant={imageData ? 'secondary' : 'ghost'}
               className="btn-circle"
-              title="사진 첨부"
+              title={t('chat.attachPhoto')}
             >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
@@ -655,7 +657,7 @@ Rules:
             disabled={isLoading}
             variant={isListening ? 'secondary' : 'ghost'}
             className="btn-circle"
-            title="음성 입력"
+            title={t('chat.voiceInput')}
           >
             {isListening ? <Loading /> : <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 0-6-6v-1.5m6 7.5v3m-3-3h6m-10.875-9.75a6 6 0 0 1 6-6h.75m-12.75 6h.75m-3 0a6 6 0 0 0 6 6h.75" /></svg>}
           </Button>
@@ -665,7 +667,7 @@ Rules:
             onClick={stopSpeaking}
             variant="error"
             className="btn-circle"
-            title="음성 중지"
+            title={t('chat.voiceStop')}
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
               <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z" />
@@ -676,7 +678,7 @@ Rules:
           onClick={() => setTtsEnabled(!ttsEnabled)}
           variant={ttsEnabled ? 'primary' : 'ghost'}
           className="btn-circle"
-          title={ttsEnabled ? 'TTS 끄기' : 'TTS 켜기'}
+          title={ttsEnabled ? t('chat.ttsOff') : t('chat.ttsOn')}
         >
           {ttsEnabled ? (
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
@@ -704,12 +706,12 @@ Rules:
               handleSendMessage();
             }
           }}
-          placeholder={imageData ? "사진에 대해 물어보세요..." : "메시지를 입력하세요..."}
+          placeholder={imageData ? t('chat.placeholderImage') : t('chat.placeholder')}
           className="input input-bordered w-full"
           disabled={isLoading || isListening} // Disable input while listening
         />
         <Button onClick={() => handleSendMessage()} disabled={isLoading || isListening} variant="primary">
-          전송
+          {t('chat.send')}
         </Button>
       </div>
     </div>
