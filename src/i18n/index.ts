@@ -9,6 +9,8 @@ import zhTWCommon from './locales/zh-TW/common.json';
 import arCommon from './locales/ar/common.json';
 import hiCommon from './locales/hi/common.json';
 import ptCommon from './locales/pt/common.json';
+import ruCommon from './locales/ru/common.json';
+import thCommon from './locales/th/common.json';
 
 export const SUPPORTED_LANGUAGES = [
   { code: 'ko', label: '한국어', flag: '🇰🇷' },
@@ -18,6 +20,8 @@ export const SUPPORTED_LANGUAGES = [
   { code: 'ar', label: 'العربية', flag: '🇸🇦' },
   { code: 'hi', label: 'हिन्दी', flag: '🇮🇳' },
   { code: 'pt', label: 'Português', flag: '🇧🇷' },
+  { code: 'ru', label: 'Русский', flag: '🇷🇺' },
+  { code: 'th', label: 'ไทย', flag: '🇹🇭' },
 ] as const;
 
 i18n
@@ -32,10 +36,12 @@ i18n
       ar: { common: arCommon },
       hi: { common: hiCommon },
       pt: { common: ptCommon },
+      ru: { common: ruCommon },
+      th: { common: thCommon },
     },
     defaultNS: 'common',
     fallbackLng: 'ko',
-    supportedLngs: ['ko', 'en', 'ja', 'zh-TW', 'ar', 'hi', 'pt'],
+    supportedLngs: ['ko', 'en', 'ja', 'zh-TW', 'ar', 'hi', 'pt', 'ru', 'th'],
     nonExplicitSupportedLngs: false,
     load: 'currentOnly',
     interpolation: {

@@ -48,4 +48,27 @@ describe('i18n locale quality', () => {
       expect(pt[key]).not.toBe(en[key]);
     }
   });
+
+  it('ru/th locales should exist and translate critical keys', () => {
+    const en = readLocale('en');
+    const ru = readLocale('ru');
+    const th = readLocale('th');
+
+    const criticalKeys = [
+      'nav.home',
+      'login.googleContinue',
+      'main.worldTripsTitle',
+      'createPlan.title',
+      'planDetail.tripSettings',
+      'chat.welcome',
+      'translate.translate',
+    ] as const;
+
+    for (const key of criticalKeys) {
+      expect(ru[key]).toBeTruthy();
+      expect(th[key]).toBeTruthy();
+      expect(ru[key]).not.toBe(en[key]);
+      expect(th[key]).not.toBe(en[key]);
+    }
+  });
 });
