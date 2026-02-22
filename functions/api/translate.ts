@@ -85,7 +85,7 @@ ${numberedTexts}`;
 
     // Call Gemini Flash-Lite via AI Gateway
     const response = await fetch(
-      `${GEMINI_GATEWAY_URL}/v1beta/models/gemini-2.0-flash-lite:generateContent`,
+      `${GEMINI_GATEWAY_URL}/v1beta/models/gemini-2.5-flash:generateContent`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
