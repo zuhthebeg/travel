@@ -34,6 +34,7 @@ export async function onRequestGet(context: { env: Env; request: Request }): Pro
     xp,
     level,
     title: info.title,
+    titleKey: info.titleKey,
     emoji: info.emoji,
     nextLevelXP: nextXP,
     progress: nextXP ? Math.round((xp / nextXP) * 100) : 100,

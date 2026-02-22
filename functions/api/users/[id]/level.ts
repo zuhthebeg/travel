@@ -26,6 +26,7 @@ export async function onRequestGet(context: { env: Env; params: { id: string } }
     xp: row.xp ?? 0,
     level: row.level ?? 1,
     title: info.title,
+    titleKey: info.titleKey,
     emoji: info.emoji,
     countries: countryCount?.cnt ?? 0,
   });
