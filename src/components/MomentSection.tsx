@@ -412,7 +412,7 @@ export default function MomentSection({ scheduleId, schedules = [] }: MomentSect
               disabled={isSubmitting}
               className="flex-1 bg-orange-500 text-white py-2 rounded-lg text-sm font-medium hover:bg-orange-600 disabled:opacity-50"
             >
-              {isSubmitting ? t('moment.saving') : editingId ? t('moment.edit') : t('moment.record')}
+              {isSubmitting ? t('moment.saving', { defaultValue: '저장 중...' }) : editingId ? t('moment.edit', { defaultValue: '수정' }) : t('moment.record', { defaultValue: '기록하기' })}
             </button>
             <button
               onClick={resetForm}
