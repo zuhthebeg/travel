@@ -43,10 +43,13 @@ interface MomentSectionProps {
 
 function parseMetaFromNote(note?: string | null): { cleanNote: string; meta: any | null } {
   if (!note) return { cleanNote: '', meta: null };
-  const m = note.match(/\[\[meta:(.*)\]\]/s);
+  const m = note.match(/\[\[(meta|m):(.*)\]\]/s);
   if (!m) return { cleanNote: note, meta: null };
   try {
-    const meta = JSON.parse(m[1]);
+    const raw = JSON.parse(m[2]);
+    const meta = m[1] === 'm'
+      ? { fileName: raw.f, datetime: raw.d, lat: raw.a, lng: raw.g, confidence: raw.c, reason: raw.r }
+      : raw;
     const cleanNote = note.replace(m[0], '').trim();
     return { cleanNote, meta };
   } catch {

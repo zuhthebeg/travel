@@ -66,7 +66,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   let planBUpdates: Array<{ scheduleId: number; note: string }> = [];
 
   if (OPENAI_API_KEY) {
-    const prompt = `You classify travel photos to existing schedules.\nRules:\n- MUST assign every photo to at least 1 schedule id\n- scheduleIds can include multiple ids\n- If photo time overlaps a schedule time-window but metadata location implies different place, suggest a plan B note for that schedule\n- Output strict JSON: {"assignments":[{"tempId":"...","scheduleIds":[1],"confidence":0.0,"reason":"..."}],"planBUpdates":[{"scheduleId":1,"note":"..."}]}\n\nSchedules:\n${JSON.stringify(schedules)}\n\nPhotos metadata:\n${JSON.stringify(body.photos)}`;
+    const prompt = `You classify travel photos to existing schedules.\nRules:\n- MUST assign every photo to at least 1 schedule id\n- scheduleIds can include multiple ids\n- reason must be short: max 40 chars, no line breaks\n- If photo time overlaps a schedule time-window but metadata location implies different place, suggest a concise plan B note for that schedule (max 80 chars)\n- Output strict JSON: {"assignments":[{"tempId":"...","scheduleIds":[1],"confidence":0.0,"reason":"..."}],"planBUpdates":[{"scheduleId":1,"note":"..."}]}\n\nSchedules:\n${JSON.stringify(schedules)}\n\nPhotos metadata:\n${JSON.stringify(body.photos)}`;
 
     try {
       const raw = await callOpenAI(OPENAI_API_KEY, [

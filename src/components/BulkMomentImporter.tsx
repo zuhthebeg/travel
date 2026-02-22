@@ -8,7 +8,7 @@ import type { Schedule } from '../store/types';
 interface Props {
   planId: number;
   schedules: Schedule[];
-  onDone: () => void;
+  onDone: (focusScheduleIds?: number[]) => void;
 }
 
 const LOADING_TIPS = [
@@ -98,6 +98,8 @@ export default function BulkMomentImporter({ planId, schedules, onDone }: Props)
         }
       }
 
+      const touchedScheduleIds = new Set<number>();
+
       for (let idx = 0; idx < prepared.length; idx++) {
         const item = prepared[idx];
         const percent = 45 + Math.round(((idx + 1) / prepared.length) * 50);
@@ -122,21 +124,28 @@ export default function BulkMomentImporter({ planId, schedules, onDone }: Props)
           }
         }
 
+        const safeReason = String(assigned?.reason || '')
+          .replace(/[\r\n]+/g, ' ')
+          .trim()
+          .slice(0, 36);
         const metaPayload = {
-          fileName: item.meta.fileName,
-          datetime: item.meta.datetime || null,
-          lat: item.meta.lat ?? null,
-          lng: item.meta.lng ?? null,
-          confidence: assigned?.confidence ?? null,
-          reason: assigned?.reason || null,
+          f: (item.meta.fileName || '').slice(0, 28),
+          d: item.meta.datetime || null,
+          a: item.meta.lat ?? null,
+          g: item.meta.lng ?? null,
+          c: typeof assigned?.confidence === 'number' ? Number(assigned.confidence.toFixed(2)) : null,
+          r: safeReason || null,
         };
-        const metaTag = `\n[[meta:${JSON.stringify(metaPayload)}]]`;
+        const metaTag = ` [[m:${JSON.stringify(metaPayload)}]]`;
 
         for (const sid of scheduleIds) {
-          const baseNote = assigned?.confidence && assigned.confidence < 0.6 ? `자동분류(낮은 신뢰): ${assigned.reason || ''}` : '';
+          touchedScheduleIds.add(sid);
+          const warn = assigned?.confidence && assigned.confidence < 0.6 ? `자동분류 낮은신뢰` : '';
+          const composed = `${warn}${metaTag}`.trim();
+          const safeNote = composed.length > 190 ? composed.slice(0, 190) : composed;
           await offlineMomentsAPI.create(sid, {
             photo_data: photoValue,
-            note: `${baseNote}${metaTag}`,
+            note: safeNote || undefined,
           });
         }
       }
@@ -144,7 +153,7 @@ export default function BulkMomentImporter({ planId, schedules, onDone }: Props)
       setProgress(100);
       setProgressLabel('완료!');
       setMsg('자동 분류 업로드 완료! 필요하면 일정 간 이동해서 수정해줘.');
-      onDone();
+      onDone(Array.from(touchedScheduleIds));
     } catch (err: any) {
       console.error(err);
       setMsg(err?.message || '실패했어. 다시 시도해줘.');

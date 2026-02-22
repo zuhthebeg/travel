@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../store/useStore';
 import { plansAPI as rawPlansAPI, schedulesAPI as rawSchedulesAPI } from '../lib/api';
-import { offlinePlansAPI, offlineSchedulesAPI } from '../lib/offlineAPI';
+import { offlinePlansAPI, offlineSchedulesAPI, offlineMomentsAPI } from '../lib/offlineAPI';
 
 const plansAPI = localStorage.getItem('offline_mode') === 'true' ? offlinePlansAPI : rawPlansAPI;
 const schedulesAPI = localStorage.getItem('offline_mode') === 'true' ? offlineSchedulesAPI : rawSchedulesAPI;
@@ -12,11 +12,11 @@ import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { ScheduleCard } from '../components/ScheduleCard';
 import { Loading } from '../components/Loading';
-import { TravelMap, schedulesToMapPoints } from '../components/TravelMap'; // 여행 동선 지도
+import { TravelMap, schedulesToMapPoints } from '../components/TravelMap'; // ?�행 ?�선 지??
 import { TravelAssistantChat } from '../components/TravelAssistantChat'; // Import the new component
 import { TravelProgressBar } from '../components/TravelProgressBar';
-// ReviewSection removed — merged into MomentSection
-import MomentSection from '../components/MomentSection'; // Album - 순간 기록
+// ReviewSection removed ??merged into MomentSection
+import MomentSection from '../components/MomentSection'; // Album - ?�간 기록
 import { PlaceAutocomplete } from '../components/PlaceAutocomplete';
 import TripNotes from '../components/TripNotes'; // Import TripNotes
 import CalendarView from '../components/CalendarView';
@@ -41,7 +41,7 @@ import AutoTranslate from '../components/AutoTranslate';
 type ViewMode = 'vertical' | 'horizontal' | 'calendar' | 'daily';
 type MainTab = 'schedule' | 'notes' | 'album';
 
-// AI 처리 중 롤링 팁
+// AI 처리 �?롤링 ??
 const AI_TIP_KEYS = [
   'planDetail.aiTips.0',
   'planDetail.aiTips.1',
@@ -200,7 +200,7 @@ export function PlanDetailPage() {
   const navigate = useNavigate();
   const { currentUser, selectedPlan, setSelectedPlan, schedules, setSchedules } = useStore();
   const [isLoading, setIsLoading] = useState(true);
-  // const [mapLoadError, setMapLoadError] = useState(false); // 지도 기능 임시 비활성화
+  // const [mapLoadError, setMapLoadError] = useState(false); // 지??기능 ?�시 비활?�화
 
   const [error, setError] = useState<string | null>(null);
   const [viewingSchedule, setViewingSchedule] = useState<Schedule | null>(null);
@@ -225,6 +225,14 @@ export function PlanDetailPage() {
   });
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; city?: string } | null>(null);
   const [showShareToast, setShowShareToast] = useState(false);
+  const [albumFocusScheduleId, setAlbumFocusScheduleId] = useState<number | null>(null);
+  const [albumHideNoPhoto, setAlbumHideNoPhoto] = useState<boolean>(() => {
+    try { return localStorage.getItem(`plan-album-hide-no-photo-${id}`) === 'true'; } catch { return false; }
+  });
+  const [albumHideNoText, setAlbumHideNoText] = useState<boolean>(() => {
+    try { return localStorage.getItem(`plan-album-hide-no-text-${id}`) === 'true'; } catch { return false; }
+  });
+  const [albumStats, setAlbumStats] = useState<Record<number, { hasPhoto: boolean; hasText: boolean }>>({});
   const [conflictOps, setConflictOps] = useState<OpLogEntry[]>([]);
   const [showConflictResolver, setShowConflictResolver] = useState(false);
   const viewModalRef = useRef<HTMLDialogElement>(null);
@@ -330,6 +338,39 @@ export function PlanDetailPage() {
 
     localStorage.setItem(`plan-ui-${id}`, JSON.stringify(uiState));
   }, [id, mapOpen, mainTab, viewMode, timelineScrollX, focusedDate]);
+
+  useEffect(() => {
+    if (!id) return;
+    localStorage.setItem(`plan-album-hide-no-photo-${id}`, String(albumHideNoPhoto));
+    localStorage.setItem(`plan-album-hide-no-text-${id}`, String(albumHideNoText));
+  }, [id, albumHideNoPhoto, albumHideNoText]);
+
+  useEffect(() => {
+    const run = async () => {
+      if (mainTab !== 'album' || schedules.length === 0) return;
+      const entries = await Promise.all(
+        schedules.map(async (s) => {
+          const mres = await offlineMomentsAPI.getByScheduleId(s.id);
+          const ms = mres.moments || [];
+          const hasPhoto = ms.some((m: any) => !!m.photo_data);
+          const hasText = ms.some((m: any) => !!(m.note || '').trim());
+          return [s.id, { hasPhoto, hasText }] as const;
+        })
+      );
+      setAlbumStats(Object.fromEntries(entries));
+    };
+    run();
+  }, [mainTab, schedules]);
+
+  useEffect(() => {
+    if (!albumFocusScheduleId || mainTab !== 'album') return;
+    const t = setTimeout(() => {
+      const el = document.getElementById(`album-schedule-${albumFocusScheduleId}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setAlbumFocusScheduleId(null);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [albumFocusScheduleId, mainTab, schedules]);
 
   useEffect(() => {
     if (mainTab !== 'schedule' || viewMode !== 'horizontal') return;
@@ -541,7 +582,7 @@ export function PlanDetailPage() {
 
   //   } catch (error) {
   //     console.error('Failed to create schedule from text:', error);
-  //     alert('텍스트로 일정 생성에 실패했습니다.');
+  //     alert('?�스?�로 ?�정 ?�성???�패?�습?�다.');
   //   } finally {
   //     setIsTextToScheduleLoading(false);
   //   }
@@ -604,7 +645,7 @@ export function PlanDetailPage() {
 
 
 
-  // 지도 기능 임시 비활성화
+  // 지??기능 ?�시 비활?�화
   // const schedulePlaces = useMemo(() => {
   //   return schedules.map((s) => s.place)
   //     .filter((p): p is string => !!p);
@@ -620,6 +661,21 @@ export function PlanDetailPage() {
       return acc;
     }, {} as Record<string, Schedule[]>);
   }, [schedules]);
+
+  const albumGroupedSchedules = useMemo(() => {
+    const filtered = schedules.filter((s) => {
+      const st = albumStats[s.id];
+      if (albumHideNoPhoto && st && !st.hasPhoto) return false;
+      if (albumHideNoText && st && !st.hasText) return false;
+      return true;
+    });
+    return filtered.reduce((acc, schedule) => {
+      const date = schedule.date;
+      if (!acc[date]) acc[date] = [];
+      acc[date].push(schedule);
+      return acc;
+    }, {} as Record<string, Schedule[]>);
+  }, [schedules, albumStats, albumHideNoPhoto, albumHideNoText]);
 
   const handleHorizontalTimelineScroll = () => {
     if (!horizontalTimelineRef.current) return;
@@ -673,7 +729,7 @@ export function PlanDetailPage() {
       setShowShareToast(true);
       setTimeout(() => setShowShareToast(false), 2000);
     } catch (error) {
-      console.error('공유 링크 복사 실패:', error);
+      console.error('공유 링크 복사 ?�패:', error);
       alert(t('planDetail.errors.copyLinkFailed'));
     }
   };
@@ -727,7 +783,7 @@ export function PlanDetailPage() {
       {/* Header */}
       <header className="bg-base-100 shadow-sm sticky top-0 z-10">
         <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-3">
-          {/* 1줄: 제목 + 공개여부 + ... 설정 */}
+          {/* 1�? ?�목 + 공개?��? + ... ?�정 */}
           <div className="flex items-center gap-2">
             <h1 className="text-base sm:text-lg font-bold truncate flex-1 min-w-0"><AutoTranslate text={selectedPlan.title} /></h1>
             {localStorage.getItem('offline_mode') === 'true' && (
@@ -737,8 +793,8 @@ export function PlanDetailPage() {
               <div className="dropdown dropdown-end flex-shrink-0">
                 <label tabIndex={0} className="btn btn-xs btn-ghost gap-0.5 px-1.5 h-6 min-h-0">
                   <span className="text-sm">{
-                    (selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'private' ? '🔒' :
-                    (selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'shared' ? '👥' : '🌍'
+                    (selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'private' ? '?��' :
+                    (selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'shared' ? '?��' : '?��'
                   }</span>
                   <svg className="w-3 h-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                 </label>
@@ -769,8 +825,8 @@ export function PlanDetailPage() {
               </div>
             ) : (
               <span className="text-sm flex-shrink-0">
-                {(selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'private' ? '🔒' :
-                 (selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'shared' ? '👥' : '🌍'}
+                {(selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'private' ? '?��' :
+                 (selectedPlan.visibility || (selectedPlan.is_public ? 'public' : 'private')) === 'shared' ? '?��' : '?��'}
               </span>
             )}
             {isOwner && (
@@ -791,7 +847,7 @@ export function PlanDetailPage() {
             )}
           </div>
 
-          {/* 2줄: 메타정보 + 멤버 + 뒤로가기 */}
+          {/* 2�? 메�??�보 + 멤버 + ?�로가�?*/}
           <div className="flex items-center justify-between mt-1.5">
             <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-base-content/70 flex-wrap flex-1 min-w-0">
               {selectedPlan.region && (
@@ -855,9 +911,9 @@ export function PlanDetailPage() {
           </div>
         )}
 
-        {/* 여행 동선 지도 (좌표가 있는 일정이 있을 때만 표시) */}
+        {/* ?�행 ?�선 지??(좌표가 ?�는 ?�정???�을 ?�만 ?�시) */}
         {(() => {
-          // 국가별 핀 수 집계
+          // �??�??�???집계
           const countryCounts: Record<string, number> = {};
           schedules.forEach(s => {
             if (s.latitude && s.longitude && s.country_code) {
@@ -865,7 +921,7 @@ export function PlanDetailPage() {
             }
           });
           const countries = Object.entries(countryCounts).sort((a, b) => b[1] - a[1]);
-          // 가장 많은 국가가 주요 여행지, 나머지는 기본 숨김 후보
+          // 가??많�? �??가 주요 ?�행지, ?�머지??기본 ?��? ?�보
           const _mainCountry = countries[0]?.[0]; void _mainCountry;
           const filteredForMap = focusedDate 
             ? schedules.filter(s => s.date === focusedDate)
@@ -887,12 +943,12 @@ export function PlanDetailPage() {
                         onClick={(e) => { e.stopPropagation(); setFocusedDate(null); }}
                         title={t('planDetail.showAll')}
                       >
-                        Day {getDaysDifference(selectedPlan.start_date, focusedDate) + 1} ✕
+                        Day {getDaysDifference(selectedPlan.start_date, focusedDate) + 1} ??
                       </button>
                     )}
                   </div>
                   <div className="collapse-content">
-                    {/* 국가 필터 (2개국 이상일 때만 표시) */}
+                    {/* �?? ?�터 (2개국 ?�상???�만 ?�시) */}
                     {countries.length > 1 && (
                       <div className="flex flex-wrap gap-1 mb-2">
                         {countries.map(([code, count]) => {
@@ -921,14 +977,14 @@ export function PlanDetailPage() {
                       height={window.innerWidth < 640 ? '200px' : '300px'}
                       className="mt-2"
                     />
-                    {/* 좌표 상태 + 보정 UI */}
+                    {/* 좌표 ?�태 + 보정 UI */}
                     {canEditPlan && (() => {
                       const withCoords = schedules.filter(s => s.latitude && s.longitude).length;
                       const missingCoords = schedules.filter(s => s.place && s.place.trim() && (!s.latitude || !s.longitude));
 
                       return (
                         <div className="mt-3 space-y-2">
-                          {/* 좌표 상태 요약 */}
+                          {/* 좌표 ?�태 ?�약 */}
                           <div className="flex items-center justify-between">
                             <p className="text-sm text-base-content/60 flex items-center gap-1">
                               <MapPin className="w-4 h-4" />
@@ -942,11 +998,11 @@ export function PlanDetailPage() {
                                 const btn = document.activeElement as HTMLButtonElement;
                                 if (btn) { btn.disabled = true; btn.textContent = t('planDetail.geocodeProcessing'); }
                                 try {
-                                  // 1단계: AI에게 장소명 영문 번역 + 보정 요청
+                                  // 1?�계: AI?�게 ?�소�??�문 번역 + 보정 ?�청
                                   const schedulesWithPlace = schedules.filter(s => s.place && s.place.trim());
                                   const places = schedulesWithPlace.map(s => ({ id: s.id, place: s.place, place_en: (s as any).place_en }));
                                   
-                                  // OpenAI로 장소명 검증 + 영문 변환
+                                  // OpenAI�??�소�?검�?+ ?�문 변??
                                   const aiRes = await fetch('/api/assistant/verify-places', {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
@@ -955,7 +1011,7 @@ export function PlanDetailPage() {
                                   
                                   if (aiRes.ok) {
                                     const aiData = await aiRes.json() as any;
-                                    // AI가 수정한 place_en 업데이트
+                                    // AI가 ?�정??place_en ?�데?�트
                                     if (aiData.corrections?.length > 0) {
                                       for (const c of aiData.corrections) {
                                         await fetch(`/api/schedules/${c.id}`, {
@@ -967,14 +1023,14 @@ export function PlanDetailPage() {
                                     }
                                   }
                                   
-                                  // 2단계: 전체 좌표 보정 실행
+                                  // 2?�계: ?�체 좌표 보정 ?�행
                                   const res = await fetch(`/api/plans/${selectedPlan.id}/geocode-schedules`, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({ mode: 'all' }),
                                   });
                                   const data = await res.json() as any;
-                                  // 스케줄 리로드
+                                  // ?��?�?리로??
                                   try {
                                     const freshData = await plansAPI.getById(selectedPlan.id);
                                     setSchedules(sortSchedulesByDateTime(freshData.schedules));
@@ -993,14 +1049,14 @@ export function PlanDetailPage() {
                             </button>
                           </div>
 
-                          {/* 보정 안내 메시지 */}
+                          {/* 보정 ?�내 메시지 */}
                           {missingCoords.length > 0 && geocodeFailed.length === 0 && (
                             <div className="alert alert-warning py-2 text-sm">
                               <span>{t('planDetail.missingCoordsNotice', { count: missingCoords.length })}</span>
                             </div>
                           )}
 
-                          {/* 보정 결과: 미보정 장소 수정 UI */}
+                          {/* 보정 결과: 미보???�소 ?�정 UI */}
                           {geocodeFailed.length > 0 && (
                             <div className="bg-base-200 rounded-lg p-3 space-y-2">
                               <button onClick={() => {
@@ -1008,7 +1064,7 @@ export function PlanDetailPage() {
                                 setGeocodeFailedCollapsed(next);
                                 try { localStorage.setItem('geocodeFailed_collapsed', String(next)); } catch {}
                               }} className="flex items-center gap-2 w-full text-left">
-                                <span className={`transition-transform ${geocodeFailedCollapsed ? '' : 'rotate-90'}`}>▶</span>
+                                <span className={`transition-transform ${geocodeFailedCollapsed ? '' : 'rotate-90'}`}>▸</span>
                                 <span className="text-sm font-medium text-warning flex-1">
                                   {t('planDetail.geocodeNotFoundCount', { count: geocodeFailed.length })}
                                 </span>
@@ -1027,13 +1083,13 @@ export function PlanDetailPage() {
                                       if (!newPlace) return;
                                       input.disabled = true;
                                       try {
-                                        // 장소명 업데이트
+                                        // ?�소�??�데?�트
                                         await fetch(`/api/schedules/${item.id}`, {
                                           method: 'PUT',
                                           headers: { 'Content-Type': 'application/json' },
                                           body: JSON.stringify({ place: newPlace }),
                                         });
-                                        // 해당 일정만 재검색
+                                        // ?�당 ?�정�??��???
                                         const res = await fetch(`/api/plans/${selectedPlan!.id}/geocode-schedules`, {
                                           method: 'POST',
                                           headers: { 'Content-Type': 'application/json' },
@@ -1067,7 +1123,7 @@ export function PlanDetailPage() {
               </div>
             );
           }
-          // 좌표 없어도 보정 UI는 표시
+          // 좌표 ?�어??보정 UI???�시
           const missingAll = schedules.filter(s => s.place && s.place.trim() && (!s.latitude || !s.longitude));
           if (canEditPlan && missingAll.length > 0) {
             return (
@@ -1084,7 +1140,7 @@ export function PlanDetailPage() {
                     const btn = document.activeElement as HTMLButtonElement;
                     if (btn) { btn.disabled = true; btn.textContent = t('planDetail.geocodeProcessing'); }
                     try {
-                      // AI 장소명 검증 + 영문 변환
+                      // AI ?�소�?검�?+ ?�문 변??
                       const schedulesWithPlace = schedules.filter(s => s.place && s.place.trim());
                       const places = schedulesWithPlace.map(s => ({ id: s.id, place: s.place, place_en: (s as any).place_en }));
                       const aiRes = await fetch('/api/assistant/verify-places', {
@@ -1132,14 +1188,14 @@ export function PlanDetailPage() {
           return null;
         })()}
 
-        {/* 메인 탭 */}
+        {/* 메인 ??*/}
         <div className="tabs tabs-bordered w-full mb-3">
           <a className={`tab tab-sm flex-1 ${mainTab === 'schedule' ? 'tab-active !text-primary font-bold' : 'text-base-content/50'}`} onClick={() => setMainTab('schedule')}>{t('planDetail.tabs.schedule')}</a>
           <a className={`tab tab-sm flex-1 ${mainTab === 'notes' ? 'tab-active !text-primary font-bold' : 'text-base-content/50'}`} onClick={() => setMainTab('notes')}>{t('planDetail.tabs.notes')}</a>
           <a className={`tab tab-sm flex-1 ${mainTab === 'album' ? 'tab-active !text-primary font-bold' : 'text-base-content/50'}`} onClick={() => setMainTab('album')}>{t('planDetail.tabs.album')}</a>
         </div>
 
-        {/* 뷰 컨트롤 (일정 탭일 때만) */}
+        {/* �?컨트�?(?�정 ??�� ?�만) */}
         {mainTab === 'schedule' && (
           <div className="flex items-center justify-between mb-3">
             <div className="tabs tabs-boxed tabs-xs bg-base-200/80">
@@ -1157,24 +1213,42 @@ export function PlanDetailPage() {
           </div>
         )}
 
-        {/* 메모 탭 */}
+        {/* 메모 ??*/}
         {mainTab === 'notes' && selectedPlan && (
           <div className="space-y-6">
-            {/* 여행 정보 (비자, 시차, 환율 등) */}
+            {/* ?�행 ?�보 (비자, ?�차, ?�율 ?? */}
             <TravelMemoList planId={selectedPlan.id} planRegion={selectedPlan.region} />
             
-            {/* 기존 메모/체크리스트 */}
+            {/* 기존 메모/체크리스??*/}
             <TripNotes planId={selectedPlan.id} />
 
-            {/* 데이터 보정은 AI 여행정보 업데이트로 통합 */}
+            {/* ?�이??보정?�?AI ?�행?�보 ?�데?�트�??�합 */}
           </div>
         )}
 
-        {/* 앨범 탭 */}
+        {/* ?�범 ??*/}
         {mainTab === 'album' && selectedPlan && schedules.length > 0 && (
           <div className="space-y-8">
-            <BulkMomentImporter planId={selectedPlan.id} schedules={schedules} onDone={() => loadPlanDetail(selectedPlan.id, true)} />
-            <div className="flex justify-end">
+            <BulkMomentImporter
+              planId={selectedPlan.id}
+              schedules={schedules}
+              onDone={(focusIds) => {
+                const first = (focusIds || [])[0] || null;
+                setAlbumFocusScheduleId(first);
+                loadPlanDetail(selectedPlan.id, true);
+              }}
+            />
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-3 text-sm">
+                <label className="label cursor-pointer gap-2 py-0">
+                  <input type="checkbox" className="checkbox checkbox-xs" checked={albumHideNoPhoto} onChange={(e) => setAlbumHideNoPhoto(e.target.checked)} />
+                  <span className="label-text">사진 없는 일정 숨기기</span>
+                </label>
+                <label className="label cursor-pointer gap-2 py-0">
+                  <input type="checkbox" className="checkbox checkbox-xs" checked={albumHideNoText} onChange={(e) => setAlbumHideNoText(e.target.checked)} />
+                  <span className="label-text">내용 없는 일정 숨기기</span>
+                </label>
+              </div>
               <Button variant="ghost" outline size="sm" onClick={handleCopyShareLink}>
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0-12.814a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0 12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
@@ -1182,17 +1256,17 @@ export function PlanDetailPage() {
                 {t('planDetail.shareAlbum')}
               </Button>
             </div>
-            {Object.entries(groupedSchedules).sort(([a], [b]) => a.localeCompare(b)).map(([date, daySchedules]) => (
+            {Object.entries(albumGroupedSchedules).sort(([a], [b]) => a.localeCompare(b)).map(([date, daySchedules]) => (
               <div key={date}>
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                  📅 {formatDisplayDate(date)}
+                  ?�� {formatDisplayDate(date)}
                   <span className="text-sm font-normal text-gray-500">
                     Day {getDaysDifference(selectedPlan.start_date, date) + 1}
                   </span>
                 </h3>
                 <div className="space-y-4">
                   {daySchedules.map((schedule: Schedule) => (
-                    <div key={schedule.id} className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
+                    <div id={`album-schedule-${schedule.id}`} key={schedule.id} className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
                       <div className="flex items-center gap-2 mb-3">
                         {schedule.time && (
                           <span className="text-xs bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded-full">
@@ -1201,7 +1275,7 @@ export function PlanDetailPage() {
                         )}
                         <h4 className="font-semibold"><AutoTranslate text={schedule.title as string} /></h4>
                         {schedule.place && (
-                          <span className="text-xs text-gray-500">📍 <AutoTranslate text={schedule.place} /></span>
+                          <span className="text-xs text-gray-500">?�� <AutoTranslate text={schedule.place} /></span>
                         )}
                       </div>
                       <MomentSection scheduleId={schedule.id} />
@@ -1217,7 +1291,7 @@ export function PlanDetailPage() {
           <p className="text-center text-gray-400 py-10">{t('planDetail.addScheduleFirst')}</p>
         )}
 
-        {/* 일정 탭 */}
+        {/* ?�정 ??*/}
         {mainTab === 'schedule' && (
           <>
             {canEditPlan ? <DragDropContext onDragEnd={onDragEnd}>
@@ -1397,7 +1471,7 @@ export function PlanDetailPage() {
           </>
         )}
 
-        {/* 일정 상세보기 모달 */}
+        {/* ?�정 ?�세보기 모달 */}
         {viewingSchedule && (
           <ScheduleDetailModal
             modalRef={viewModalRef}
@@ -1424,7 +1498,7 @@ export function PlanDetailPage() {
           />
         )}
 
-        {/* 여행 수정 모달 */}
+        {/* ?�행 ?�정 모달 */}
         {editingPlan && selectedPlan && (
           <PlanEditModal
             modalRef={planEditModalRef}
@@ -1438,7 +1512,7 @@ export function PlanDetailPage() {
           />
         )}
 
-        {/* 일정 추가/수정 폼 모달 */}
+        {/* ?�정 추�?/?�정 ??모달 */}
         {canEditPlan && (
           <ScheduleFormModal
             key={editingSchedule?.id}
@@ -1503,7 +1577,7 @@ export function PlanDetailPage() {
           />
         )}
 
-        {/* AI 비서 FAB (오너 + 공유 멤버) */}
+        {/* AI 비서 FAB (?�너 + 공유 멤버) */}
         {canUseAssistant && selectedPlan && !showChatbot && (
           <button
             onClick={() => setShowChatbot(true)}
@@ -1518,13 +1592,13 @@ export function PlanDetailPage() {
           </button>
         )}
 
-        {/* 여행 비서 챗봇 모달 */}
+        {/* ?�행 비서 챗봇 모달 */}
         {canUseAssistant && selectedPlan && (
           <dialog ref={chatbotModalRef} className="modal modal-bottom sm:modal-middle">
             <div className="modal-box max-w-4xl h-[80vh] flex flex-col p-0">
               <div className="sticky top-0 bg-base-100 border-b border-base-200 px-6 py-4 flex items-center justify-between z-10">
                 <h3 className="font-bold text-xl">{t('planDetail.travelAssistant')}</h3>
-                <button className="btn btn-sm btn-circle btn-ghost" onClick={() => setShowChatbot(false)}>✕</button>
+                <button className="btn btn-sm btn-circle btn-ghost" onClick={() => setShowChatbot(false)}>?</button>
               </div>
               <div className="flex-1 overflow-hidden">
                 <TravelAssistantChat
@@ -1575,7 +1649,7 @@ export function PlanDetailPage() {
   );
 }
 
-// 일정 추가/수정 모달
+// ?�정 추�?/?�정 모달
 interface ScheduleFormModalProps {
   modalRef: React.RefObject<HTMLDialogElement>;
   planId: number;
@@ -1618,13 +1692,13 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
   const { transcript: aiSttTranscript, isListening: aiSttListening, startListening: aiSttStart, stopListening: aiSttStop, browserSupportsSpeechRecognition: aiSttSupported } = useSpeechRecognition();
   const [isAIProcessing, setIsAIProcessing] = useState(false);
 
-  // 장소 검색 상태
+  // ?�소 검???�태
   const [placeResults, setPlaceResults] = useState<Array<{ id: number; name: string; lat: number; lng: number }>>([]);
   const [isSearchingPlace, setIsSearchingPlace] = useState(false);
   const [showPlaceResults, setShowPlaceResults] = useState(false);
   const placeSearchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Photon 결과 파싱
+  // Photon 결과 ?�싱
   const parsePhotonResults = (features: any[]) => {
     return features.map((f: any, idx: number) => {
       const props = f.properties;
@@ -1638,7 +1712,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
     });
   };
 
-  // Nominatim 결과 파싱
+  // Nominatim 결과 ?�싱
   const parseNominatimResults = (data: any[]) => {
     return data.map((item: any, idx: number) => ({
       id: idx + 100,
@@ -1648,7 +1722,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
     }));
   };
 
-  // 장소 검색 함수 (Photon → Nominatim fallback)
+  // ?�소 검???�수 (Photon ??Nominatim fallback)
   const searchPlace = async (query: string) => {
     if (!query.trim() || query.length < 2) {
       setPlaceResults([]);
@@ -1659,7 +1733,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
     try {
       const searchQuery = planRegion ? `${query}, ${planRegion}` : query;
       
-      // 1차: Photon API
+      // 1�? Photon API
       const photonRes = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(searchQuery)}&limit=7`);
       
       if (photonRes.ok) {
@@ -1673,7 +1747,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
         }
       }
 
-      // 2차: Nominatim fallback (한글 상호명 등)
+      // 2�? Nominatim fallback (?��? ?�호�???
       const nomRes = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=7&accept-language=ko`,
         { headers: { 'User-Agent': 'TravelApp/1.0' } }
@@ -1692,7 +1766,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
     }
   };
 
-  // 디바운스된 장소 검색
+  // ?�바?�스???�소 검??
   const handlePlaceInputChange = (value: string) => {
     setFormData({ ...formData, place: value, latitude: null, longitude: null });
 
@@ -1705,9 +1779,9 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
     }, 300);
   };
 
-  // 장소 선택
+  // ?�소 ?�택
   const selectPlace = (place: { id: number; name: string; lat: number; lng: number }) => {
-    // 짧은 이름 추출 (첫 번째 콤마 앞까지)
+    // 짧�? ?�름 추출 (�?번째 콤마 ?�까지)
     const shortName = place.name.split(',')[0].trim();
     setFormData({
       ...formData,
@@ -1719,7 +1793,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
     setPlaceResults([]);
   };
 
-  // STT 결과를 AI 입력에 반영
+  // STT 결과�?AI ?�력??반영
   useEffect(() => {
     if (aiSttTranscript) {
       setTextInputForAI(prev => prev ? prev + ' ' + aiSttTranscript : aiSttTranscript);
@@ -1746,7 +1820,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
           planRegion,
           planStartDate,
           planEndDate,
-          defaultDate: formData.date, // 날짜 미지정 시 이 날짜 사용
+          defaultDate: formData.date, // ?�짜 미�????????�짜 ?�용
         }),
       });
 
@@ -1791,13 +1865,13 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
     try {
       let { latitude, longitude } = formData;
 
-      // place가 비면 좌표도 제거
+      // place가 비면 좌표???�거
       if (!formData.place || !formData.place.trim()) {
         latitude = null as any;
         longitude = null as any;
       }
 
-      // 장소가 변경됐는데 좌표가 없으면 geocode 시도
+      // ?�소가 변경됐?�데 좌표가 ?�으�?geocode ?�도
       if (formData.place && !latitude && !longitude) {
         try {
           const q = planRegion && !formData.place.includes(planRegion)
@@ -1848,7 +1922,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
     }
   };
 
-  // 자동저장 제거 - 수동 저장만 사용
+  // ?�동?�???�거 - ?�동 ?�?�만 ?�용
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1867,11 +1941,11 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
             <Calendar className="w-5 h-5 text-primary" />
             {schedule?.id ? t('planDetail.editSchedule') : t('planDetail.newSchedule')}
           </h3>
-          <button className="btn btn-sm btn-circle btn-ghost" onClick={onClose}>✕</button>
+          <button className="btn btn-sm btn-circle btn-ghost" onClick={onClose}>?</button>
         </div>
 
         <div className="p-4 max-h-[70vh] overflow-y-auto">
-          {/* AI 텍스트 입력으로 일정 생성 */}
+          {/* AI ?�스???�력?�로 ?�정 ?�성 */}
           <div className="mb-6 p-4 bg-gradient-to-r from-primary/10 to-secondary/10 rounded-xl border border-primary/20">
             <div className="flex items-center gap-2 mb-2">
               <Sparkles className="w-5 h-5 text-primary" />
@@ -1927,7 +2001,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
           <div className="divider text-xs text-base-content/50">{t('planDetail.orDirectInput')}</div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* 날짜 & 시간 */}
+            {/* ?�짜 & ?�간 */}
             <div className="grid grid-cols-2 gap-3">
               <div className="form-control">
                 <label className="label py-1">
@@ -1959,7 +2033,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
               </div>
             </div>
 
-            {/* 제목 */}
+            {/* ?�목 */}
             <div className="form-control">
               <label className="label py-1">
                 <span className="label-text font-medium flex items-center gap-1.5">
@@ -1976,7 +2050,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
               />
             </div>
 
-            {/* 장소 */}
+            {/* ?�소 */}
             <div className="form-control relative">
               <label className="label py-1">
                 <span className="label-text font-medium flex items-center gap-1.5">
@@ -2006,7 +2080,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
                 )}
               </div>
               
-              {/* 검색 결과 드롭다운 */}
+              {/* 검??결과 ?�롭?�운 */}
               {showPlaceResults && placeResults.length > 0 && (
                 <ul className="absolute z-50 top-full left-0 right-0 mt-1 bg-base-100 border border-base-300 rounded-xl shadow-xl max-h-60 overflow-auto">
                   {placeResults.map((place) => (
@@ -2027,7 +2101,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
                 </ul>
               )}
 
-              {/* 미니 맵 프리뷰 */}
+              {/* 미니 �??�리�?*/}
               {formData.latitude && formData.longitude && (
                 <div className="mt-2 rounded-lg overflow-hidden border border-base-300">
                   <TravelMap
@@ -2066,7 +2140,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
               />
             </div>
 
-            {/* 대안 계획 - 접이식 */}
+            {/* ?�??계획 - ?�이??*/}
             <div className="collapse collapse-arrow bg-base-200 rounded-lg">
               <input type="checkbox" />
               <div className="collapse-title py-3 min-h-0 flex items-center gap-2">
@@ -2102,7 +2176,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
               </div>
             </div>
 
-            {/* 저장 버튼 */}
+            {/* ?�??버튼 */}
             <div className="sticky bottom-0 bg-base-100 pt-3 -mx-4 px-4 -mb-4 pb-4 border-t">
               <div className="flex items-center justify-between">
                 <div className="text-sm">
@@ -2130,7 +2204,7 @@ function ScheduleFormModal({ modalRef, planId, planTitle, planRegion, planStartD
   );
 }
 
-// 일정 상세보기 모달
+// ?�정 ?�세보기 모달
 interface ScheduleDetailModalProps {
   modalRef: React.RefObject<HTMLDialogElement>;
   schedule: Schedule;
@@ -2173,7 +2247,7 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
     try {
       const updates: Record<string, any> = { place: placeValue || null };
       if (!placeValue || !placeValue.trim()) {
-        // place 비우면 좌표도 제거
+        // place 비우�?좌표???�거
         updates.lat = null;
         updates.lng = null;
         updates.country_code = null;
@@ -2182,7 +2256,7 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
         updates.lng = pendingCoords.lng;
         if (pendingCoords.countryCode) updates.country_code = pendingCoords.countryCode;
       } else if (placeValue && placeValue !== (schedule.place || '')) {
-        // 장소 텍스트만 변경됐을 때 자동 geocode 시도
+        // ?�소 ?�스?�만 변경됐?????�동 geocode ?�도
         try {
           const q = planRegion && !placeValue.includes(planRegion) ? `${placeValue}, ${planRegion}` : placeValue;
           const geoRes = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=5`);
@@ -2346,7 +2420,7 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
     <dialog ref={modalRef} className="modal modal-bottom sm:modal-middle">
       <div className="modal-box max-w-2xl">
         <form method="dialog">
-          <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" onClick={onClose}>✕</button>
+          <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" onClick={onClose}>?</button>
         </form>
 
         <h3 className="font-bold text-2xl mb-6">
@@ -2385,13 +2459,13 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
                       disabled={savingPlace}
                       className="btn btn-primary btn-sm btn-square"
                     >
-                      {savingPlace ? '…' : '✓'}
+                      {savingPlace ? '저장중' : '저장'}
                     </button>
                     <button
                       onClick={() => { setEditingPlace(false); setPlaceValue(schedule.place || ''); setPendingCoords(null); }}
                       className="btn btn-ghost btn-sm btn-square"
                     >
-                      ✕
+                      취소
                     </button>
                   </div>
                   {pendingCoords && (
@@ -2448,7 +2522,7 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
                         className="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity"
                         title={t('planDetail.editPlace')}
                       >
-                        ✏️
+                        ?�️
                       </button>
                     )}
                   </div>
@@ -2503,7 +2577,7 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
             </>
           )}
 
-          {/* 탭: 기록 | 댓글 */}
+          {/* ?? 기록 | ?��? */}
           <div className="mt-4">
             <div className="flex border-b border-base-300">
               <button
@@ -2528,14 +2602,14 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
               </button>
             </div>
 
-            {/* 기록 탭 */}
+            {/* 기록 ??*/}
             {detailTab === 'moments' && (
               <div className="pt-4">
                 <MomentSection scheduleId={schedule.id} />
               </div>
             )}
 
-            {/* 댓글 탭 */}
+            {/* ?��? ??*/}
             {detailTab === 'comments' && (
               <div className="pt-4 space-y-4">
                 {/* Comment Form */}
@@ -2632,7 +2706,7 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
   );
 }
 
-// 여행 수정 모달
+// ?�행 ?�정 모달
 interface PlanEditModalProps {
   modalRef: React.RefObject<HTMLDialogElement>;
   plan: Plan;
@@ -2685,7 +2759,7 @@ function PlanEditModal({ modalRef, plan, onClose, onSave, onDelete }: PlanEditMo
     <dialog ref={modalRef} className="modal modal-bottom sm:modal-middle">
       <div className="modal-box max-w-2xl">
         <form method="dialog">
-          <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" onClick={onClose}>✕</button>
+          <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" onClick={onClose}>?</button>
         </form>
 
         <h3 className="font-bold text-2xl mb-6">{t('planDetail.tripDetails')}</h3>
@@ -2779,3 +2853,5 @@ function PlanEditModal({ modalRef, plan, onClose, onSave, onDelete }: PlanEditMo
     </dialog>
   );
 }
+
+
