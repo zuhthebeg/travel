@@ -216,7 +216,7 @@ export default function AlbumTimeline({ pastPlanIds }: AlbumTimelineProps) {
                       />
                     ) : (
                       <div className="w-full h-16 bg-gradient-to-br from-orange-100 to-amber-50 dark:from-gray-800 dark:to-gray-700 flex items-center justify-center">
-                        {m.mood ? <span className="text-2xl">{MOOD_MAP[m.mood]}</span> : <span className="text-xl">📝</span>}
+                        {m.mood ? <span className="text-2xl">{MOOD_MAP[m.mood]}</span> : <Image className="w-5 h-5 text-base-content/50" />}
                       </div>
                     )}
                     <div className="p-2.5 space-y-1">
@@ -227,7 +227,7 @@ export default function AlbumTimeline({ pastPlanIds }: AlbumTimelineProps) {
                         {m.schedule_place && (
                           <>
                             <span>·</span>
-                            <span className="truncate">📍{m.schedule_place}</span>
+                            <span className="truncate inline-flex items-center gap-0.5"><MapPin className="w-3 h-3" />{m.schedule_place}</span>
                           </>
                         )}
                       </div>
