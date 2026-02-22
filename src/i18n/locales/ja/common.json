@@ -603,5 +603,9 @@
     },
     "confirmDeleteComment": "このコメントを削除しますか？",
     "confirmDeleteSchedule": "この日程を削除しますか？"
+  },
+  "translate": {
+    "translate": "翻訳する",
+    "showOriginal": "原文を表示"
   }
 }

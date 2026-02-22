@@ -676,5 +676,9 @@
     },
     "confirmDeleteComment": "Delete this comment?",
     "confirmDeleteSchedule": "Delete this schedule?"
+  },
+  "translate": {
+    "translate": "Translate",
+    "showOriginal": "Show original"
   }
 }

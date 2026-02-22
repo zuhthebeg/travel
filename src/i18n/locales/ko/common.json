@@ -725,5 +725,9 @@
     },
     "confirmDeleteComment": "이 댓글을 삭제하시겠습니까?",
     "confirmDeleteSchedule": "이 일정을 삭제하시겠습니까?"
+  },
+  "translate": {
+    "translate": "번역하기",
+    "showOriginal": "원문 보기"
   }
 }

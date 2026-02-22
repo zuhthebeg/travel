@@ -601,5 +601,9 @@
     },
     "confirmDeleteComment": "確定刪除此留言？",
     "confirmDeleteSchedule": "確定刪除此行程？"
+  },
+  "translate": {
+    "translate": "翻譯",
+    "showOriginal": "顯示原文"
   }
 }
