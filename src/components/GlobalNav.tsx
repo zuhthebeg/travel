@@ -248,6 +248,22 @@ export function GlobalNav() {
                 <GuestLoginButton fullWidth />
               </li>
             )}
+            {/* Mobile language selector */}
+            <div className="divider my-1"></div>
+            <li>
+              <div className="flex items-center gap-2 flex-wrap py-2">
+                <Globe className="w-4 h-4 opacity-60" />
+                {SUPPORTED_LANGUAGES.map((lang) => (
+                  <button
+                    key={lang.code}
+                    className={`btn btn-xs ${lang.code === currentLang.code ? 'btn-primary' : 'btn-ghost'}`}
+                    onClick={() => { i18n.changeLanguage(lang.code); setIsMenuOpen(false); }}
+                  >
+                    {lang.flag} {lang.label}
+                  </button>
+                ))}
+              </div>
+            </li>
           </ul>
         </div>
       )}
