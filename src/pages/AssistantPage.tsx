@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '../components/Button';
 import { Loading } from '../components/Loading';
+import { useTranslation } from 'react-i18next';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -8,6 +9,7 @@ interface Message {
 }
 
 export function AssistantPage() {
+  const { t } = useTranslation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -46,7 +48,7 @@ export function AssistantPage() {
       setMessages([...newMessages, { role: 'assistant', content: reply }]);
     } catch (error) {
       console.error('Failed to send message:', error);
-      setMessages([...newMessages, { role: 'assistant', content: 'Sorry, something went wrong.' }]);
+      setMessages([...newMessages, { role: 'assistant', content: t('assistant.errorFallback') }]);
     } finally {
       setIsLoading(false);
     }
@@ -57,7 +59,7 @@ export function AssistantPage() {
       {/* Header */}
       <header className="bg-base-100 shadow-sm">
         <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">AI 여행 비서</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">{t('assistant.title')}</h1>
         </div>
       </header>
 
@@ -91,12 +93,12 @@ export function AssistantPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-              placeholder="AI에게 무엇이든 물어보세요..."
+              placeholder={t('assistant.inputPlaceholder')}
               className="input input-bordered w-full"
               disabled={isLoading}
             />
             <Button onClick={handleSendMessage} disabled={isLoading}>
-              {isLoading ? <Loading /> : '전송'}
+              {isLoading ? <Loading /> : t('assistant.send')}
             </Button>
           </div>
         </div>

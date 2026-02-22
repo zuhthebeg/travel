@@ -1,6 +1,7 @@
 import { formatDisplayDate } from '../lib/utils';
 import type { Schedule } from '../store/types';
 import { MapPin, Plane, Sunrise, Sun, Sunset, Moon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface ScheduleCardProps {
   schedule: Schedule;
@@ -39,7 +40,7 @@ function linkifyFlightNumbers(text: string) {
         rel="noopener noreferrer"
         className="link link-primary font-semibold inline-flex items-center gap-1 hover:gap-2 transition-all"
         onClick={(e) => e.stopPropagation()} // Prevent card click
-        title={`${flightCode} 항공편 정보 보기`}
+        title={t('schedule.flightInfo', { flightCode })}
       >
         <Plane className="w-4 h-4" /> {flightCode}
       </a>
@@ -109,6 +110,7 @@ function getStatusStyles(status: string): string {
 }
 
 export function ScheduleCard({ schedule, onView, compact }: ScheduleCardProps) {
+  const { t } = useTranslation();
   const status = getScheduleStatus(schedule);
   const statusStyles = getStatusStyles(status);
   const timePeriod = schedule.time ? getTimePeriod(schedule.time) : null;
@@ -175,7 +177,7 @@ export function ScheduleCard({ schedule, onView, compact }: ScheduleCardProps) {
               {linkifyFlightNumbers(schedule.place as string)}
             </span>
             {schedule.place && (!schedule.latitude || !schedule.longitude) && (
-              <span className="badge badge-warning badge-xs" title="좌표 없음 — 지도에 표시되지 않습니다">📍?</span>
+              <span className="badge badge-warning badge-xs" title={t('schedule.noCoords')}>📍?</span>
             )}
           </p>
         )}
@@ -200,7 +202,7 @@ export function ScheduleCard({ schedule, onView, compact }: ScheduleCardProps) {
         )}
 
         {(schedule.plan_b || schedule.plan_c) && (
-          <div className="divider">대안 계획</div>
+          <div className="divider">{t('schedule.alternativePlan')}</div>
         )}
 
         {schedule.plan_b && (

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Schedule } from '../store/types';
 import { parseDateLocal } from '../lib/utils';
+import { useTranslation } from 'react-i18next';
 
 interface CalendarViewProps {
   schedules: Schedule[];
@@ -24,7 +25,7 @@ const DAY_COLORS = [
   'bg-indigo-100 border-indigo-300 text-indigo-800',
 ];
 
-const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+const WEEKDAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
 function getDaysBetween(start: string, end: string): number {
   return Math.ceil((parseDateLocal(end).getTime() - parseDateLocal(start).getTime()) / 86400000) + 1;
@@ -73,6 +74,7 @@ function getMonthGrid(year: number, month: number): (string | null)[] {
 }
 
 export default function CalendarView({ schedules, startDate, endDate, onScheduleClick }: CalendarViewProps) {
+  const { t } = useTranslation();
   const totalDays = getDaysBetween(startDate, endDate);
   const dates = useMemo(() => getDateRange(startDate, endDate), [startDate, endDate]);
 
@@ -92,20 +94,21 @@ export default function CalendarView({ schedules, startDate, endDate, onSchedule
   const autoMode = totalDays <= 7 ? 'day' : totalDays <= 21 ? 'week' : 'month';
 
   if (autoMode === 'month') {
-    return <MonthView dates={dates} startDate={startDate} endDate={endDate} schedulesByDate={schedulesByDate} onScheduleClick={onScheduleClick} />;
+    return <MonthView dates={dates} startDate={startDate} endDate={endDate} schedulesByDate={schedulesByDate} onScheduleClick={onScheduleClick} t={t} />;
   }
   if (autoMode === 'week') {
-    return <WeekView dates={dates} startDate={startDate} schedulesByDate={schedulesByDate} onScheduleClick={onScheduleClick} />;
+    return <WeekView dates={dates} startDate={startDate} schedulesByDate={schedulesByDate} onScheduleClick={onScheduleClick} t={t} />;
   }
-  return <DayView dates={dates} startDate={startDate} schedulesByDate={schedulesByDate} onScheduleClick={onScheduleClick} />;
+  return <DayView dates={dates} startDate={startDate} schedulesByDate={schedulesByDate} onScheduleClick={onScheduleClick} t={t} />;
 }
 
 // === Day View (≤7일) — 시간축 기반 ===
-function DayView({ dates, startDate, schedulesByDate, onScheduleClick }: {
+function DayView({ dates, startDate, schedulesByDate, onScheduleClick, t }: {
   dates: string[];
   startDate: string;
   schedulesByDate: Record<string, Schedule[]>;
   onScheduleClick: (s: Schedule) => void;
+  t: (k: string, o?: any) => string;
 }) {
   const hours = Array.from({ length: 15 }, (_, i) => i + 7); // 07:00 ~ 21:00
 
@@ -121,7 +124,7 @@ function DayView({ dates, startDate, schedulesByDate, onScheduleClick }: {
             const isWeekend = d.getDay() === 0 || d.getDay() === 6;
             return (
               <div key={date} className={`bg-base-100 p-2 text-center ${isWeekend ? 'bg-base-200/50' : ''}`}>
-                <div className="text-[10px] text-base-content/50">{WEEKDAYS[d.getDay()]}</div>
+                <div className="text-[10px] text-base-content/50">{t(`calendar.weekday.${WEEKDAY_KEYS[d.getDay()]}`)}</div>
                 <div className="font-bold text-sm">{d.getDate()}</div>
                 <div className={`text-[9px] px-1.5 py-0.5 rounded-full inline-block mt-0.5 ${getColorClass(dayNum)}`}>
                   Day {dayNum}
@@ -166,11 +169,12 @@ function DayView({ dates, startDate, schedulesByDate, onScheduleClick }: {
 }
 
 // === Week View (8~21일) — 주 단위 카드 ===
-function WeekView({ dates, startDate, schedulesByDate, onScheduleClick }: {
+function WeekView({ dates, startDate, schedulesByDate, onScheduleClick, t }: {
   dates: string[];
   startDate: string;
   schedulesByDate: Record<string, Schedule[]>;
   onScheduleClick: (s: Schedule) => void;
+  t: (k: string, o?: any) => string;
 }) {
   // 7일씩 나누기
   const weeks: string[][] = [];
@@ -187,8 +191,8 @@ function WeekView({ dates, startDate, schedulesByDate, onScheduleClick }: {
           </div>
           <div className="grid grid-cols-7 gap-1">
             {/* 요일 헤더 */}
-            {WEEKDAYS.map(d => (
-              <div key={d} className="text-center text-[10px] text-base-content/40 pb-1">{d}</div>
+            {WEEKDAY_KEYS.map(d => (
+              <div key={d} className="text-center text-[10px] text-base-content/40 pb-1">{t(`calendar.weekday.${d}`)}</div>
             ))}
 
             {/* 첫 주 시작 요일 맞추기 */}
@@ -246,12 +250,13 @@ function WeekView({ dates, startDate, schedulesByDate, onScheduleClick }: {
 }
 
 // === Month View (22일+) — 달력 그리드 ===
-function MonthView({ dates, startDate, endDate, schedulesByDate, onScheduleClick }: {
+function MonthView({ dates, startDate, endDate, schedulesByDate, onScheduleClick, t }: {
   dates: string[];
   startDate: string;
   endDate: string;
   schedulesByDate: Record<string, Schedule[]>;
   onScheduleClick: (s: Schedule) => void;
+  t: (k: string, o?: any) => string;
 }) {
   const startD = new Date(startDate + 'T00:00:00');
   const endD = new Date(endDate + 'T00:00:00');
@@ -285,7 +290,7 @@ function MonthView({ dates, startDate, endDate, schedulesByDate, onScheduleClick
           <ChevronLeft className="w-4 h-4" />
         </button>
         <span className="font-bold text-base">
-          {year}년 {month + 1}월
+          {t('calendar.yearMonth', { year, month: month + 1 })}
         </span>
         <button
           className="btn btn-ghost btn-sm btn-circle"
@@ -298,9 +303,9 @@ function MonthView({ dates, startDate, endDate, schedulesByDate, onScheduleClick
 
       {/* 요일 헤더 */}
       <div className="grid grid-cols-7 mb-1">
-        {WEEKDAYS.map((d, i) => (
+        {WEEKDAY_KEYS.map((d, i) => (
           <div key={d} className={`text-center text-[10px] font-medium py-1 ${i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-base-content/50'}`}>
-            {d}
+            {t(`calendar.weekday.${d}`)}
           </div>
         ))}
       </div>

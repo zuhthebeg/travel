@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { MapPin, Search, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface NominatimResult {
   place_id: number;
@@ -31,10 +32,11 @@ export function PlaceAutocomplete({
   value,
   onChange,
   onSelect,
-  placeholder = '장소 검색...',
+  placeholder,
   className = '',
   regionHint = '',
 }: PlaceAutocompleteProps) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState(value);
   const [results, setResults] = useState<NominatimResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -154,7 +156,7 @@ export function PlaceAutocomplete({
 
   const formatResultDisplay = (result: NominatimResult) => {
     const parts = result.display_name.split(',').map(s => s.trim());
-    const main = parts[0] || '알 수 없는 장소';
+    const main = parts[0] || t('place.unknown');
     const sub = parts.slice(1, 4).join(', ');
     return { main, sub };
   };
@@ -169,7 +171,7 @@ export function PlaceAutocomplete({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           onFocus={() => results.length > 0 && setIsOpen(true)}
-          placeholder={placeholder}
+          placeholder={placeholder || t('place.placeholder')}
           className="input input-bordered w-full pr-10"
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -209,7 +211,7 @@ export function PlaceAutocomplete({
       {/* No results message */}
       {isOpen && query.length >= 2 && results.length === 0 && !isLoading && (
         <div className="absolute z-50 w-full mt-1 bg-base-100 border border-base-300 rounded-lg shadow-lg p-4 text-center text-base-content/60">
-          검색 결과가 없습니다
+          {t('place.noResults')}
         </div>
       )}
     </div>

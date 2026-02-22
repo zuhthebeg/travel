@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { dayNotesOffline } from '../lib/offlineAPI';
 import { ChevronLeft, ChevronRight, MapPin, FileText, Plane, StickyNote } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 // 년도 없는 날짜 표시: "3월 20일 (목)"
 function formatShortDate(date: string): string {
   const d = new Date(date + 'T00:00:00');
-  const days = ['일', '월', '화', '수', '목', '금', '토'];
-  return `${d.getMonth() + 1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
+  const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  return `${d.getMonth() + 1}|${d.getDate()}|${days[d.getDay()]}`;
 }
 import type { Schedule } from '../store/types';
 
@@ -42,6 +43,7 @@ function isFlightSchedule(title: string): boolean {
 }
 
 export default function DayView({ schedules, startDate, endDate, planId, onScheduleClick, onDateChange, initialDate }: DayViewProps) {
+  const { t } = useTranslation();
   // 날짜 리스트 생성 (로컬 타임존 기준)
   const dates = useMemo(() => {
     const result: string[] = [];
@@ -197,7 +199,10 @@ export default function DayView({ schedules, startDate, endDate, planId, onSched
         
         <div className="text-center">
           <div className="font-bold text-lg">Day {currentIndex + 1}</div>
-          <div className="text-sm text-base-content/60">{formatShortDate(currentDate)}</div>
+          {(() => {
+            const [m, d, w] = formatShortDate(currentDate).split('|');
+            return <div className="text-sm text-base-content/60">{t('dayView.shortDate', { month: m, day: d, weekday: t(`dayView.weekday.${w}`) })}</div>;
+          })()}
         </div>
 
         <button
@@ -226,7 +231,7 @@ export default function DayView({ schedules, startDate, endDate, planId, onSched
                     ? 'bg-base-300 text-base-content/70 hover:bg-base-content/20'
                     : 'bg-base-200 text-base-content/30 hover:bg-base-300'
               } ${hasNote ? 'ring-1 ring-warning' : ''}`}
-              title={`Day ${i + 1} · ${d} · ${count}개 일정${hasNote ? ' + 메모' : ''}`}
+              title={t('dayView.dayTitle', { day: i + 1, date: d, count, hasNote: hasNote ? t('dayView.plusMemo') : '' })}
             >
               D{i + 1}
             </button>
@@ -247,10 +252,10 @@ export default function DayView({ schedules, startDate, endDate, planId, onSched
         >
           <div className="flex items-center gap-2 text-sm font-medium text-warning-content/80">
             <StickyNote className="w-4 h-4" />
-            오늘의 메모
+            {t('dayView.todayMemo')}
           </div>
           {!editingNote && !currentNote && (
-            <span className="text-xs text-base-content/40">+ 추가</span>
+            <span className="text-xs text-base-content/40">{t('dayView.add')}</span>
           )}
         </div>
 
@@ -259,7 +264,7 @@ export default function DayView({ schedules, startDate, endDate, planId, onSched
             <textarea
               value={noteContent}
               onChange={e => setNoteContent(e.target.value)}
-              placeholder="오늘의 메모... (날씨, 컨디션, 꿀팁 등)"
+              placeholder={t('dayView.memoPlaceholder')}
               rows={3}
               className="textarea textarea-bordered w-full text-sm"
               autoFocus
@@ -267,13 +272,13 @@ export default function DayView({ schedules, startDate, endDate, planId, onSched
             <div className="flex items-center justify-between">
               <div>
                 {currentNote && (
-                  <button onClick={deleteDayNote} className="btn btn-ghost btn-xs text-error">삭제</button>
+                  <button onClick={deleteDayNote} className="btn btn-ghost btn-xs text-error">{t('dayView.delete')}</button>
                 )}
               </div>
               <div className="flex gap-2">
-                <button onClick={() => setEditingNote(false)} className="btn btn-ghost btn-xs">취소</button>
+                <button onClick={() => setEditingNote(false)} className="btn btn-ghost btn-xs">{t('dayView.cancel')}</button>
                 <button onClick={saveDayNote} disabled={savingNote} className="btn btn-primary btn-xs">
-                  {savingNote ? '저장 중...' : '저장'}
+                  {savingNote ? t('dayView.saving') : t('dayView.save')}
                 </button>
               </div>
             </div>
@@ -292,7 +297,7 @@ export default function DayView({ schedules, startDate, endDate, planId, onSched
       {daySchedules.length === 0 ? (
         <div className="text-center py-12 text-base-content/40">
           <p className="text-3xl mb-2">📭</p>
-          <p className="text-sm">이 날은 일정이 없어요</p>
+          <p className="text-sm">{t('dayView.noSchedule')}</p>
         </div>
       ) : (
         <div className="relative">
@@ -387,8 +392,8 @@ export default function DayView({ schedules, startDate, endDate, planId, onSched
 
       {/* 하단 요약 */}
       <div className="flex items-center justify-center gap-4 text-xs text-base-content/40 py-2">
-        <span>📍 {daySchedules.filter(s => s.place).length}곳</span>
-        <span>📋 {daySchedules.length}개 일정</span>
+        <span>{t('dayView.summaryPlaces', { count: daySchedules.filter(s => s.place).length })}</span>
+        <span>{t('dayView.summarySchedules', { count: daySchedules.length })}</span>
         {daySchedules[0]?.time && daySchedules[daySchedules.length - 1]?.time && (
           <span>⏱ {daySchedules[0].time} ~ {daySchedules[daySchedules.length - 1].time}</span>
         )}

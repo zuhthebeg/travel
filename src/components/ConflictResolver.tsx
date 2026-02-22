@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { getDB, addOp } from '../lib/db';
 import type { OpLogEntry } from '../lib/offline/types';
 import { defaultLocalMeta } from '../lib/offline/types';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   conflicts: OpLogEntry[];
@@ -13,33 +14,8 @@ interface Props {
   onResolved: () => void;
 }
 
-const ENTITY_LABELS: Record<string, string> = {
-  plans: '여행',
-  schedules: '일정',
-  moments: '순간',
-  travel_memos: '메모',
-};
-
-const FIELD_LABELS: Record<string, string> = {
-  title: '제목',
-  place: '장소',
-  date: '날짜',
-  time: '시간',
-  memo: '메모',
-  plan_b: 'Plan B',
-  plan_c: 'Plan C',
-  region: '지역',
-  start_date: '시작일',
-  end_date: '종료일',
-  note: '노트',
-  mood: '기분',
-  content: '내용',
-  category: '카테고리',
-  rating: '평점',
-  review: '리뷰',
-};
-
 export default function ConflictResolver({ conflicts, onClose, onResolved }: Props) {
+  const { t } = useTranslation();
   const [currentIdx, setCurrentIdx] = useState(0);
   const [resolving, setResolving] = useState(false);
 
@@ -137,14 +113,40 @@ export default function ConflictResolver({ conflicts, onClose, onResolved }: Pro
     return serverVersion && myVersion[key] !== serverVersion[key];
   });
 
+  const entityLabels: Record<string, string> = {
+    plans: t('conflict.entity.plans'),
+    schedules: t('conflict.entity.schedules'),
+    moments: t('conflict.entity.moments'),
+    travel_memos: t('conflict.entity.travel_memos'),
+  };
+
+  const fieldLabels: Record<string, string> = {
+    title: t('conflict.field.title'),
+    place: t('conflict.field.place'),
+    date: t('conflict.field.date'),
+    time: t('conflict.field.time'),
+    memo: t('conflict.field.memo'),
+    plan_b: t('conflict.field.plan_b'),
+    plan_c: t('conflict.field.plan_c'),
+    region: t('conflict.field.region'),
+    start_date: t('conflict.field.start_date'),
+    end_date: t('conflict.field.end_date'),
+    note: t('conflict.field.note'),
+    mood: t('conflict.field.mood'),
+    content: t('conflict.field.content'),
+    category: t('conflict.field.category'),
+    rating: t('conflict.field.rating'),
+    review: t('conflict.field.review'),
+  };
+
   return (
     <div className="modal modal-open">
       <div className="modal-box max-w-2xl">
         <h3 className="font-bold text-lg mb-2">
-          ⚠️ 충돌 해결 ({currentIdx + 1}/{conflicts.length})
+          {t('conflict.title', { current: currentIdx + 1, total: conflicts.length })}
         </h3>
         <p className="text-sm text-base-content/60 mb-4">
-          {ENTITY_LABELS[op.entity] || op.entity} #{op.entityId} — 오프라인 변경과 서버 데이터가 다릅니다
+          {t('conflict.subtitle', { entity: entityLabels[op.entity] || op.entity, entityId: op.entityId })}
         </p>
 
         {/* Diff table */}
@@ -152,26 +154,26 @@ export default function ConflictResolver({ conflicts, onClose, onResolved }: Pro
           <table className="table table-sm">
             <thead>
               <tr>
-                <th>필드</th>
-                <th className="text-info">내 버전 (오프라인)</th>
-                <th className="text-success">서버 버전</th>
+                <th>{t('conflict.table.field')}</th>
+                <th className="text-info">{t('conflict.table.mine')}</th>
+                <th className="text-success">{t('conflict.table.server')}</th>
               </tr>
             </thead>
             <tbody>
               {diffFields.length > 0 ? diffFields.map(field => (
                 <tr key={field}>
-                  <td className="font-medium">{FIELD_LABELS[field] || field}</td>
+                  <td className="font-medium">{fieldLabels[field] || field}</td>
                   <td className="text-info bg-info/5 max-w-[200px] truncate">
-                    {String(myVersion[field] ?? '(없음)')}
+                    {String(myVersion[field] ?? t('conflict.empty'))}
                   </td>
                   <td className="text-success bg-success/5 max-w-[200px] truncate">
-                    {String(serverVersion?.[field] ?? '(없음)')}
+                    {String(serverVersion?.[field] ?? t('conflict.empty'))}
                   </td>
                 </tr>
               )) : (
                 <tr>
                   <td colSpan={3} className="text-center text-base-content/40">
-                    서버 버전을 불러오는 중...
+                    {t('conflict.loadingServer')}
                   </td>
                 </tr>
               )}
@@ -182,21 +184,21 @@ export default function ConflictResolver({ conflicts, onClose, onResolved }: Pro
         {/* Actions */}
         <div className="modal-action flex gap-2">
           <button className="btn btn-ghost" onClick={onClose} disabled={resolving}>
-            나중에
+            {t('conflict.later')}
           </button>
           <button
             className="btn btn-success"
             onClick={handleKeepServer}
             disabled={resolving}
           >
-            {resolving ? '처리 중...' : '서버 버전 유지'}
+            {resolving ? t('conflict.processing') : t('conflict.keepServer')}
           </button>
           <button
             className="btn btn-info"
             onClick={handleKeepMine}
             disabled={resolving}
           >
-            {resolving ? '처리 중...' : '내 버전 유지'}
+            {resolving ? t('conflict.processing') : t('conflict.keepMine')}
           </button>
         </div>
       </div>

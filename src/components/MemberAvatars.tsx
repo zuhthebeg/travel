@@ -3,6 +3,7 @@ import { membersAPI } from '../lib/api';
 import type { PlanMember } from '../store/types';
 import { Loading } from './Loading';
 import { Button } from './Button';
+import { useTranslation } from 'react-i18next';
 
 interface MemberAvatarsProps {
   planId: number;
@@ -10,6 +11,7 @@ interface MemberAvatarsProps {
 }
 
 export default function MemberAvatars({ planId, isOwner }: MemberAvatarsProps) {
+  const { t } = useTranslation();
   const [owner, setOwner] = useState<PlanMember | null>(null);
   const [members, setMembers] = useState<PlanMember[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -56,7 +58,7 @@ export default function MemberAvatars({ planId, isOwner }: MemberAvatarsProps) {
   const handleInvite = async () => {
     const email = inviteEmail.trim();
     if (!email) {
-      alert('이메일을 입력해주세요.');
+      alert(t('member.emailRequired'));
       return;
     }
 
@@ -66,9 +68,9 @@ export default function MemberAvatars({ planId, isOwner }: MemberAvatarsProps) {
       setInviteEmail('');
       setIsInviteOpen(false);
       await loadMembers();
-      alert('멤버 초대가 완료되었습니다.');
+      alert(t('member.inviteDone'));
     } catch (error) {
-      alert(error instanceof Error ? error.message : '초대 요청에 실패했습니다.');
+      alert(error instanceof Error ? error.message : t('member.inviteFailed'));
     } finally {
       setIsInviting(false);
     }
@@ -77,14 +79,14 @@ export default function MemberAvatars({ planId, isOwner }: MemberAvatarsProps) {
   const handleRemove = async (member: PlanMember) => {
     if (!isOwner || member.role === 'owner') return;
 
-    const message = `${member.username} 님을 플랜에서 제외할까요?`;
+    const message = t('member.removeConfirm', { username: member.username });
     if (!window.confirm(message)) return;
 
     try {
       await membersAPI.remove(planId, member.user_id);
       await loadMembers();
     } catch (error) {
-      alert(error instanceof Error ? error.message : '멤버 제거에 실패했습니다.');
+      alert(error instanceof Error ? error.message : t('member.removeFailed'));
     }
   };
 
@@ -106,7 +108,7 @@ export default function MemberAvatars({ planId, isOwner }: MemberAvatarsProps) {
                 : 'border-base-100'
             } ${member.picture ? '' : 'ring ring-base-200'}`}
             title={`${member.username || member.email}${
-              isOwner && member.role !== 'owner' ? ' - 클릭해 제거' : ''
+              isOwner && member.role !== 'owner' ? ` - ${t('member.clickToRemove')}` : ''
             }`}
           >
             {member.picture ? (
@@ -132,7 +134,7 @@ export default function MemberAvatars({ planId, isOwner }: MemberAvatarsProps) {
             type="button"
             onClick={() => setIsInviteOpen(true)}
             className="h-9 w-9 rounded-full border border-dashed border-base-300 text-base-content/70 flex items-center justify-center hover:bg-base-200 transition-colors"
-            title="멤버 초대"
+            title={t('member.invite')}
           >
             +
           </button>
@@ -148,9 +150,9 @@ export default function MemberAvatars({ planId, isOwner }: MemberAvatarsProps) {
             className="bg-base-100 rounded-xl w-full max-w-sm p-5 space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold">멤버 초대</h3>
+            <h3 className="text-lg font-bold">{t('member.invite')}</h3>
             <p className="text-sm text-base-content/70">
-              초대할 멤버의 구글 계정 이메일을 입력해주세요.
+              {t('member.inviteDesc')}
             </p>
             <input
               type="email"
@@ -168,7 +170,7 @@ export default function MemberAvatars({ planId, isOwner }: MemberAvatarsProps) {
                   setInviteEmail('');
                 }}
               >
-                취소
+                {t('member.cancel')}
               </Button>
               <Button
                 variant="primary"
@@ -176,7 +178,7 @@ export default function MemberAvatars({ planId, isOwner }: MemberAvatarsProps) {
                 onClick={handleInvite}
                 disabled={isInviting || !inviteEmail.trim()}
               >
-                {isInviting ? <span className="loading loading-spinner loading-xs" /> : '초대'}
+                {isInviting ? <span className="loading loading-spinner loading-xs" /> : t('member.invite')}
               </Button>
             </div>
           </div>

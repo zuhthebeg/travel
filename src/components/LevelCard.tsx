@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { Trophy, ChevronRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface LevelData {
   xp: number;
@@ -29,6 +30,7 @@ interface Badge {
 const API_BASE = import.meta.env.DEV ? 'http://localhost:8788' : '';
 
 export default function LevelCard() {
+  const { t } = useTranslation();
   const { currentUser } = useStore();
   const [data, setData] = useState<LevelData | null>(null);
   const [showBadges, setShowBadges] = useState(false);
@@ -71,15 +73,15 @@ export default function LevelCard() {
           <div className="flex items-center gap-3 text-sm">
             <div className="text-center">
               <p className="font-bold">{data.countries}</p>
-              <p className="text-[10px] text-white/70">국가</p>
+              <p className="text-[10px] text-white/70">{t('level.country')}</p>
             </div>
             <div className="text-center">
               <p className="font-bold">{data.cities}</p>
-              <p className="text-[10px] text-white/70">도시</p>
+              <p className="text-[10px] text-white/70">{t('level.city')}</p>
             </div>
             <div className="text-center">
               <p className="font-bold">{data.earnedBadges}</p>
-              <p className="text-[10px] text-white/70">뱃지</p>
+              <p className="text-[10px] text-white/70">{t('level.badge')}</p>
             </div>
           </div>
         </div>
@@ -88,7 +90,7 @@ export default function LevelCard() {
         {data.nextLevelXP && (
           <div>
             <div className="flex justify-between text-[10px] text-white/70 mb-1">
-              <span>다음 레벨까지</span>
+              <span>{t('level.nextLevel')}</span>
               <span>{data.xp} / {data.nextLevelXP} XP</span>
             </div>
             <div className="w-full h-2 bg-white/20 rounded-full overflow-hidden">
@@ -108,7 +110,7 @@ export default function LevelCard() {
       >
         <span className="flex items-center gap-2">
           <Trophy className="w-4 h-4 text-orange-500" />
-          <span className="font-medium">뱃지 컬렉션</span>
+          <span className="font-medium">{t('level.badgeCollection')}</span>
           <span className="text-base-content/50">{data.earnedBadges}/{data.totalBadges}</span>
         </span>
         <ChevronRight className={`w-4 h-4 transition-transform ${showBadges ? 'rotate-90' : ''}`} />
@@ -129,7 +131,7 @@ export default function LevelCard() {
               <span className="text-xl block mb-1">{badge.emoji}</span>
               <p className="text-[10px] font-medium leading-tight">{badge.name}</p>
               {badge.earned && (
-                <p className="text-[8px] text-orange-500 mt-0.5">획득!</p>
+                <p className="text-[8px] text-orange-500 mt-0.5">{t('level.earned')}</p>
               )}
             </div>
           ))}

@@ -5,6 +5,7 @@ import { Loading } from '../components/Loading';
 import { TravelMap, schedulesToMapPoints } from '../components/TravelMap';
 import type { Plan, Schedule, Moment } from '../store/types';
 import { MapPin, Calendar, Star, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:8788' : '';
 
@@ -12,11 +13,8 @@ const MOOD_MAP: Record<string, string> = {
   amazing: '😍', good: '😊', okay: '😐', meh: '😑', bad: '😢',
 };
 
-const REVISIT_MAP: Record<string, string> = {
-  yes: '꼭 다시!', no: '한번이면 충분', maybe: '글쎄...',
-};
-
 export function SharedAlbumPage() {
+  const { t } = useTranslation();
   const { planId } = useParams<{ planId: string }>();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +34,7 @@ export function SharedAlbumPage() {
       setError(null);
 
       const res = await fetch(`${API_BASE}/api/plans/${id}/album`);
-      if (!res.ok) throw new Error('앨범을 불러올 수 없습니다');
+      if (!res.ok) throw new Error(t('sharedAlbum.loadFailed'));
       const data = await res.json();
 
       setPlan(data.plan);
@@ -50,7 +48,7 @@ export function SharedAlbumPage() {
       }
       setMomentsBySchedule(grouped);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '공유 앨범을 불러오지 못했습니다');
+      setError(err instanceof Error ? err.message : t('sharedAlbum.sharedLoadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -89,10 +87,10 @@ export function SharedAlbumPage() {
         <div className="card bg-base-100 shadow-xl max-w-md w-full">
           <div className="card-body text-center">
             <p className="text-4xl mb-2">😢</p>
-            <h2 className="card-title justify-center">앨범을 찾을 수 없어요</h2>
-            <p className="text-base-content/70">{error || '존재하지 않는 여행입니다'}</p>
+            <h2 className="card-title justify-center">{t('sharedAlbum.notFoundTitle')}</h2>
+            <p className="text-base-content/70">{error || t('sharedAlbum.notFoundDesc')}</p>
             <div className="card-actions justify-center mt-2">
-              <Link to="/" className="btn btn-primary">홈으로</Link>
+              <Link to="/" className="btn btn-primary">{t('sharedAlbum.goHome')}</Link>
             </div>
           </div>
         </div>
@@ -130,7 +128,7 @@ export function SharedAlbumPage() {
               <span className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" /> {formatDateRange(plan.start_date, plan.end_date)}
               </span>
-              <span className="font-medium">{totalDays}일</span>
+              <span className="font-medium">{t('sharedAlbum.days', { days: totalDays })}</span>
               {plan.region && (
                 <span className="flex items-center gap-1">
                   <MapPin className="w-4 h-4" /> {plan.region}
@@ -144,7 +142,7 @@ export function SharedAlbumPage() {
         {mapPoints.length > 0 && (
           <section className="card bg-base-100 shadow-lg">
             <div className="card-body p-3 md:p-6">
-              <h2 className="text-lg font-bold mb-2">🗺️ 여행 동선</h2>
+              <h2 className="text-lg font-bold mb-2">{t('sharedAlbum.routeTitle')}</h2>
               <TravelMap points={mapPoints} showRoute={true} height="280px" />
             </div>
           </section>
@@ -218,7 +216,7 @@ export function SharedAlbumPage() {
                                         )}
                                         {m.note && <p className="text-base-content/80">{m.note}</p>}
                                         {m.revisit && (
-                                          <span className="text-xs text-base-content/50">{REVISIT_MAP[m.revisit] || ''}</span>
+                                          <span className="text-xs text-base-content/50">{t(`sharedAlbum.revisit.${m.revisit}`) || ''}</span>
                                         )}
                                       </div>
                                       {m.username && (
@@ -261,7 +259,7 @@ export function SharedAlbumPage() {
 
         {/* CTA */}
         <div className="py-6 text-center">
-          <Link to="/" className="btn btn-primary btn-wide">나도 Travly로 여행 계획 만들기</Link>
+          <Link to="/" className="btn btn-primary btn-wide">{t('sharedAlbum.createMine')}</Link>
         </div>
       </main>
 

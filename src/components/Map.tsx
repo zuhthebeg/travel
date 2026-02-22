@@ -1,6 +1,7 @@
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import { Loading } from './Loading';
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const containerStyle = {
   width: '100%',
@@ -18,6 +19,7 @@ interface MapProps {
 }
 
 export function Map({ places, onError }: MapProps) {
+  const { t } = useTranslation();
   console.log('VITE_GOOGLE_MAPS_API_KEY:', import.meta.env.VITE_GOOGLE_MAPS_API_KEY); // Add this line
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
@@ -83,7 +85,7 @@ export function Map({ places, onError }: MapProps) {
   if (loadError) {
     return (
       <div style={containerStyle} className="flex items-center justify-center bg-base-300 rounded-lg">
-        <p className="text-base-content/70">지도를 불러올 수 없습니다.</p>
+        <p className="text-base-content/70">{t('map.loadFailed')}</p>
       </div>
     );
   }

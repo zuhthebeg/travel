@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
+import { useTranslation } from 'react-i18next';
 
 interface InvitePlan {
   id: number;
@@ -12,6 +13,7 @@ interface InvitePlan {
 }
 
 export function InvitePage() {
+  const { t } = useTranslation();
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { currentUser } = useStore();
@@ -29,9 +31,9 @@ export function InvitePage() {
         if (data.error) setError(data.error);
         else setPlan(data.plan);
       })
-      .catch(() => setError('초대 링크를 확인할 수 없습니다'))
+      .catch(() => setError(t('invite.invalidLink')))
       .finally(() => setLoading(false));
-  }, [code]);
+  }, [code, t]);
 
   const handleJoin = async () => {
     if (!code || !currentUser) return;
@@ -50,16 +52,16 @@ export function InvitePage() {
       const data = await res.json();
 
       if (data.already) {
-        setResult('이미 참여 중인 여행입니다!');
+        setResult(t('invite.alreadyJoined'));
         setTimeout(() => navigate(`/plans/${data.planId || plan?.id}`), 1500);
       } else if (data.planId) {
-        setResult('여행에 참여했습니다! 🎉');
+        setResult(t('invite.joinedSuccess'));
         setTimeout(() => navigate(`/plans/${data.planId}`), 1500);
       } else {
-        setError(data.error || '참여에 실패했습니다');
+        setError(data.error || t('invite.joinFailed'));
       }
     } catch {
-      setError('참여 중 오류가 발생했습니다');
+      setError(t('invite.joinError'));
     } finally {
       setJoining(false);
     }
@@ -80,7 +82,7 @@ export function InvitePage() {
           <div className="card-body text-center">
             <h2 className="text-4xl mb-2">😕</h2>
             <p className="text-error">{error}</p>
-            <button className="btn btn-primary mt-4" onClick={() => navigate('/')}>홈으로</button>
+            <button className="btn btn-primary mt-4" onClick={() => navigate('/')}>{t('invite.goHome')}</button>
           </div>
         </div>
       </div>
@@ -94,7 +96,7 @@ export function InvitePage() {
           <div className="card-body text-center">
             <h2 className="text-4xl mb-2">✅</h2>
             <p className="text-lg font-bold">{result}</p>
-            <p className="text-sm text-base-content/60">잠시 후 여행 페이지로 이동합니다...</p>
+            <p className="text-sm text-base-content/60">{t('invite.redirecting')}</p>
           </div>
         </div>
       </div>
@@ -106,7 +108,7 @@ export function InvitePage() {
       <div className="card bg-base-100 shadow-xl max-w-md w-full">
         <div className="card-body">
           <h2 className="text-4xl text-center mb-2">✈️</h2>
-          <h3 className="card-title justify-center text-xl">여행 초대</h3>
+          <h3 className="card-title justify-center text-xl">{t('invite.title')}</h3>
           
           <div className="bg-base-200 rounded-lg p-4 mt-4">
             <h4 className="font-bold text-lg">{plan?.title}</h4>
@@ -117,25 +119,25 @@ export function InvitePage() {
           </div>
 
           <p className="text-center mt-4 text-base-content/70">
-            이 여행에 참여하시겠습니까?
+            {t('invite.joinQuestion')}
           </p>
 
           {currentUser ? (
             <div className="card-actions justify-center mt-4 gap-2">
-              <button className="btn btn-ghost" onClick={() => navigate('/')}>아니요</button>
+              <button className="btn btn-ghost" onClick={() => navigate('/')}>{t('invite.no')}</button>
               <button className="btn btn-primary" onClick={handleJoin} disabled={joining}>
-                {joining ? <span className="loading loading-spinner loading-sm"></span> : '네, 참여할게요!'}
+                {joining ? <span className="loading loading-spinner loading-sm"></span> : t('invite.yesJoin')}
               </button>
             </div>
           ) : (
             <div className="text-center mt-4">
-              <p className="text-sm text-base-content/50 mb-3">참여하려면 먼저 로그인이 필요합니다</p>
+              <p className="text-sm text-base-content/50 mb-3">{t('invite.loginRequired')}</p>
               <button className="btn btn-primary" onClick={() => {
                 // 로그인 후 다시 이 페이지로 돌아오도록 저장
                 localStorage.setItem('invite_redirect', `/invite/${code}`);
                 navigate('/');
               }}>
-                로그인하기
+                {t('invite.login')}
               </button>
             </div>
           )}

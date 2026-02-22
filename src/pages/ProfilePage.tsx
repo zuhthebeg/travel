@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
+import { useTranslation } from 'react-i18next';
 import { GlobalNav } from '../components/GlobalNav';
 import LevelCard from '../components/LevelCard';
 import AlbumTimeline from '../components/AlbumTimeline';
@@ -19,6 +20,7 @@ interface Stats {
 }
 
 export default function ProfilePage() {
+  const { t } = useTranslation();
   const { currentUser, setCurrentUser } = useStore();
   const navigate = useNavigate();
   const [stats, setStats] = useState<Stats | null>(null);
@@ -87,7 +89,7 @@ export default function ProfilePage() {
   };
 
   const handleLogout = () => {
-    if (!confirm('로그아웃 하시겠어요?')) return;
+    if (!confirm(t('profile.logoutConfirm'))) return;
     localStorage.removeItem('google_credential');
     localStorage.removeItem('user_info');
     setCurrentUser(null);
@@ -98,10 +100,10 @@ export default function ProfilePage() {
 
   const isOfflineOn = localStorage.getItem('offline_mode') === 'true';
   const tabs = [
-    { id: 'level' as const, label: '레벨', icon: Trophy },
-    { id: 'album' as const, label: '앨범', icon: Camera },
-    { id: 'stats' as const, label: '통계', icon: Plane },
-    { id: 'offline' as const, label: '오프라인', icon: isOfflineOn ? WifiOff : Wifi },
+    { id: 'level' as const, label: t('profile.tabs.level'), icon: Trophy },
+    { id: 'album' as const, label: t('profile.tabs.album'), icon: Camera },
+    { id: 'stats' as const, label: t('profile.tabs.stats'), icon: Plane },
+    { id: 'offline' as const, label: t('profile.tabs.offline'), icon: isOfflineOn ? WifiOff : Wifi },
   ];
 
   return (
@@ -132,10 +134,10 @@ export default function ProfilePage() {
         {stats && (
           <div className="grid grid-cols-4 gap-2">
             {[
-              { label: '여행', value: stats.totalPlans, icon: '✈️' },
-              { label: '기록', value: stats.totalMoments, icon: '📸' },
-              { label: '국가', value: stats.totalCountries, icon: '🌍' },
-              { label: '도시', value: stats.totalCities, icon: '🏙️' },
+              { label: t('profile.stats.trip'), value: stats.totalPlans, icon: '✈️' },
+              { label: t('profile.stats.record'), value: stats.totalMoments, icon: '📸' },
+              { label: t('profile.stats.country'), value: stats.totalCountries, icon: '🌍' },
+              { label: t('profile.stats.city'), value: stats.totalCities, icon: '🏙️' },
             ].map(s => (
               <div key={s.label} className="bg-base-100 rounded-xl p-3 text-center border border-base-200">
                 <span className="text-lg">{s.icon}</span>
@@ -168,7 +170,7 @@ export default function ProfilePage() {
         {activeTab === 'level' && (
           localStorage.getItem('offline_mode') === 'true' && !navigator.onLine ? (
             <div className="card bg-base-100 shadow-sm p-4 text-center text-sm text-base-content/50">
-              레벨 정보는 온라인에서 확인할 수 있습니다
+              {t('profile.onlineOnlyLevel')}
             </div>
           ) : (
             <LevelCard />
@@ -178,7 +180,7 @@ export default function ProfilePage() {
         {activeTab === 'album' && (
           localStorage.getItem('offline_mode') === 'true' && !navigator.onLine ? (
             <div className="card bg-base-100 shadow-sm p-4 text-center text-sm text-base-content/50">
-              앨범 타임라인은 온라인에서 확인할 수 있습니다
+              {t('profile.onlineOnlyAlbum')}
             </div>
           ) : (
             <div className="card bg-base-100 shadow-sm p-4">
@@ -191,34 +193,34 @@ export default function ProfilePage() {
           <div className="space-y-3">
             <div className="card bg-base-100 shadow-sm p-4 space-y-3">
               <h3 className="font-bold text-sm flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-orange-500" /> 여행 기록
+                <Calendar className="w-4 h-4 text-orange-500" /> {t('profile.travelRecord')}
               </h3>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-base-content/60">총 여행 계획</span>
-                  <span className="font-medium">{stats.totalPlans}개</span>
+                  <span className="text-base-content/60">{t('profile.totalPlans')}</span>
+                  <span className="font-medium">{t('profile.count', { count: stats.totalPlans })}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-base-content/60">총 모먼트</span>
-                  <span className="font-medium">{stats.totalMoments}개</span>
+                  <span className="text-base-content/60">{t('profile.totalMoments')}</span>
+                  <span className="font-medium">{t('profile.count', { count: stats.totalMoments })}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-base-content/60">방문 국가</span>
-                  <span className="font-medium">{stats.totalCountries}개국</span>
+                  <span className="text-base-content/60">{t('profile.visitedCountries')}</span>
+                  <span className="font-medium">{t('profile.countryCount', { count: stats.totalCountries })}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-base-content/60">방문 도시</span>
-                  <span className="font-medium">{stats.totalCities}개 도시</span>
+                  <span className="text-base-content/60">{t('profile.visitedCities')}</span>
+                  <span className="font-medium">{t('profile.cityCount', { count: stats.totalCities })}</span>
                 </div>
               </div>
             </div>
 
             <div className="card bg-base-100 shadow-sm p-4 space-y-2">
               <h3 className="font-bold text-sm flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-orange-500" /> 방문 지도
+                <MapPin className="w-4 h-4 text-orange-500" /> {t('profile.visitedMap')}
               </h3>
               <p className="text-xs text-base-content/50">
-                모먼트를 기록하면 방문한 도시와 국가가 자동으로 추적돼요
+                {t('profile.visitedMapHint')}
               </p>
             </div>
           </div>
@@ -230,16 +232,16 @@ export default function ProfilePage() {
           ) : (
             <div className="bg-base-100 rounded-xl p-6 text-center space-y-4">
               <Download className="w-12 h-12 mx-auto text-orange-400" />
-              <h3 className="font-bold text-lg">앱 설치가 필요해요</h3>
+              <h3 className="font-bold text-lg">{t('profile.installRequired')}</h3>
               <p className="text-sm text-base-content/70">
-                오프라인 모드는 PWA(앱) 설치 후 사용할 수 있어요.<br />
-                인터넷 없이도 여행 일정을 확인하고 AI와 대화할 수 있습니다.
+                {t('profile.installHint1')}<br />
+                {t('profile.installHint2')}
               </p>
               <div className="bg-base-200 rounded-lg p-4 text-left text-xs space-y-2">
-                <p className="font-semibold">📱 설치 방법</p>
-                <p><strong>Android:</strong> 주소창 옆 <kbd className="kbd kbd-xs">⋮</kbd> → "홈 화면에 추가"</p>
-                <p><strong>iOS Safari:</strong> 하단 <kbd className="kbd kbd-xs">↑</kbd> 공유 → "홈 화면에 추가"</p>
-                <p><strong>PC Chrome:</strong> 주소창 우측 설치 아이콘 클릭</p>
+                <p className="font-semibold">{t('profile.installHowTo')}</p>
+                <p><strong>Android:</strong> {t('profile.installAndroid')}</p>
+                <p><strong>iOS Safari:</strong> {t('profile.installIos')}</p>
+                <p><strong>PC Chrome:</strong> {t('profile.installPc')}</p>
               </div>
             </div>
           )
@@ -251,7 +253,7 @@ export default function ProfilePage() {
           className="w-full flex items-center justify-between px-4 py-3 bg-base-100 rounded-xl border border-base-200 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
         >
           <span className="flex items-center gap-2">
-            <LogOut className="w-4 h-4" /> 로그아웃
+            <LogOut className="w-4 h-4" /> {t('profile.logout')}
           </span>
           <ChevronRight className="w-4 h-4" />
         </button>

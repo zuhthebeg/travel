@@ -4,6 +4,7 @@ import { compressImage, validateImageFile } from '../lib/imageUtils';
 import { Camera, X, Edit2, Trash2, Smile, Star, MapPin, Clock } from 'lucide-react';
 import { extractExif } from '../lib/exif';
 import { offlineMomentsAPI } from '../lib/offlineAPI';
+import { useTranslation } from 'react-i18next';
 
 // Inline types (will be moved to types.ts by Spark)
 interface Moment {
@@ -21,17 +22,17 @@ interface Moment {
 }
 
 const MOOD_OPTIONS = [
-  { value: 'amazing', emoji: '😍', label: '최고' },
-  { value: 'good', emoji: '😊', label: '좋았어' },
-  { value: 'okay', emoji: '😐', label: '보통' },
-  { value: 'meh', emoji: '😑', label: '별로' },
-  { value: 'bad', emoji: '😢', label: '아쉬워' },
+  { value: 'amazing', emoji: '😍', label: 'amazing' },
+  { value: 'good', emoji: '😊', label: 'good' },
+  { value: 'okay', emoji: '😐', label: 'okay' },
+  { value: 'meh', emoji: '😑', label: 'meh' },
+  { value: 'bad', emoji: '😢', label: 'bad' },
 ] as const;
 
 const REVISIT_OPTIONS = [
-  { value: 'yes', label: '꼭 다시!', color: 'text-green-600' },
-  { value: 'no', label: '한번이면 충분', color: 'text-gray-500' },
-  { value: 'maybe', label: '글쎄...', color: 'text-yellow-600' },
+  { value: 'yes', label: 'yes', color: 'text-green-600' },
+  { value: 'no', label: 'no', color: 'text-gray-500' },
+  { value: 'maybe', label: 'maybe', color: 'text-yellow-600' },
 ] as const;
 
 interface MomentSectionProps {
@@ -39,6 +40,7 @@ interface MomentSectionProps {
 }
 
 export default function MomentSection({ scheduleId }: MomentSectionProps) {
+  const { t } = useTranslation();
   const { currentUser } = useStore();
   const [moments, setMoments] = useState<Moment[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -83,7 +85,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
     if (!file) return;
     const validation = validateImageFile(file, 10);
     if (!validation.valid) {
-      setError(validation.error || '잘못된 이미지');
+      setError(validation.error || t('moment.invalidImage'));
       return;
     }
     setImageFile(file);
@@ -119,7 +121,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
   const handleSubmit = async () => {
     const hasImage = imageFile || imagePreview || (imageUrlMode && imageUrl.trim());
     if (!note && !mood && !revisit && !rating && !hasImage) {
-      setError('기분, 메모, 사진, 별점 중 하나는 남겨주세요');
+      setError(t('moment.requiredOne'));
       return;
     }
 
@@ -159,14 +161,14 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
 
       resetForm();
     } catch (e: any) {
-      setError(e.message || '저장에 실패했습니다');
+      setError(e.message || t('moment.saveFailed'));
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('이 기록을 삭제할까요?')) return;
+    if (!confirm(t('moment.deleteConfirm'))) return;
     try {
       await offlineMomentsAPI.delete(id);
       setMoments(prev => prev.filter(m => m.id !== id));
@@ -193,7 +195,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-base flex items-center gap-2">
           <Smile className="w-5 h-5 text-orange-500" />
-          순간 기록
+          {t('moment.title')}
           {moments.length > 0 && (
             <span className="text-sm font-normal text-gray-500">({moments.length})</span>
           )}
@@ -203,7 +205,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
             onClick={() => setShowForm(true)}
             className="text-sm text-orange-600 hover:text-orange-700 font-medium"
           >
-            + 기록 남기기
+            {t('moment.addRecord')}
           </button>
         )}
       </div>
@@ -213,7 +215,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
         <div className="bg-orange-50 dark:bg-gray-800 rounded-xl p-4 space-y-3 border border-orange-200 dark:border-gray-700">
           {/* 기분 태그 */}
           <div>
-            <label className="text-sm text-gray-600 dark:text-gray-400 mb-1 block">기분</label>
+            <label className="text-sm text-gray-600 dark:text-gray-400 mb-1 block">{t('moment.mood')}</label>
             <div className="flex gap-2">
               {MOOD_OPTIONS.map(opt => (
                 <button
@@ -226,7 +228,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
                   }`}
                 >
                   <span className="text-xl">{opt.emoji}</span>
-                  <span className="text-[10px] mt-0.5">{opt.label}</span>
+                  <span className="text-[10px] mt-0.5">{t(`moment.moodOption.${opt.label}`)}</span>
                 </button>
               ))}
             </div>
@@ -234,7 +236,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
 
           {/* 별점 */}
           <div>
-            <label className="text-sm text-gray-600 dark:text-gray-400 mb-1 block">별점</label>
+            <label className="text-sm text-gray-600 dark:text-gray-400 mb-1 block">{t('moment.rating')}</label>
             <div className="flex gap-1">
               {[1, 2, 3, 4, 5].map(v => (
                 <button
@@ -260,12 +262,12 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
           {/* 짧은 감상 */}
           <div>
             <label className="text-sm text-gray-600 dark:text-gray-400 mb-1 block">
-              한줄 메모 <span className="text-gray-400">({note.length}/200)</span>
+              {t('moment.memo')} <span className="text-gray-400">({note.length}/200)</span>
             </label>
             <textarea
               value={note}
               onChange={e => setNote(e.target.value.slice(0, 200))}
-              placeholder="이 순간 어땠어?"
+              placeholder={t('moment.memoPlaceholder')}
               className="w-full p-2 rounded-lg border border-gray-200 dark:border-gray-600 dark:bg-gray-700 text-sm resize-none"
               rows={2}
             />
@@ -273,7 +275,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
 
           {/* 다시 가고 싶다 */}
           <div>
-            <label className="text-sm text-gray-600 dark:text-gray-400 mb-1 block">다시 가고 싶다?</label>
+            <label className="text-sm text-gray-600 dark:text-gray-400 mb-1 block">{t('moment.revisitQuestion')}</label>
             <div className="flex gap-2">
               {REVISIT_OPTIONS.map(opt => (
                 <button
@@ -285,7 +287,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
                       : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600'
                   }`}
                 >
-                  {opt.label}
+                  {t(`moment.revisitOption.${opt.label}`)}
                 </button>
               ))}
             </div>
@@ -294,13 +296,13 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
           {/* 사진 */}
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <label className="text-sm text-gray-600 dark:text-gray-400">사진</label>
+              <label className="text-sm text-gray-600 dark:text-gray-400">{t('moment.photo')}</label>
               <button
                 type="button"
                 onClick={() => { setImageUrlMode(!imageUrlMode); setImageUrl(''); setImageFile(null); setImagePreview(''); }}
                 className="text-[10px] text-orange-500 hover:text-orange-600"
               >
-                {imageUrlMode ? '📁 파일 업로드' : '🔗 URL 입력'}
+                {imageUrlMode ? t('moment.fileUpload') : t('moment.urlInput')}
               </button>
             </div>
             <input
@@ -341,7 +343,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
                 onClick={() => fileInputRef.current?.click()}
                 className="w-full p-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-gray-500 text-sm flex items-center justify-center gap-2 hover:border-orange-400"
               >
-                <Camera className="w-4 h-4" /> 사진 추가
+                <Camera className="w-4 h-4" /> {t('moment.addPhoto')}
               </button>
             )}
 
@@ -372,13 +374,13 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
               disabled={isSubmitting}
               className="flex-1 bg-orange-500 text-white py-2 rounded-lg text-sm font-medium hover:bg-orange-600 disabled:opacity-50"
             >
-              {isSubmitting ? '저장 중...' : editingId ? '수정' : '기록하기'}
+              {isSubmitting ? t('moment.saving') : editingId ? t('moment.edit') : t('moment.record')}
             </button>
             <button
               onClick={resetForm}
               className="px-4 py-2 text-gray-500 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
             >
-              취소
+              {t('moment.cancel')}
             </button>
           </div>
         </div>
@@ -386,10 +388,10 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
 
       {/* 기록 목록 */}
       {isLoading ? (
-        <p className="text-center text-gray-400 text-sm py-4">불러오는 중...</p>
+        <p className="text-center text-gray-400 text-sm py-4">{t('moment.loading')}</p>
       ) : moments.length === 0 && !showForm ? (
         <p className="text-center text-gray-400 text-sm py-6">
-          아직 기록이 없어요. {currentUser ? '첫 순간을 남겨보세요!' : ''}
+          {t('moment.empty')} {currentUser ? t('moment.emptyHint') : ''}
         </p>
       ) : (
         <div className="space-y-3">
@@ -405,7 +407,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
                       {(m.username || '?')[0]}
                     </div>
                   )}
-                  <span className="text-sm text-gray-600 dark:text-gray-400">{m.username || '나'}</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">{m.username || t('moment.me')}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   {isMyMoment(m) && (
@@ -454,7 +456,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
                     m.revisit === 'maybe' ? 'border-yellow-300 text-yellow-600 bg-yellow-50' :
                     'border-gray-300 text-gray-500 bg-gray-50'
                   }`}>
-                    {REVISIT_OPTIONS.find(o => o.value === m.revisit)?.label}
+                    {t(`moment.revisitOption.${REVISIT_OPTIONS.find(o => o.value === m.revisit)?.label}`)}
                   </span>
                 )}
               </div>
@@ -476,7 +478,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
         >
           <img
             src={selectedImage}
-            alt="확대 이미지"
+            alt={t('moment.zoomedImage')}
             className="max-w-full max-h-[85vh] rounded-xl shadow-2xl"
           />
         </div>

@@ -2,12 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import type { Review, ReviewStats } from '../store/types';
 import { reviewsAPI } from '../lib/api';
 import { compressImage, validateImageFile } from '../lib/imageUtils';
+import { useTranslation } from 'react-i18next';
 
 interface ReviewSectionProps {
   scheduleId: number;
 }
 
 export default function ReviewSection({ scheduleId }: ReviewSectionProps) {
+  const { t } = useTranslation();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [stats, setStats] = useState<ReviewStats>({ totalReviews: 0, averageRating: 0 });
   const [isLoadingReviews, setIsLoadingReviews] = useState(false);
@@ -70,12 +72,12 @@ export default function ReviewSection({ scheduleId }: ReviewSectionProps) {
   const handleSubmit = async () => {
     // Validation
     if (!imageFile) {
-      setErrorMessage('사진을 업로드해주세요');
+      setErrorMessage(t('review.photoRequired'));
       return;
     }
 
     if (rating < 1 || rating > 5) {
-      setErrorMessage('평점을 선택해주세요');
+      setErrorMessage(t('review.ratingRequired'));
       return;
     }
 
@@ -117,14 +119,14 @@ export default function ReviewSection({ scheduleId }: ReviewSectionProps) {
       }
     } catch (error: any) {
       console.error('Failed to submit review:', error);
-      setErrorMessage(error.message || '리뷰 작성에 실패했습니다');
+      setErrorMessage(error.message || t('review.submitFailed'));
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDeleteReview = async (reviewId: number) => {
-    if (!confirm('정말 이 리뷰를 삭제하시겠습니까?')) {
+    if (!confirm(t('review.deleteConfirm'))) {
       return;
     }
 
@@ -148,7 +150,7 @@ export default function ReviewSection({ scheduleId }: ReviewSectionProps) {
       }
     } catch (error) {
       console.error('Failed to delete review:', error);
-      alert('리뷰 삭제에 실패했습니다');
+      alert(t('review.deleteFailed'));
     }
   };
 
@@ -161,19 +163,19 @@ export default function ReviewSection({ scheduleId }: ReviewSectionProps) {
             ⭐ {stats.averageRating.toFixed(1)}
           </div>
           <div className="text-sm text-base-content/70 mt-1">
-            {stats.totalReviews}개의 리뷰
+            {t('review.totalCount', { count: stats.totalReviews })}
           </div>
         </div>
       )}
 
       {/* Review Submission Form */}
       <div className="bg-base-100 p-4 rounded-lg border border-base-300">
-        <h3 className="font-semibold mb-3">리뷰 작성</h3>
+        <h3 className="font-semibold mb-3">{t('review.write')}</h3>
 
         {/* Image Upload */}
         <div className="mb-4">
           <label className="block text-sm font-medium mb-2">
-            사진 <span className="text-error">*</span>
+            {t('review.photo')} <span className="text-error">*</span>
           </label>
           <input
             ref={fileInputRef}
@@ -196,7 +198,7 @@ export default function ReviewSection({ scheduleId }: ReviewSectionProps) {
         {/* Rating */}
         <div className="mb-4">
           <label className="block text-sm font-medium mb-2">
-            평점 <span className="text-error">*</span>
+            {t('review.rating')} <span className="text-error">*</span>
           </label>
           <div className="flex gap-2">
             {[1, 2, 3, 4, 5].map((star) => (
@@ -216,23 +218,23 @@ export default function ReviewSection({ scheduleId }: ReviewSectionProps) {
 
         {/* Author Name */}
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-2">작성자</label>
+          <label className="block text-sm font-medium mb-2">{t('review.author')}</label>
           <input
             type="text"
             value={authorName}
             onChange={(e) => setAuthorName(e.target.value)}
-            placeholder="익명"
+            placeholder={t('review.anonymous')}
             className="input input-bordered w-full"
           />
         </div>
 
         {/* Review Text */}
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-2">리뷰 내용 (선택)</label>
+          <label className="block text-sm font-medium mb-2">{t('review.contentOptional')}</label>
           <textarea
             value={reviewText}
             onChange={(e) => setReviewText(e.target.value)}
-            placeholder="여행지에 대한 후기를 남겨주세요..."
+            placeholder={t('review.contentPlaceholder')}
             className="textarea textarea-bordered w-full h-24"
             maxLength={500}
           />
@@ -257,17 +259,17 @@ export default function ReviewSection({ scheduleId }: ReviewSectionProps) {
           {isSubmitting ? (
             <>
               <span className="loading loading-spinner loading-sm"></span>
-              작성 중...
+              {t('review.submitting')}
             </>
           ) : (
-            '리뷰 작성'
+            t('review.write')
           )}
         </button>
       </div>
 
       {/* Reviews List */}
       <div>
-        <h3 className="font-semibold mb-3">리뷰 목록</h3>
+        <h3 className="font-semibold mb-3">{t('review.list')}</h3>
 
         {isLoadingReviews ? (
           <div className="flex justify-center py-8">
@@ -275,8 +277,8 @@ export default function ReviewSection({ scheduleId }: ReviewSectionProps) {
           </div>
         ) : reviews.length === 0 ? (
           <div className="text-center py-8 text-base-content/60">
-            <p>아직 리뷰가 없습니다</p>
-            <p className="text-sm mt-1">첫 번째 리뷰를 작성해보세요!</p>
+            <p>{t('review.empty')}</p>
+            <p className="text-sm mt-1">{t('review.emptyHint')}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -305,7 +307,7 @@ export default function ReviewSection({ scheduleId }: ReviewSectionProps) {
                     onClick={() => handleDeleteReview(review.id)}
                     className="btn btn-ghost btn-xs text-error"
                   >
-                    삭제
+                    {t('review.delete')}
                   </button>
                 </div>
 

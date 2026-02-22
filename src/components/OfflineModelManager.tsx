@@ -10,10 +10,12 @@ import { offlineEngine, OfflineEngineManager, MODELS, type ModelSize, type Offli
 import { runBootstrap, cancelBootstrap, onBootstrapProgress, startKeepWarm, stopKeepWarm } from '../lib/offline/bootstrap';
 import { enableAutoSync, disableAutoSync, runSync } from '../lib/offline/syncEngine';
 import type { BootstrapProgress } from '../lib/offline/types';
+import { useTranslation } from 'react-i18next';
 
 type ModelOption = ModelSize | 'none';
 
 export function OfflineModelManager() {
+  const { t } = useTranslation();
   const [aiState, setAiState] = useState<OfflineEngineState>(offlineEngine.getState());
   const [supported] = useState(() => OfflineEngineManager.isSupported());
   const [offlineMode, setOfflineMode] = useState(() => localStorage.getItem('offline_mode') === 'true');
@@ -114,10 +116,10 @@ export function OfflineModelManager() {
         {/* Header + toggle */}
         <div className="flex items-center justify-between">
           <h3 className="card-title text-sm">
-            ✈️ 오프라인 모드
-            {offlineMode && isDataReady && (isAiReady || isAiNone) && <span className="badge badge-success badge-xs ml-1">완료</span>}
+            {t('offline.title')}
+            {offlineMode && isDataReady && (isAiReady || isAiNone) && <span className="badge badge-success badge-xs ml-1">{t('offline.done')}</span>}
             {offlineMode && (dataStatus === 'in_progress' || aiState.status === 'downloading' || aiState.status === 'loading') && (
-              <span className="badge badge-warning badge-xs ml-1">준비중</span>
+              <span className="badge badge-warning badge-xs ml-1">{t('offline.preparing')}</span>
             )}
           </h3>
           <input
@@ -129,17 +131,17 @@ export function OfflineModelManager() {
         </div>
 
         <p className="text-xs text-base-content/60">
-          여행 전 WiFi에서 켜두세요. 인터넷 없이도 여행 데이터를 사용할 수 있습니다.
+          {t('offline.desc')}
         </p>
 
         {offlineMode && (
           <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 space-y-1">
-            <p className="text-xs font-medium text-warning-content/80">⚡ 오프라인 모드 주의사항</p>
+            <p className="text-xs font-medium text-warning-content/80">{t('offline.cautionTitle')}</p>
             <ul className="text-[10px] text-base-content/60 space-y-0.5 list-disc list-inside">
-              <li>AI 모델 사용 시 <b>배터리 소모가 증가</b>하고 <b>발열</b>이 생길 수 있습니다</li>
-              <li>온라인 AI 대비 <b>성능과 품질이 낮습니다</b> (간단한 추천/요약 수준)</li>
-              <li><b>이미지 인식, 음성 입력</b>은 오프라인에서 지원되지 않습니다</li>
-              <li>새 여행 생성, 멤버 초대 등은 <b>온라인에서만</b> 가능합니다</li>
+              <li>{t('offline.caution1')}</li>
+              <li>{t('offline.caution2')}</li>
+              <li>{t('offline.caution3')}</li>
+              <li>{t('offline.caution4')}</li>
             </ul>
           </div>
         )}
@@ -149,9 +151,9 @@ export function OfflineModelManager() {
             {/* ── Track 1: Data Cache (FIRST) ── */}
             <div className="bg-base-100 rounded-lg p-3 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium">📦 여행 데이터</span>
-                {isDataReady && <span className="text-xs text-success">✅ 준비됨</span>}
-                {dataStatus === 'failed' && <span className="text-xs text-error">❌ 실패</span>}
+                <span className="text-xs font-medium">{t('offline.travelData')}</span>
+                {isDataReady && <span className="text-xs text-success">{t('offline.ready')}</span>}
+                {dataStatus === 'failed' && <span className="text-xs text-error">{t('offline.failed')}</span>}
               </div>
 
               {dataStatus === 'in_progress' && dataProgress && (
@@ -163,8 +165,8 @@ export function OfflineModelManager() {
                   />
                   <p className="text-[10px] text-center text-base-content/60 mt-0.5">
                     {dataProgress.currentPlanTitle
-                      ? `${dataProgress.currentPlanTitle} 다운로드 중 (${dataProgress.done}/${dataProgress.total})`
-                      : `여행 데이터 다운로드 중... (${dataProgress.done}/${dataProgress.total})`
+                      ? t('offline.downloadingPlan', { title: dataProgress.currentPlanTitle, done: dataProgress.done, total: dataProgress.total })
+                      : t('offline.downloadingData', { done: dataProgress.done, total: dataProgress.total })
                     }
                   </p>
                 </div>
@@ -172,23 +174,22 @@ export function OfflineModelManager() {
 
               {isDataReady && dataProgress && (
                 <p className="text-[10px] text-base-content/50">
-                  {dataProgress.total}개 여행 캐시 완료
-                  {dataProgress.failed > 0 && ` (${dataProgress.failed}개 실패)`}
+                  {t('offline.cacheDone', { total: dataProgress.total, failed: dataProgress.failed })}
                 </p>
               )}
 
               {dataStatus === 'failed' && (
-                <button onClick={() => runBootstrap().catch(console.error)} className="btn btn-xs btn-outline">재시도</button>
+                <button onClick={() => runBootstrap().catch(console.error)} className="btn btn-xs btn-outline">{t('offline.retry')}</button>
               )}
             </div>
 
             {/* ── Track 2: AI Model (SECOND) ── */}
             <div className="bg-base-100 rounded-lg p-3 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium">🤖 AI 모델</span>
-                {isAiNone && <span className="text-xs text-base-content/40">사용안함</span>}
-                {isAiReady && <span className="text-xs text-success">✅ 준비됨</span>}
-                {!isAiNone && aiState.status === 'error' && <span className="text-xs text-error">❌ 실패</span>}
+                <span className="text-xs font-medium">{t('offline.aiModel')}</span>
+                {isAiNone && <span className="text-xs text-base-content/40">{t('offline.aiOff')}</span>}
+                {isAiReady && <span className="text-xs text-success">{t('offline.ready')}</span>}
+                {!isAiNone && aiState.status === 'error' && <span className="text-xs text-error">{t('offline.failed')}</span>}
               </div>
 
               {!isAiNone && (aiState.status === 'downloading' || aiState.status === 'loading') && (
@@ -207,7 +208,7 @@ export function OfflineModelManager() {
               {!isAiNone && aiState.status === 'error' && (
                 <div className="flex items-center gap-2">
                   <p className="text-[10px] text-error flex-1">{aiState.error}</p>
-                  <button onClick={() => offlineEngine.init(selectedModel as ModelSize)} className="btn btn-xs btn-outline">재시도</button>
+                  <button onClick={() => offlineEngine.init(selectedModel as ModelSize)} className="btn btn-xs btn-outline">{t('offline.retry')}</button>
                 </div>
               )}
             </div>
@@ -215,7 +216,7 @@ export function OfflineModelManager() {
             {/* ── Model Selection ── */}
             <details className="collapse collapse-arrow bg-base-100 rounded-lg">
               <summary className="collapse-title text-xs font-medium p-3 min-h-0">
-                모델 변경
+                {t('offline.changeModel')}
               </summary>
               <div className="collapse-content px-3 pb-3">
                 <div className="space-y-1.5">
@@ -233,8 +234,8 @@ export function OfflineModelManager() {
                       disabled={aiState.status === 'downloading' || aiState.status === 'loading'}
                     />
                     <div className="flex-1">
-                      <span className="font-medium">AI 사용안함</span>
-                      <span className="text-base-content/50 ml-1">(데이터만 캐싱)</span>
+                      <span className="font-medium">{t('offline.aiOff')}</span>
+                      <span className="text-base-content/50 ml-1">{t('offline.dataOnly')}</span>
                     </div>
                   </label>
 
@@ -262,7 +263,7 @@ export function OfflineModelManager() {
 
                   {!supported && (
                     <p className="text-[10px] text-base-content/40 p-2">
-                      이 브라우저는 WebGPU를 지원하지 않아 AI 모델을 사용할 수 없습니다.
+                      {t('offline.noWebGpu')}
                     </p>
                   )}
                 </div>
@@ -273,7 +274,7 @@ export function OfflineModelManager() {
 
         {!offlineMode && (
           <div className="text-xs text-base-content/40">
-            오프라인 모드가 꺼져 있습니다. 서버 API를 사용합니다.
+            {t('offline.offMessage')}
           </div>
         )}
       </div>

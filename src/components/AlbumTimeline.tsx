@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { Star, MapPin, Calendar, Grid3X3, List, Image } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface TimelineMoment {
   id: number;
@@ -28,7 +29,7 @@ const MOOD_MAP: Record<string, string> = {
 };
 
 const REVISIT_MAP: Record<string, string> = {
-  yes: '꼭 다시!', no: '한번이면 충분', maybe: '글쎄...',
+  yes: 'yes', no: 'no', maybe: 'maybe',
 };
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:8788' : '';
@@ -40,6 +41,7 @@ interface AlbumTimelineProps {
 }
 
 export default function AlbumTimeline({ pastPlanIds }: AlbumTimelineProps) {
+  const { t } = useTranslation();
   const { currentUser } = useStore();
   const navigate = useNavigate();
   const [moments, setMoments] = useState<TimelineMoment[]>([]);
@@ -76,8 +78,8 @@ export default function AlbumTimeline({ pastPlanIds }: AlbumTimelineProps) {
     return (
       <div className="text-center py-16 text-base-content/50">
         <p className="text-4xl mb-3">📸</p>
-        <p className="text-lg mb-1">내 앨범</p>
-        <p className="text-sm">로그인하면 여행 기록을 모아볼 수 있어요</p>
+        <p className="text-lg mb-1">{t('album.myAlbum')}</p>
+        <p className="text-sm">{t('album.loginHint')}</p>
       </div>
     );
   }
@@ -95,8 +97,8 @@ export default function AlbumTimeline({ pastPlanIds }: AlbumTimelineProps) {
     return (
       <div className="text-center py-16 text-base-content/50">
         <p className="text-4xl mb-3">📸</p>
-        <p className="text-lg mb-1">{pastPlanIds ? '완료된 여행 기록이 없어요' : '아직 기록이 없어요'}</p>
-        <p className="text-sm">여행 일정에서 순간을 남겨보세요</p>
+        <p className="text-lg mb-1">{pastPlanIds ? t('album.noCompleted') : t('album.noRecords')}</p>
+        <p className="text-sm">{t('album.leaveMoment')}</p>
       </div>
     );
   }
@@ -120,26 +122,26 @@ export default function AlbumTimeline({ pastPlanIds }: AlbumTimelineProps) {
     <div className="space-y-4">
       {/* View Toggle */}
       <div className="flex items-center justify-between">
-        <h3 className="font-bold text-lg">📸 내 앨범 <span className="text-sm font-normal text-base-content/50">({filteredMoments.length}개 기록)</span></h3>
+        <h3 className="font-bold text-lg">{t('album.header', { count: filteredMoments.length })}</h3>
         <div className="flex bg-base-200 rounded-lg p-0.5 gap-0.5">
           <button
             onClick={() => setView('timeline')}
             className={`p-1.5 rounded-md transition-colors ${view === 'timeline' ? 'bg-base-100 shadow-sm' : 'hover:bg-base-300'}`}
-            title="타임라인"
+            title={t('album.timeline')}
           >
             <List className="w-4 h-4" />
           </button>
           <button
             onClick={() => setView('grid')}
             className={`p-1.5 rounded-md transition-colors ${view === 'grid' ? 'bg-base-100 shadow-sm' : 'hover:bg-base-300'}`}
-            title="그리드"
+            title={t('album.grid')}
           >
             <Grid3X3 className="w-4 h-4" />
           </button>
           <button
             onClick={() => setView('photos')}
             className={`p-1.5 rounded-md transition-colors ${view === 'photos' ? 'bg-base-100 shadow-sm' : 'hover:bg-base-300'}`}
-            title="사진만"
+            title={t('album.photosOnly')}
           >
             <Image className="w-4 h-4" />
           </button>
@@ -149,7 +151,7 @@ export default function AlbumTimeline({ pastPlanIds }: AlbumTimelineProps) {
       {/* === Photos Only View === */}
       {view === 'photos' && (
         allPhotos.length === 0 ? (
-          <p className="text-center text-base-content/40 py-8 text-sm">사진이 없어요</p>
+          <p className="text-center text-base-content/40 py-8 text-sm">{t('album.noPhotos')}</p>
         ) : (
           <div className="grid grid-cols-3 gap-1.5">
             {allPhotos.map(m => (
@@ -216,7 +218,7 @@ export default function AlbumTimeline({ pastPlanIds }: AlbumTimelineProps) {
                       m.revisit === 'yes' ? 'bg-green-100 text-green-600' :
                       m.revisit === 'maybe' ? 'bg-yellow-100 text-yellow-600' :
                       'bg-gray-100 text-gray-500'
-                    }`}>{REVISIT_MAP[m.revisit]}</span>
+                    }`}>{t(`album.revisit.${REVISIT_MAP[m.revisit]}`)}</span>
                   )}
                 </div>
                 {m.note && <p className="text-xs text-base-content/60 line-clamp-2">{m.note}</p>}
@@ -281,7 +283,7 @@ export default function AlbumTimeline({ pastPlanIds }: AlbumTimelineProps) {
                           m.revisit === 'yes' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' :
                           m.revisit === 'maybe' ? 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400' :
                           'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
-                        }`}>{REVISIT_MAP[m.revisit]}</span>
+                        }`}>{t(`album.revisit.${REVISIT_MAP[m.revisit]}`)}</span>
                       )}
                     </div>
                     {m.note && <p className="text-sm text-base-content/70">{m.note}</p>}

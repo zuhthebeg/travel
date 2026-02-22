@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import type { TravelMemo } from '../../store/types';
+import { useTranslation } from 'react-i18next';
 
 interface TravelMemoCardProps {
   memo: TravelMemo;
@@ -22,20 +23,21 @@ const CATEGORY_ICONS: Record<string, string> = {
 
 // 카테고리 한글 이름
 const CATEGORY_NAMES: Record<string, string> = {
-  visa: '비자/입국',
-  timezone: '시차',
-  weather: '날씨',
-  currency: '환율/통화',
-  emergency: '비상연락처',
-  accommodation: '숙소',
-  transportation: '교통',
-  custom: '기타',
+  visa: 'visa',
+  timezone: 'timezone',
+  weather: 'weather',
+  currency: 'currency',
+  emergency: 'emergency',
+  accommodation: 'accommodation',
+  transportation: 'transportation',
+  custom: 'custom',
 };
 
 export function TravelMemoCard({ memo, onEdit, onDelete }: TravelMemoCardProps) {
+  const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const icon = memo.icon || CATEGORY_ICONS[memo.category] || '📝';
-  const categoryName = CATEGORY_NAMES[memo.category] || memo.category;
+  const categoryName = t(`memo.category.${CATEGORY_NAMES[memo.category] || memo.category}`);
 
   const hasLongContent = memo.content && memo.content.length > 100;
 
@@ -58,7 +60,7 @@ export function TravelMemoCard({ memo, onEdit, onDelete }: TravelMemoCardProps) 
               <button
                 onClick={() => onEdit(memo)}
                 className="btn btn-ghost btn-xs btn-square"
-                title="수정"
+                title={t('memo.edit')}
               >
                 <Pencil className="w-3.5 h-3.5" />
               </button>
@@ -67,7 +69,7 @@ export function TravelMemoCard({ memo, onEdit, onDelete }: TravelMemoCardProps) 
               <button
                 onClick={() => onDelete(memo.id)}
                 className="btn btn-ghost btn-xs btn-square text-error"
-                title="삭제"
+                title={t('memo.delete')}
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
@@ -87,9 +89,9 @@ export function TravelMemoCard({ memo, onEdit, onDelete }: TravelMemoCardProps) 
                 className="btn btn-ghost btn-xs mt-1 gap-1"
               >
                 {isExpanded ? (
-                  <>접기 <ChevronUp className="w-3 h-3" /></>
+                  <>{t('memo.collapse')} <ChevronUp className="w-3 h-3" /></>
                 ) : (
-                  <>더보기 <ChevronDown className="w-3 h-3" /></>
+                  <>{t('memo.more')} <ChevronDown className="w-3 h-3" /></>
                 )}
               </button>
             )}

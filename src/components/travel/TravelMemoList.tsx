@@ -5,6 +5,7 @@ import { TravelMemoForm } from './TravelMemoForm';
 import { Button } from '../Button';
 import { Loading } from '../Loading';
 import type { TravelMemo, TravelMemoCategory } from '../../store/types';
+import { useTranslation } from 'react-i18next';
 
 interface TravelMemoListProps {
   planId: number;
@@ -12,6 +13,7 @@ interface TravelMemoListProps {
 }
 
 export function TravelMemoList({ planId, planRegion }: TravelMemoListProps) {
+  const { t } = useTranslation();
   const [memos, setMemos] = useState<TravelMemo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(true);
@@ -112,7 +114,7 @@ export function TravelMemoList({ planId, planRegion }: TravelMemoListProps) {
 
   // Delete memo
   const handleDelete = async (id: number) => {
-    if (!confirm('이 메모를 삭제하시겠습니까?')) return;
+    if (!confirm(t('memo.deleteConfirm'))) return;
     
     try {
       const res = await fetch(`/api/plans/${planId}/memos/${id}`, {
@@ -129,7 +131,7 @@ export function TravelMemoList({ planId, planRegion }: TravelMemoListProps) {
   // AI로 자동 생성 (변경분 우선 부분 업데이트)
   const handleGenerate = async () => {
     if (!planRegion) {
-      alert('여행 지역이 설정되어야 자동 생성이 가능합니다.');
+      alert(t('memo.regionRequired'));
       return;
     }
 
@@ -162,11 +164,11 @@ export function TravelMemoList({ planId, planRegion }: TravelMemoListProps) {
         localStorage.setItem(snapshotKey, JSON.stringify(schedulesSnapshot));
       } else {
         const error = await res.json();
-        alert(error.error || '자동 생성에 실패했습니다.');
+        alert(error.error || t('memo.generateFailed'));
       }
     } catch (e) {
       console.error('Failed to generate memos:', e);
-      alert('자동 생성에 실패했습니다.');
+      alert(t('memo.generateFailed'));
     } finally {
       setIsGenerating(false);
     }
@@ -189,7 +191,7 @@ export function TravelMemoList({ planId, planRegion }: TravelMemoListProps) {
       >
         <h2 className="text-lg font-bold flex items-center gap-2">
           <FileText className="w-5 h-5 text-primary" />
-          여행 정보
+          {t('memo.travelInfo')}
           <span className="badge badge-sm">{memos.length}</span>
         </h2>
         <button className="btn btn-ghost btn-sm btn-square">
@@ -201,7 +203,7 @@ export function TravelMemoList({ planId, planRegion }: TravelMemoListProps) {
         <>
           {hasScheduleChanged && (
             <div className="alert alert-warning py-2 text-sm">
-              <span>일정이 바뀌었어. 여행 정보도 다시 업데이트하는 걸 추천해.</span>
+              <span>{t('memo.scheduleChangedHint')}</span>
             </div>
           )}
 
@@ -213,7 +215,7 @@ export function TravelMemoList({ planId, planRegion }: TravelMemoListProps) {
               onClick={() => { setShowForm(true); setEditingMemo(null); }}
               className="gap-1 border border-base-300"
             >
-              <Plus className="w-4 h-4" /> 추가
+              <Plus className="w-4 h-4" /> {t('memo.add')}
             </Button>
             {planRegion && (
               <Button
@@ -224,7 +226,7 @@ export function TravelMemoList({ planId, planRegion }: TravelMemoListProps) {
                 className="gap-1"
               >
                 {isGenerating ? <Loading /> : <Sparkles className="w-4 h-4" />}
-                {hasScheduleChanged ? 'AI 재업데이트 추천' : 'AI 일정기반 업데이트'}
+                {hasScheduleChanged ? t('memo.aiRecommendUpdate') : t('memo.aiScheduleUpdate')}
               </Button>
             )}
           </div>
@@ -242,8 +244,8 @@ export function TravelMemoList({ planId, planRegion }: TravelMemoListProps) {
           {memos.length === 0 ? (
             <div className="text-center py-8 text-base-content/60">
               <FileText className="w-12 h-12 mx-auto mb-2 opacity-30" />
-              <p>아직 여행 정보가 없습니다.</p>
-              <p className="text-sm">일정 기반 체크리스트(예약/예산/준비물/연락처)를 추가해보세요.</p>
+              <p>{t('memo.empty')}</p>
+              <p className="text-sm">{t('memo.emptyHint')}</p>
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">

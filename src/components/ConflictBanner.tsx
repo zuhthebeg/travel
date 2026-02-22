@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { getConflictOps } from '../lib/db';
 import type { OpLogEntry } from '../lib/offline/types';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   planId: number;
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function ConflictBanner({ planId, onResolve }: Props) {
+  const { t } = useTranslation();
   const [conflicts, setConflicts] = useState<OpLogEntry[]>([]);
 
   useEffect(() => {
@@ -24,14 +26,14 @@ export default function ConflictBanner({ planId, onResolve }: Props) {
       <div className="flex items-center gap-2">
         <span className="text-warning text-lg">⚠️</span>
         <span className="text-sm font-medium">
-          {conflicts.length}개 충돌 발생 — 오프라인 변경사항이 서버와 다릅니다
+          {t('conflict.bannerMessage', { count: conflicts.length })}
         </span>
       </div>
       <button
         className="btn btn-warning btn-sm"
         onClick={() => onResolve(conflicts)}
       >
-        해결하기
+        {t('conflict.resolve')}
       </button>
     </div>
   );
