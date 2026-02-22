@@ -6,7 +6,7 @@ import { offlinePlansAPI, offlineSchedulesAPI } from '../lib/offlineAPI';
 
 const plansAPI = localStorage.getItem('offline_mode') === 'true' ? offlinePlansAPI : rawPlansAPI;
 const schedulesAPI = localStorage.getItem('offline_mode') === 'true' ? offlineSchedulesAPI : rawSchedulesAPI;
-import { formatDateRange, getDaysDifference, formatDate, formatDisplayDate } from '../lib/utils';
+import { formatDateRange, getDaysDifference, formatDate, formatDisplayDate, parseDateLocal } from '../lib/utils';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { ScheduleCard } from '../components/ScheduleCard';
@@ -446,12 +446,12 @@ export function PlanDetailPage() {
 
       // Update plan dates based on remaining schedules
       if (remainingSchedules.length > 0 && selectedPlan) {
-        const dates = remainingSchedules.map(s => new Date(s.date));
+        const dates = remainingSchedules.map(s => parseDateLocal(s.date));
         const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
         const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
 
-        const newStartDate = minDate.toISOString().split('T')[0];
-        const newEndDate = maxDate.toISOString().split('T')[0];
+        const newStartDate = formatDate(minDate);
+        const newEndDate = formatDate(maxDate);
 
         // Only update if dates have changed
         if (newStartDate !== selectedPlan.start_date || newEndDate !== selectedPlan.end_date) {
@@ -1451,9 +1451,9 @@ export function PlanDetailPage() {
                 setSchedules(newSchedules);
 
                 // Check if schedule date is outside plan range and update plan dates
-                const scheduleDate = new Date(schedule.date);
-                const planStart = new Date(selectedPlan.start_date);
-                const planEnd = new Date(selectedPlan.end_date);
+                const scheduleDate = parseDateLocal(schedule.date);
+                const planStart = parseDateLocal(selectedPlan.start_date);
+                const planEnd = parseDateLocal(selectedPlan.end_date);
 
                 let needsUpdate = false;
                 let newStartDate = selectedPlan.start_date;

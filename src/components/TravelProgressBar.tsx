@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Flag, Trophy, Moon, PersonStanding } from 'lucide-react';
+import { parseDateLocal } from '../lib/utils';
 
 interface TravelProgressBarProps {
   startDate: string; // YYYY-MM-DD format
@@ -13,8 +14,8 @@ export function TravelProgressBar({ startDate, endDate }: TravelProgressBarProps
   useEffect(() => {
     const calculateProgress = () => {
       const now = new Date();
-      const start = new Date(startDate);
-      const end = new Date(endDate);
+      const start = parseDateLocal(startDate);
+      const end = parseDateLocal(endDate);
 
       // Set time to midnight for date comparison
       start.setHours(0, 0, 0, 0);

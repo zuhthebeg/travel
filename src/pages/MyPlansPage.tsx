@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { plansAPI as rawPlansAPI } from '../lib/api';
 import { offlinePlansAPI } from '../lib/offlineAPI';
+import { parseDateLocal } from '../lib/utils';
 
 const plansAPI = localStorage.getItem('offline_mode') === 'true' ? offlinePlansAPI : rawPlansAPI;
 import type { Plan } from '../store/types';
@@ -83,8 +84,8 @@ export function MyPlansPage() {
     if (sortOrder === 'newest') result.sort((a, b) => b.start_date.localeCompare(a.start_date));
     if (sortOrder === 'oldest') result.sort((a, b) => a.start_date.localeCompare(b.start_date));
     if (sortOrder === 'upcoming') result.sort((a, b) => {
-      const aDiff = Math.abs(new Date(a.start_date).getTime() - Date.now());
-      const bDiff = Math.abs(new Date(b.start_date).getTime() - Date.now());
+      const aDiff = Math.abs(parseDateLocal(a.start_date).getTime() - Date.now());
+      const bDiff = Math.abs(parseDateLocal(b.start_date).getTime() - Date.now());
       return aDiff - bDiff;
     });
 
@@ -237,7 +238,7 @@ export function MyPlansPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredPlans.map((plan) => {
-              const daysUntil = Math.ceil((new Date(plan.start_date).getTime() - Date.now()) / 86400000);
+              const daysUntil = Math.ceil((parseDateLocal(plan.start_date).getTime() - Date.now()) / 86400000);
               const isOngoing = plan.start_date <= today && plan.end_date >= today;
               const isPast = plan.end_date < today;
               return (

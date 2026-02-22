@@ -7,7 +7,7 @@ import { offlinePlansAPI, offlineSchedulesAPI } from '../lib/offlineAPI';
 // Use offline-aware API when offline mode is on
 const plansAPI = localStorage.getItem('offline_mode') === 'true' ? offlinePlansAPI : rawPlansAPI;
 const schedulesAPI = localStorage.getItem('offline_mode') === 'true' ? offlineSchedulesAPI : rawSchedulesAPI;
-import { formatDate, getCountryFlag, extractCountryFromRegion } from '../lib/utils';
+import { formatDate, getCountryFlag, extractCountryFromRegion, parseDateLocal } from '../lib/utils';
 import { PlanCard } from '../components/PlanCard';
 import { GlobalNav } from '../components/GlobalNav';
 import { TravelMap, type MapPoint } from '../components/TravelMap';
@@ -118,7 +118,7 @@ export function MainPage() {
   // 최신순 정렬 (리스트 표시용 10개 제한)
   const sortedPlans = useMemo(() => {
     return [...plansWithSchedules]
-      .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
+      .sort((a, b) => parseDateLocal(b.start_date).getTime() - parseDateLocal(a.start_date).getTime())
       .slice(0, 10);
   }, [plansWithSchedules]);
 
@@ -132,12 +132,12 @@ export function MainPage() {
     
     return plansWithSchedules
       .filter(plan => {
-        const start = new Date(plan.start_date);
-        const end = new Date(plan.end_date);
+        const start = parseDateLocal(plan.start_date);
+        const end = parseDateLocal(plan.end_date);
         // 여행 기간이 앞뒤 6개월 범위와 겹치면 포함
         return !(end < sixMonthsAgo || start > sixMonthsLater);
       })
-      .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
+      .sort((a, b) => parseDateLocal(a.start_date).getTime() - parseDateLocal(b.start_date).getTime())
       .slice(0, 100);
   }, [plansWithSchedules]);
 
@@ -147,8 +147,8 @@ export function MainPage() {
     targetDate.setDate(targetDate.getDate() + timeOffset);
     
     return mapPlans.filter((plan) => {
-      const start = new Date(plan.start_date);
-      const end = new Date(plan.end_date);
+      const start = parseDateLocal(plan.start_date);
+      const end = parseDateLocal(plan.end_date);
       const rangeStart = new Date(targetDate);
       rangeStart.setDate(rangeStart.getDate() - 30);
       const rangeEnd = new Date(targetDate);
@@ -191,7 +191,7 @@ export function MainPage() {
       // 여행별 대표 좌표 1개 (첫 번째 유효 스케줄)
       const firstWithCoords = plan.schedules.find(s => s.latitude && s.longitude);
       if (firstWithCoords) {
-        const startMonth = plan.start_date ? new Date(plan.start_date).getMonth() + 1 : '';
+        const startMonth = plan.start_date ? parseDateLocal(plan.start_date).getMonth() + 1 : '';
         points.push({
           id: plan.id,
           lat: firstWithCoords.latitude!,
@@ -273,7 +273,7 @@ export function MainPage() {
       const scheduleWithCoords = plan.schedules?.find(s => s.latitude && s.longitude);
       if (scheduleWithCoords) {
         seenRegions.add(regionKey);
-        const startMonth = plan.start_date ? new Date(plan.start_date).getMonth() + 1 : '';
+        const startMonth = plan.start_date ? parseDateLocal(plan.start_date).getMonth() + 1 : '';
         points.push({
           id: plan.id,
           lat: scheduleWithCoords.latitude!,
@@ -303,8 +303,8 @@ export function MainPage() {
 
       const today = new Date();
       const oneWeekLater = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-      const originalStartDate = new Date(plan.start_date);
-      const originalEndDate = new Date(plan.end_date);
+      const originalStartDate = parseDateLocal(plan.start_date);
+      const originalEndDate = parseDateLocal(plan.end_date);
       const tripDuration = originalEndDate.getTime() - originalStartDate.getTime();
 
       const newStartDate = formatDate(oneWeekLater);
@@ -322,7 +322,7 @@ export function MainPage() {
       const dateOffset = oneWeekLater.getTime() - originalStartDate.getTime();
 
       for (const schedule of originalSchedules) {
-        const originalDate = new Date(schedule.date);
+        const originalDate = parseDateLocal(schedule.date);
         const newDate = new Date(originalDate.getTime() + dateOffset);
 
         await schedulesAPI.create({
@@ -388,7 +388,7 @@ export function MainPage() {
                 .sort((a, b) => a.start_date.localeCompare(b.start_date))
                 .slice(0, 2)
                 .map((plan) => {
-                  const daysUntil = Math.ceil((new Date(plan.start_date).getTime() - new Date().getTime()) / 86400000);
+                  const daysUntil = Math.ceil((parseDateLocal(plan.start_date).getTime() - new Date().getTime()) / 86400000);
                   return (
                     <div
                       key={plan.id}

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Schedule } from '../store/types';
+import { parseDateLocal } from '../lib/utils';
 
 interface CalendarViewProps {
   schedules: Schedule[];
@@ -26,7 +27,7 @@ const DAY_COLORS = [
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
 function getDaysBetween(start: string, end: string): number {
-  return Math.ceil((new Date(end).getTime() - new Date(start).getTime()) / 86400000) + 1;
+  return Math.ceil((parseDateLocal(end).getTime() - parseDateLocal(start).getTime()) / 86400000) + 1;
 }
 
 function formatShortDate(date: string): string {
@@ -35,7 +36,7 @@ function formatShortDate(date: string): string {
 }
 
 function getDayNum(scheduleDate: string, startDate: string): number {
-  return Math.ceil((new Date(scheduleDate).getTime() - new Date(startDate).getTime()) / 86400000) + 1;
+  return Math.ceil((parseDateLocal(scheduleDate).getTime() - parseDateLocal(startDate).getTime()) / 86400000) + 1;
 }
 
 function getColorClass(dayNum: number): string {
@@ -48,7 +49,10 @@ function getDateRange(start: string, end: string): string[] {
   const current = new Date(start + 'T00:00:00');
   const endDate = new Date(end + 'T00:00:00');
   while (current <= endDate) {
-    dates.push(current.toISOString().split('T')[0]);
+    const y = current.getFullYear();
+    const m = String(current.getMonth() + 1).padStart(2, '0');
+    const d = String(current.getDate()).padStart(2, '0');
+    dates.push(`${y}-${m}-${d}`);
     current.setDate(current.getDate() + 1);
   }
   return dates;
@@ -251,6 +255,10 @@ function MonthView({ dates, startDate, endDate, schedulesByDate, onScheduleClick
 }) {
   const startD = new Date(startDate + 'T00:00:00');
   const endD = new Date(endDate + 'T00:00:00');
+  const todayLocal = useMemo(() => {
+    const t = new Date();
+    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+  }, []);
 
   // 포함된 월 목록
   const months: { year: number; month: number }[] = [];
@@ -306,7 +314,7 @@ function MonthView({ dates, startDate, endDate, schedulesByDate, onScheduleClick
           const items = schedulesByDate[date] || [];
           const dayNum = isTrip ? getDayNum(date, startDate) : 0;
           const d = new Date(date + 'T00:00:00');
-          const isToday = date === new Date().toISOString().split('T')[0];
+          const isToday = date === todayLocal;
           const dow = d.getDay();
 
           return (

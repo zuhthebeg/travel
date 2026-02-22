@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { plansAPI, schedulesAPI } from '../lib/api';
-import { formatDate } from '../lib/utils';
+import { formatDate, parseDateLocal } from '../lib/utils';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { GlobalNav } from '../components/GlobalNav';
@@ -259,7 +259,7 @@ export function CreatePlanPage() {
       }
 
       const days = start_date && end_date 
-        ? Math.ceil((new Date(end_date).getTime() - new Date(start_date).getTime()) / (1000 * 60 * 60 * 24)) + 1
+        ? Math.ceil((parseDateLocal(end_date).getTime() - parseDateLocal(start_date).getTime()) / (1000 * 60 * 60 * 24)) + 1
         : 1;
       const autoTitle = region 
         ? `${region} ${days > 1 ? `${days}일` : ''} 여행`.trim()

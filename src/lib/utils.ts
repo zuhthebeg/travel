@@ -1,8 +1,17 @@
 // 유틸리티 함수들
 
 // 날짜 포맷팅 (YYYY-MM-DD)
+export function parseDateLocal(dateStr: string): Date {
+  // Parse YYYY-MM-DD as local midnight to avoid UTC day shifts.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+  return new Date(dateStr);
+}
+
 export function formatDate(date: Date | string): string {
-  const d = new Date(date);
+  const d = typeof date === 'string' ? parseDateLocal(date) : date;
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
@@ -11,22 +20,22 @@ export function formatDate(date: Date | string): string {
 
 // 날짜 범위 계산 (며칠간)
 export function getDaysDifference(startDate: string, endDate: string): number {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
+  const start = parseDateLocal(startDate);
+  const end = parseDateLocal(endDate);
   const diff = end.getTime() - start.getTime();
   return Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1; // +1 to include both days
 }
 
 // 날짜 표시용 포맷 (2025년 12월 1일)
 export function formatDisplayDate(date: string): string {
-  const d = new Date(date);
+  const d = parseDateLocal(date);
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
 }
 
 // 날짜 범위 표시 (12/1 - 12/4)
 export function formatDateRange(startDate: string, endDate: string): string {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
+  const start = parseDateLocal(startDate);
+  const end = parseDateLocal(endDate);
   return `${start.getMonth() + 1}/${start.getDate()} - ${end.getMonth() + 1}/${end.getDate()}`;
 }
 
