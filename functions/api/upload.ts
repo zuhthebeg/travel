@@ -1,5 +1,6 @@
 interface Env {
-  R2_BUCKET: R2Bucket;
+  R2_BUCKET?: R2Bucket;
+  IMAGES?: R2Bucket;
 }
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
@@ -12,8 +13,16 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     });
   }
 
+  const bucket = context.env.R2_BUCKET || context.env.IMAGES;
+  if (!bucket) {
+    return new Response(JSON.stringify({ error: 'Upload storage is not configured (R2 binding missing)' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   const key = `${Date.now()}-${file.name}`;
-  await context.env.R2_BUCKET.put(key, await file.arrayBuffer(), {
+  await bucket.put(key, await file.arrayBuffer(), {
     httpMetadata: {
       contentType: file.type,
     },

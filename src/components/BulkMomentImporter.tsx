@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { assistantAPI } from '../lib/api';
 import { offlineMomentsAPI } from '../lib/offlineAPI';
 import { compressImage, dataUrlToFile, validateImageFile } from '../lib/imageUtils';
@@ -11,16 +11,33 @@ interface Props {
   onDone: () => void;
 }
 
+const LOADING_TIPS = [
+  '원본 그대로가 아니라 자동 압축본으로 업로드 중',
+  '사진 메타정보(시간/위치) + 일정 정보로 AI 자동 분류 중',
+  '자동 분류 후에도 일정 간 이동으로 직접 수정할 수 있어',
+  '낮은 신뢰 결과는 메모로 표시돼서 바로 확인 가능',
+];
+
 export default function BulkMomentImporter({ planId, schedules, onDone }: Props) {
   const ref = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
+  const [tipIdx, setTipIdx] = useState(0);
+
+  useEffect(() => {
+    if (!loading) return;
+    const t = setInterval(() => setTipIdx((p) => (p + 1) % LOADING_TIPS.length), 2200);
+    return () => clearInterval(t);
+  }, [loading]);
 
   const uploadToR2 = async (file: File): Promise<string> => {
     const fd = new FormData();
     fd.append('file', file);
     const res = await fetch('/api/upload', { method: 'POST', body: fd });
-    if (!res.ok) throw new Error('upload failed');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'upload failed');
+    }
     const data = await res.json();
     return data.url as string;
   };
@@ -90,19 +107,34 @@ export default function BulkMomentImporter({ planId, schedules, onDone }: Props)
   };
 
   return (
-    <div className="bg-base-100 border border-base-300 rounded-xl p-3 mb-3">
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <div className="font-semibold text-sm">AI 사진 일괄 분류</div>
-          <div className="text-xs text-base-content/60">최대 10장 · 메타기반 자동 분류 · 업로드 후 일정 이동으로 수정 가능</div>
-          <div className="text-xs text-base-content/50 mt-1">원본 저장은 멤버십 전용(추후 오픈 예정)</div>
+    <>
+      <div className="bg-base-100 border border-base-300 rounded-xl p-3 mb-3">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <div className="font-semibold text-sm">AI 사진 일괄 분류</div>
+            <div className="text-xs text-base-content/60">최대 10장 · 메타기반 자동 분류 · 업로드 후 일정 이동으로 수정 가능</div>
+            <div className="text-xs text-base-content/50 mt-1">원본 저장은 멤버십 전용(추후 오픈 예정)</div>
+          </div>
+          <button className="btn btn-primary btn-sm" disabled={loading} onClick={() => ref.current?.click()}>
+            {loading ? '처리 중...' : '사진 10장 업로드'}
+          </button>
         </div>
-        <button className="btn btn-primary btn-sm" disabled={loading} onClick={() => ref.current?.click()}>
-          {loading ? '처리 중...' : '사진 10장 업로드'}
-        </button>
+        {msg && <div className="text-xs mt-2 text-base-content/80">{msg}</div>}
+        <input ref={ref} type="file" accept="image/*" multiple className="hidden" onChange={onPick} />
       </div>
-      {msg && <div className="text-xs mt-2 text-base-content/80">{msg}</div>}
-      <input ref={ref} type="file" accept="image/*" multiple className="hidden" onChange={onPick} />
-    </div>
+
+      {loading && (
+        <div className="fixed inset-0 z-[80] bg-black/45 flex items-center justify-center p-4">
+          <div className="bg-base-100 rounded-2xl shadow-2xl max-w-md w-full p-5 border border-base-300">
+            <div className="flex items-center gap-3 mb-3">
+              <span className="loading loading-spinner loading-md text-primary" />
+              <div className="font-semibold">사진 분류/업로드 진행 중...</div>
+            </div>
+            <p className="text-sm text-base-content/70 min-h-[40px] transition-all duration-300">{LOADING_TIPS[tipIdx]}</p>
+            <div className="text-xs text-base-content/50 mt-2">창 닫지 말고 잠깐만 기다려줘 🙏</div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
