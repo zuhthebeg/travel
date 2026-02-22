@@ -13,7 +13,7 @@
   "online": {
     "detected": "Conexão com a Internet Detectada",
     "switchPrompt": "Conexão WiFi detectada.\nMudar para o modo online e sincronizar suas alterações?",
-    "later": "Mais Tarde",
+    "later": "Depois",
     "switchOnline": "Ir Online"
   },
   "login": {
@@ -51,7 +51,7 @@
   },
   "travelProgress": {
     "beforeStart": "Antes da Viagem",
-    "completed": "Viagem Completa",
+    "completed": "Viagem Concluída",
     "inProgress": "Em Viagem",
     "title": "Progresso da Viagem"
   },
@@ -72,7 +72,7 @@
     "selectAllCountries": "Selecionar Todos",
     "clearAllCountries": "Limpar Todos",
     "selectCountryPrompt": "Por favor, selecione um país",
-    "noTripsInSelectedCountries": "Sem viagens nos países selecionados",
+    "noTripsInSelectedCountries": "Nenhuma viagem nos países selecionados",
     "toggleHint": "Clique nas bandeiras acima para alternar",
     "timeTravel": "Viagem no Tempo",
     "goToday": "Hoje",
@@ -83,7 +83,7 @@
     "seasonSpring": "🌸 Primavera",
     "seasonSummer": "☀️ Verão",
     "selectedPlanOnly": "Mostrando apenas a viagem selecionada",
-    "viewAll": "Ver Todos",
+    "viewAll": "Ver Todas",
     "latestTrips": "Últimas Viagens",
     "startRecordingTitle": "Comece seu registro de viagem ✈️",
     "startRecordingDesc": "Faça login para usar o controle deslizante de tempo, cronogramas detalhados e recursos de gerenciamento de viagens",
@@ -125,7 +125,7 @@
     "newTrip": "+ Nova Viagem",
     "filterAll": "Todas",
     "filterOngoing": "🟢 Em Andamento",
-    "filterUpcoming": "📅 Próximas",
+    "filterUpcoming": "📅 Futuras",
     "filterPast": "✅ Passadas",
     "ownerAll": "Todas ({{count}})",
     "ownerMine": "Minhas Viagens ({{count}})",
@@ -138,12 +138,12 @@
     "sortUpcoming": "Mais Próximas",
     "loginRequiredTitle": "Login necessário",
     "loginRequiredMessage": "Para gerenciar suas viagens, faça login com sua conta do Google.",
-    "login": "Entrar",
+    "login": "Fazer Login",
     "retry": "Tentar Novamente",
     "noPlans": "Ainda não há planos de viagem",
     "createNewPrompt": "Crie uma nova viagem para começar!",
     "createTrip": "Criar Viagem",
-    "badgeShared": "Compartilhada",
+    "badgeShared": "Compartilhado",
     "badgeOngoing": "Em Viagem",
     "regionKeywords": {
       "korea": "Coreia",
@@ -169,14 +169,14 @@
     "goHome": "Voltar para Casa",
     "redirecting": "Movendo-se para a página da viagem em breve...",
     "title": "Convite para Viagem",
-    "joinQuestion": "Você quer entrar nesta viagem?",
+    "joinQuestion": "Você deseja entrar nesta viagem?",
     "no": "Não",
     "yesJoin": "Sim, entrar!",
     "loginRequired": "Por favor, faça login primeiro para entrar",
-    "login": "Entrar"
+    "login": "Fazer Login"
   },
   "profile": {
-    "logoutConfirm": "Você quer sair?",
+    "logoutConfirm": "Você deseja sair?",
     "logout": "Sair",
     "tabs": {
       "level": "Nível",
@@ -191,7 +191,7 @@
       "city": "Cidades"
     },
     "onlineOnlyLevel": "Informações de nível estão disponíveis apenas online",
-    "onlineOnlyAlbum": "A linha do tempo do álbum está disponível apenas online",
+    "onlineOnlyAlbum": "Linha do tempo do álbum está disponível apenas online",
     "travelRecord": "Registro de Viagem",
     "totalPlans": "Total de Planos",
     "totalMoments": "Total de Momentos",
@@ -211,16 +211,16 @@
     "installPc": "Clique no ícone de instalação no lado direito da barra de endereços"
   },
   "sharedAlbum": {
-    "loadFailed": "Falha ao carregar álbum",
-    "sharedLoadFailed": "Falha ao carregar álbum compartilhado",
+    "loadFailed": "Falha ao carregar o álbum",
+    "sharedLoadFailed": "Falha ao carregar o álbum compartilhado",
     "notFoundTitle": "Álbum não encontrado",
     "notFoundDesc": "Esta viagem não existe",
-    "goHome": "Voltar para Casa",
+    "goHome": "Voltar para casa",
     "days": "{{days}} dias",
     "routeTitle": "🗺️ Rota da Viagem",
-    "createMine": "Criar meu plano de viagem com o Travly",
+    "createMine": "Criar meu plano de viagem com Travly",
     "revisit": {
-      "yes": "Definitivamente novamente!",
+      "yes": "Com certeza novamente!",
       "no": "Uma vez foi o suficiente",
       "maybe": "Talvez..."
     }
@@ -237,7 +237,7 @@
     },
     "empty": "(nenhum)",
     "loadingServer": "Carregando versão do servidor...",
-    "later": "Mais Tarde",
+    "later": "Mais tarde",
     "processing": "Processando...",
     "keepServer": "Manter versão do servidor",
     "keepMine": "Manter minha versão",
@@ -263,7 +263,7 @@
       "content": "Conteúdo",
       "category": "Categoria",
       "rating": "Avaliação",
-      "review": "Revisão"
+      "review": "Avaliação"
     }
   },
   "dayView": {
@@ -279,7 +279,7 @@
     "shortDate": "{{month}}/{{day}} ({{weekday}})",
     "dayTitle": "Dia {{day}} · {{date}} · {{count}} agendas{{hasNote}}",
     "plusMemo": " + memo",
-    "todayMemo": "Memo de Hoje",
+    "todayMemo": "Memo de hoje",
     "add": "+ Adicionar",
     "memoPlaceholder": "Notas de hoje... (clima, condição, dicas, etc.)",
     "delete": "Excluir",
@@ -303,11 +303,11 @@
     "yearMonth": "{{year}}-{{month}}"
   },
   "review": {
-    "photoRequired": "Por favor, envie uma foto",
+    "photoRequired": "Por favor, faça o upload de uma foto",
     "ratingRequired": "Por favor, selecione uma avaliação",
-    "submitFailed": "Falha ao enviar a avaliação",
-    "deleteConfirm": "Você tem certeza de que deseja excluir esta avaliação?",
-    "deleteFailed": "Falha ao excluir a avaliação",
+    "submitFailed": "Falha ao enviar avaliação",
+    "deleteConfirm": "Você tem certeza que deseja excluir esta avaliação?",
+    "deleteFailed": "Falha ao excluir avaliação",
     "totalCount": "{{count}} avaliações",
     "write": "Escrever Avaliação",
     "photo": "Foto",
@@ -327,14 +327,14 @@
     "loginHint": "Faça login para coletar e visualizar seus registros de viagem",
     "noCompleted": "Ainda não há registros de viagem concluídos",
     "noRecords": "Ainda não há registros",
-    "leaveMoment": "Deixe momentos do seu cronograma de viagem",
+    "leaveMoment": "Deixe momentos da sua agenda de viagem",
     "header": "📸 Meu Álbum ({{count}} registros)",
-    "timeline": "Linha do Tempo",
+    "timeline": "Linha do tempo",
     "grid": "Grade",
-    "photosOnly": "Apenas fotos",
+    "photosOnly": "Somente fotos",
     "noPhotos": "Sem fotos",
     "revisit": {
-      "yes": "Definitivamente novamente!",
+      "yes": "Com certeza novamente!",
       "no": "Uma vez foi o suficiente",
       "maybe": "Talvez..."
     }
@@ -354,9 +354,9 @@
     "title": "✈️ Modo Offline",
     "done": "Concluído",
     "preparing": "Preparando",
-    "desc": "Ative isso no WiFi antes da sua viagem. Você pode usar os dados da viagem sem internet.",
+    "desc": "Ative isso pelo WiFi antes da sua viagem. Você pode usar os dados da viagem sem internet.",
     "cautionTitle": "⚡ Notas do modo offline",
-    "caution1": "Usar modelos de IA pode aumentar o consumo de bateria e calor",
+    "caution1": "Usar modelos de IA pode aumentar o consumo de bateria e o calor",
     "caution2": "Desempenho/qualidade é inferior ao da IA online",
     "caution3": "Reconhecimento de imagem e entrada de voz não são suportados offline",
     "caution4": "Criar viagens ou convidar membros é apenas online",
@@ -375,7 +375,7 @@
     "offMessage": "Modo offline está desativado. A API do servidor será utilizada."
   },
   "travelMap": {
-    "fitAllPins": "Mostrar todos os pinos"
+    "fitAllPins": "Mostrar todos os pins"
   },
   "schedule": {
     "flightInfo": "Ver informações do voo para {{flightCode}}",
@@ -384,8 +384,8 @@
   },
   "place": {
     "unknown": "Lugar desconhecido",
-    "placeholder": "Pesquisar lugar...",
-    "noResults": "Sem resultados de pesquisa"
+    "placeholder": "Buscar lugar...",
+    "noResults": "Sem resultados de busca"
   },
   "map": {
     "loadFailed": "Não foi possível carregar o mapa."
@@ -438,7 +438,7 @@
     "regionRequired": "A região da viagem deve ser definida para a geração automática.",
     "generateFailed": "Falha na geração automática.",
     "travelInfo": "Informações de Viagem",
-    "scheduleChangedHint": "O cronograma foi alterado. É recomendável atualizar as informações de viagem novamente.",
+    "scheduleChangedHint": "O cronograma foi alterado. Recomenda-se atualizar as informações de viagem novamente.",
     "aiRecommendUpdate": "Recomendar atualização de IA",
     "aiScheduleUpdate": "Atualização baseada em cronograma de IA",
     "empty": "Ainda não há informações de viagem.",
@@ -457,7 +457,7 @@
     "memoPlaceholder": "Como foi este momento?",
     "revisitQuestion": "Quer visitar novamente?",
     "photo": "Foto",
-    "fileUpload": "📁 Fazer upload de arquivo",
+    "fileUpload": "📁 Carregar arquivo",
     "urlInput": "🔗 Inserir URL",
     "addPhoto": "Adicionar foto",
     "saving": "Salvando...",
@@ -484,7 +484,7 @@
   "createPlan": {
     "loadingTips": {
       "0": "💡 Após adicionar cronogramas, você pode ajustar os horários para corresponder às suas reservas",
-      "1": "🗺️ Pesquise lugares e os pinos aparecerão no mapa automaticamente",
+      "1": "🗺️ Pesquise lugares e os marcadores aparecerão automaticamente no mapa",
       "2": "🤖 Pergunte ao assistente de IA: \"Mova todos os cronogramas um dia para frente\"",
       "3": "📍 Se as coordenadas estiverem erradas, edite o nome do lugar e pressione correção de coordenadas",
       "4": "👥 Convide amigos para editar o itinerário juntos",
@@ -493,7 +493,7 @@
       "7": "⭐ Deixe avaliações sobre os lugares para ajudar outros viajantes",
       "8": "📋 Adicione Planos B e C para mudanças flexíveis no local",
       "9": "🌐 Torne sua viagem pública para que outros possam usá-la como referência",
-      "10": "📱 Adicione à Tela Inicial para usá-la como um aplicativo (PWA)",
+      "10": "📱 Adicione à Tela Inicial para usá-lo como um aplicativo (PWA)",
       "11": "✈️ Você ainda pode visualizar viagens salvas no modo avião",
       "12": "📶 Você pode verificar cronogramas sem internet — modo offline suportado!"
     },
@@ -516,7 +516,7 @@
       "fall": "Outono",
       "winter": "Inverno"
     },
-    "thumbnailUploadFailed": "Falha ao fazer upload da miniatura.",
+    "thumbnailUploadFailed": "Falha ao carregar a miniatura.",
     "autoTitleWithRegion": "{{region}} viagem de {{days}}",
     "dayUnit": "d",
     "autoTitleNew": "Nova viagem {{date}}",
@@ -529,7 +529,7 @@
     "createFailed": "Falha ao criar viagem.",
     "progressRegistering": "📝 Registrando cronogramas ({{current}}/{{total}})",
     "analyzing": "A IA está analisando seu itinerário...",
-    "uploading": "Fazendo upload...",
+    "uploading": "Carregando...",
     "processing": "Processando...",
     "title": "Criar Nova Viagem",
     "cancel": "Cancelar",
@@ -542,7 +542,7 @@
     "chatPlaceholder": "Pergunte qualquer coisa, como ideias de destinos ou criação de itinerário...",
     "send": "Enviar",
     "textToPlanTitle": "Criar Itinerário a partir do Texto",
-    "textToPlanDesc": "Cole o texto do seu itinerário ou mova as respostas da IA para gerar cronogramas automaticamente",
+    "textToPlanDesc": "Cole seu texto de itinerário ou mova as respostas da IA para gerar cronogramas automaticamente",
     "textareaExample": "Exemplo:\nViagem a Busan de 2 noites e 3 dias\n\nDia 1\n- 10:00 Praia de Haeundae\n- 12:00 Almoço no centro de sashimi de Gwangalli\n- 15:00 Vila Cultural de Gamcheon\n\nDia 2\n- 09:00 Igreja de Jukseong em Gijang\n...",
     "textLengthLong": "📦 {{count}} caracteres - processados em múltiplos lotes",
     "textLength": "{{count}} caracteres",
@@ -641,8 +641,8 @@
     "attachPhoto": "Anexar foto",
     "voiceInput": "Entrada de voz",
     "voiceStop": "Parar voz",
-    "ttsOff": "Desligar TTS",
-    "ttsOn": "Ligar TTS",
+    "ttsOff": "Desativar TTS",
+    "ttsOn": "Ativar TTS",
     "placeholderImage": "Pergunte sobre a foto...",
     "placeholder": "Digite uma mensagem...",
     "send": "Enviar"
@@ -654,18 +654,18 @@
   },
   "planDetail": {
     "aiTips": {
-      "0": "💡 Após adicionar cronogramas, você pode ajustar os horários para corresponder às reservas",
+      "0": "💡 Após adicionar os horários, você pode ajustar os tempos para coincidir com as reservas",
       "1": "📍 Se as coordenadas estiverem erradas, edite os nomes dos lugares e execute a correção de coordenadas",
-      "2": "🤖 Pergunte ao assistente de IA: \"Mova todos os cronogramas um dia para frente\"",
-      "3": "🔄 Arraste os cronogramas para movê-los entre as datas",
-      "4": "📋 Adicione Planos B e C para opções de backup flexíveis",
+      "2": "🤖 Pergunte ao assistente de IA: \"Mova todos os horários um dia para frente\"",
+      "3": "🔄 Arraste os horários para movê-los entre as datas",
+      "4": "📋 Adicione o Plano B e C para opções de backup flexíveis",
       "5": "📱 Adicione à Tela Inicial para acesso semelhante a um aplicativo",
-      "6": "✈️ Você ainda pode verificar cronogramas salvos offline"
+      "6": "✈️ Você ainda pode verificar os horários salvos offline"
     },
-    "defaultSchedule": "Cronograma",
+    "defaultSchedule": "Horário",
     "upcomingScheduleTitle": "Próximo: {{title}}",
     "upcomingScheduleBody": "Começa em {{minutes}} min em {{place}}.",
-    "confirmDeletePlan": "Excluir esta viagem? Todos os cronogramas serão excluídos juntos.",
+    "confirmDeletePlan": "Excluir esta viagem? Todos os horários serão excluídos juntos.",
     "dateShort": "{{month}}/{{day}}",
     "confirmMoveSchedule": "Mover \"{{title}}\"\nde {{from}} → {{to}}?",
     "notFound": "Viagem não encontrada.",
@@ -696,7 +696,7 @@
     "coordsSummary": "📍 Coordenadas {{withCoords}}/{{total}}",
     "coordsMissing": " · {{count}} faltando",
     "geocodeProcessing": "Corrigindo...",
-    "geocodeDone": "📍 Correção de coordenadas completa!\n✅ Atualizado: {{updated}}\n❌ Falhou: {{failed}}",
+    "geocodeDone": "📍 Correção de coordenadas concluída!\n✅ Atualizado: {{updated}}\n❌ Falhou: {{failed}}",
     "geocodeButton": "📍 Corrigir Coordenadas",
     "missingCoordsNotice": "📍 {{count}} lugares não têm coordenadas — pressione correção de coordenadas",
     "geocodeNotFoundCount": "⚠️ Não foi possível encontrar {{count}} lugares",
@@ -704,11 +704,11 @@
     "placeCityPlaceholder": "Lugar, cidade (ex: Torre Eiffel, Paris)",
     "enterToSearch": "Pressione Enter para pesquisar novamente",
     "noMapCoordsTitle": "Sem coordenadas para mostrar no mapa",
-    "noMapCoordsDesc": "Corrija as coordenadas para {{count}} lugares para exibir a rota no mapa.",
-    "geocodeDoneSimple": "📍 Coordenadas {{updated}} corrigidas!",
+    "noMapCoordsDesc": "Corrija as coordenadas de {{count}} lugares para exibir a rota no mapa.",
+    "geocodeDoneSimple": "📍 Coordenadas de {{updated}} corrigidas!",
     "noGeocodablePlaces": "Nenhum lugar disponível para correção. Por favor, torne os nomes dos lugares mais específicos.",
     "tabs": {
-      "schedule": "📅 Cronograma",
+      "schedule": "📅 Horário",
       "notes": "📝 Notas",
       "album": "📸 Álbum"
     },
@@ -720,18 +720,18 @@
     },
     "add": "Adicionar",
     "shareAlbum": "Compartilhar Álbum",
-    "addScheduleFirst": "Por favor, adicione cronogramas primeiro",
-    "noSchedules": "Ainda não há cronogramas",
-    "addFirstSchedule": "Adicione seu primeiro cronograma",
+    "addScheduleFirst": "Por favor, adicione horários primeiro",
+    "noSchedules": "Nenhum horário ainda",
+    "addFirstSchedule": "Adicione seu primeiro horário",
     "count": "{{count}}",
-    "aiAssistant": "Assistente de Viagem IA",
+    "aiAssistant": "Assistente de Viagem AI",
     "travelAssistant": "Assistente de Viagem",
     "confirmReloadAfterChange": "As alterações foram aplicadas. Recarregar agora?",
     "linkCopied": "Link copiado!",
-    "editSchedule": "Editar Cronograma",
-    "newSchedule": "Novo Cronograma",
-    "aiQuickAdd": "Adição Rápida com IA",
-    "aiQuickAddHint": "Digite uma linguagem natural como \"Torre Eiffel às 10 AM amanhã\"",
+    "editSchedule": "Editar Horário",
+    "newSchedule": "Novo Horário",
+    "aiQuickAdd": "Adicionar Rápido com IA",
+    "aiQuickAddHint": "Digite em linguagem natural como \"Torre Eiffel às 10 AM amanhã\"",
     "aiInputPlaceholder": "ex: Museu do Louvre às 3 PM depois de amanhã\nVocê pode inserir várias linhas de uma vez",
     "stopVoiceInput": "Parar entrada de voz",
     "voiceInput": "Entrada de voz",
@@ -748,7 +748,7 @@
     "placeSearchPlaceholder": "Pesquisar lugar (ex: Torre Eiffel, Louvre)",
     "selectedLocation": "Localização selecionada",
     "selectFromResults": "Escolha entre os resultados da pesquisa para colocar um pino no mapa",
-    "memo": "Nota",
+    "memo": "Memo",
     "memoPlaceholder": "Detalhes, informações de reserva, dicas, etc.",
     "alternativePlanOptional": "Planos alternativos (opcional)",
     "planBPlaceholder": "Cafeteria interna se chover",
@@ -756,8 +756,8 @@
     "saving": "Salvando...",
     "saved": "✓ Salvo",
     "saveFailed": "Falha ao salvar",
-    "updateDone": "Atualização completa",
-    "addSchedule": "Adicionar cronograma",
+    "updateDone": "Atualização concluída",
+    "addSchedule": "Adicionar horário",
     "close": "Fechar",
     "anonymous": "Anônimo",
     "completed": "✓ Concluído",
@@ -765,7 +765,7 @@
     "viewOnMap": "Ver no mapa",
     "noPlace": "Nenhum lugar",
     "editPlace": "Editar lugar",
-    "sameDayPins": "{{count}} pinos no mesmo dia · o pino do cronograma atual é vermelho",
+    "sameDayPins": "{{count}} pinos no mesmo dia · o pino do horário atual é vermelho",
     "alternativePlan": "Planos alternativos",
     "recordsTab": "📸 Registros",
     "commentsTab": "💬 Comentários",
@@ -774,7 +774,7 @@
     "writing": "Postando...",
     "writeComment": "Postar Comentário",
     "loginToComment": "Por favor, faça login para escrever comentários.",
-    "noComments": "Ainda não há comentários",
+    "noComments": "Nenhum comentário ainda",
     "delete": "Excluir",
     "edit": "Editar",
     "tripDetails": "Detalhes da Viagem",
@@ -793,23 +793,23 @@
     "deleteTrip": "Excluir Viagem",
     "save": "Salvar",
     "errors": {
-      "loadFailed": "Falha ao carregar detalhes da viagem.",
-      "deleteScheduleFailed": "Falha ao excluir cronograma.",
-      "deletePlanFailed": "Falha ao excluir viagem.",
-      "moveScheduleFailed": "Falha ao mover cronograma.",
-      "copyLinkFailed": "Falha ao copiar link.",
+      "loadFailed": "Falha ao carregar os detalhes da viagem.",
+      "deleteScheduleFailed": "Falha ao excluir o horário.",
+      "deletePlanFailed": "Falha ao excluir a viagem.",
+      "moveScheduleFailed": "Falha ao mover o horário.",
+      "copyLinkFailed": "Falha ao copiar o link.",
       "createInviteFailed": "Falha ao criar link de convite",
       "geocodeFailed": "Falha na correção de coordenadas",
       "updateFailed": "Falha na atualização",
-      "aiCreateFailed": "Falha ao criar cronograma com IA.",
-      "savePlaceFailed": "Falha ao salvar lugar. Por favor, tente novamente.",
+      "aiCreateFailed": "Falha ao criar horário com IA.",
+      "savePlaceFailed": "Falha ao salvar o lugar. Por favor, tente novamente.",
       "writeCommentFailed": "Falha ao postar comentário.",
       "deleteCommentFailed": "Falha ao excluir comentário.",
       "requiredPlanFields": "Título, data de início e data de término são obrigatórios.",
-      "updatePlanFailed": "Falha ao atualizar informações da viagem."
+      "updatePlanFailed": "Falha ao atualizar as informações da viagem."
     },
     "confirmDeleteComment": "Excluir este comentário?",
-    "confirmDeleteSchedule": "Excluir este cronograma?"
+    "confirmDeleteSchedule": "Excluir este horário?"
   },
   "translate": {
     "translate": "Traduzir",
