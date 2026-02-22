@@ -80,6 +80,7 @@ export default function MomentSection({ scheduleId, schedules = [] }: MomentSect
   const [exifInfo, setExifInfo] = useState<{ lat: number | null; lng: number | null; datetime: string | null } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [editTargetScheduleId, setEditTargetScheduleId] = useState<number>(scheduleId);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -134,6 +135,7 @@ export default function MomentSection({ scheduleId, schedules = [] }: MomentSect
     setExifInfo(null);
     setError('');
     setEditingId(null);
+    setEditTargetScheduleId(scheduleId);
     setShowForm(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -170,9 +172,15 @@ export default function MomentSection({ scheduleId, schedules = [] }: MomentSect
       if (credential) headers['X-Auth-Credential'] = credential;
 
       if (editingId) {
-        // 수정
-        const data = await offlineMomentsAPI.update(editingId, body);
-        setMoments(prev => prev.map(m => m.id === editingId ? { ...m, ...data.moment } : m));
+        // 수정 (다른 일정 선택 시 이동 처리)
+        if (editTargetScheduleId && editTargetScheduleId !== scheduleId) {
+          await offlineMomentsAPI.create(editTargetScheduleId, body as any);
+          await offlineMomentsAPI.delete(editingId);
+          setMoments(prev => prev.filter(m => m.id !== editingId));
+        } else {
+          const data = await offlineMomentsAPI.update(editingId, body);
+          setMoments(prev => prev.map(m => m.id === editingId ? { ...m, ...data.moment } : m));
+        }
       } else {
         // 생성
         const data = await offlineMomentsAPI.create(scheduleId, body);
@@ -217,6 +225,7 @@ export default function MomentSection({ scheduleId, schedules = [] }: MomentSect
 
   const startEdit = (m: Moment) => {
     setEditingId(m.id);
+    setEditTargetScheduleId(m.schedule_id);
     setNote(m.note || '');
     setMood(m.mood);
     setRevisit(m.revisit);
@@ -405,6 +414,21 @@ export default function MomentSection({ scheduleId, schedules = [] }: MomentSect
           </div>
 
           {error && <p className="text-red-500 text-sm">{error}</p>}
+
+          {editingId && schedules.length > 1 && (
+            <div>
+              <label className="text-sm text-gray-600 dark:text-gray-400 mb-1 block">변경할 일정</label>
+              <select
+                className="select select-sm select-bordered w-full"
+                value={editTargetScheduleId}
+                onChange={(e) => setEditTargetScheduleId(Number(e.target.value))}
+              >
+                {schedules.map((s) => (
+                  <option key={s.id} value={s.id}>{s.date} · {s.title}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="flex gap-2">
             <button
