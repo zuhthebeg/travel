@@ -19,6 +19,16 @@ type OwnerFilter = 'all' | 'mine' | 'shared';
 type TimeFilter = 'all' | 'upcoming' | 'past' | 'ongoing';
 type RegionFilter = 'all' | 'domestic' | 'international';
 
+type MyPlansUIState = {
+  ownerFilter: OwnerFilter;
+  timeFilter: TimeFilter;
+  regionFilter: RegionFilter;
+  sortOrder: 'newest' | 'oldest' | 'upcoming';
+  mainTab: 'trips' | 'album';
+};
+
+const MY_PLANS_UI_STATE_KEY = 'travly_myplans_ui_state_v1';
+
 export function MyPlansPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -32,6 +42,8 @@ export function MyPlansPage() {
   const [regionFilter, setRegionFilter] = useState<RegionFilter>('all');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'upcoming'>('newest');
   const [mainTab, setMainTab] = useState<'trips' | 'album'>('trips');
+  const [isUIStateLoaded, setIsUIStateLoaded] = useState(false);
+
   const domesticRegionKeywords = useMemo(
     () => [
       t('myPlans.regionKeywords.korea', { lng: 'ko' }),
@@ -43,6 +55,30 @@ export function MyPlansPage() {
     ].map((keyword) => keyword.toLowerCase()),
     [t]
   );
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(MY_PLANS_UI_STATE_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw) as Partial<MyPlansUIState>;
+        if (saved.ownerFilter) setOwnerFilter(saved.ownerFilter);
+        if (saved.timeFilter) setTimeFilter(saved.timeFilter);
+        if (saved.regionFilter) setRegionFilter(saved.regionFilter);
+        if (saved.sortOrder) setSortOrder(saved.sortOrder);
+        if (saved.mainTab) setMainTab(saved.mainTab);
+      }
+    } catch {
+      // ignore invalid local cache
+    } finally {
+      setIsUIStateLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isUIStateLoaded) return;
+    const payload: MyPlansUIState = { ownerFilter, timeFilter, regionFilter, sortOrder, mainTab };
+    localStorage.setItem(MY_PLANS_UI_STATE_KEY, JSON.stringify(payload));
+  }, [isUIStateLoaded, ownerFilter, timeFilter, regionFilter, sortOrder, mainTab]);
 
   useEffect(() => {
     if (!currentUser) {
@@ -72,10 +108,6 @@ export function MyPlansPage() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }, []);
 
-  const pastPlanIds = useMemo(() => {
-    return new Set(allPlans.filter((p) => p.end_date < today).map((p) => p.id));
-  }, [allPlans, today]);
-
   const filteredPlans = useMemo(() => {
     let result = [...allPlans];
 
@@ -88,7 +120,7 @@ export function MyPlansPage() {
     if (timeFilter === 'ongoing') result = result.filter(p => p.start_date <= today && p.end_date >= today);
     if (timeFilter === 'past') result = result.filter(p => p.end_date < today);
 
-    // Region filter (KR = 援?궡)
+    // Region filter (KR = 占?占쏙옙)
     if (regionFilter === 'domestic') result = result.filter(p => {
       const r = (p.region || '').toLowerCase();
       return domesticRegionKeywords.some((keyword) => r.includes(keyword)) || r.includes('korea') || (p.country_code || '').toUpperCase() === 'KR';
@@ -110,6 +142,10 @@ export function MyPlansPage() {
 
     return result;
   }, [allPlans, ownerFilter, timeFilter, regionFilter, sortOrder, today, domesticRegionKeywords]);
+
+  const filteredPastPlanIds = useMemo(() => {
+    return new Set(filteredPlans.filter((p) => p.end_date < today).map((p) => p.id));
+  }, [filteredPlans, today]);
 
   const sharedCount = allPlans.filter(p => p.access_type === 'shared').length;
   const myCount = allPlans.length - sharedCount;
@@ -153,7 +189,7 @@ export function MyPlansPage() {
 
           {currentUser && allPlans.length > 0 && (
             <div className="space-y-2">
-              {/* ?쒓컙 ?꾪꽣 */}
+              {/* ?占쎄컙 ?占쏀꽣 */}
               <div className="flex flex-wrap gap-1.5">
                 {([
                   { key: 'all', label: t('myPlans.filterAll'), count: allPlans.length },
@@ -171,7 +207,7 @@ export function MyPlansPage() {
                 ) : null)}
               </div>
 
-              {/* ?뚯쑀/吏???뺣젹 */}
+              {/* ?占쎌쑀/吏???占쎈젹 */}
               <div className="flex flex-wrap gap-1.5 items-center">
                 {sharedCount > 0 && (
                   <select
@@ -209,8 +245,8 @@ export function MyPlansPage() {
 
         {currentUser && (
           <div className="tabs tabs-boxed mb-4 w-fit">
-            <a className={`tab ${mainTab === 'trips' ? 'tab-active' : ''}`} onClick={() => setMainTab('trips')}>여행 탭</a>
-            <a className={`tab ${mainTab === 'album' ? 'tab-active' : ''}`} onClick={() => setMainTab('album')}>앨범 탭</a>
+            <a className={`tab ${mainTab === 'trips' ? 'tab-active' : ''}`} onClick={() => setMainTab('trips')}>占쏙옙占쏙옙 占쏙옙</a>
+            <a className={`tab ${mainTab === 'album' ? 'tab-active' : ''}`} onClick={() => setMainTab('album')}>占쌕뱄옙 占쏙옙</a>
           </div>
         )}
 
@@ -247,7 +283,7 @@ export function MyPlansPage() {
           </div>
         ) : mainTab === 'album' ? (
           <div className="card bg-base-100 shadow-sm p-4">
-            <AlbumTimeline pastPlanIds={pastPlanIds} />
+            <AlbumTimeline pastPlanIds={filteredPastPlanIds} />
           </div>
         ) : filteredPlans.length === 0 ? (
           <div className="card bg-base-100 shadow-xl p-12 text-center">
@@ -289,4 +325,5 @@ export function MyPlansPage() {
     </div>
   );
 }
+
 
