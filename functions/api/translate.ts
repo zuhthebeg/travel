@@ -15,13 +15,16 @@ interface Env {
 }
 
 const LANG_NAMES: Record<string, string> = {
-  ko: 'Korean',
-  en: 'English',
-  ja: 'Japanese',
-  'zh-TW': 'Traditional Chinese (Taiwan)',
+  ko: 'Korean', en: 'English', ja: 'Japanese',
+  'zh-TW': 'Traditional Chinese (Taiwan)', 'zh-CN': 'Simplified Chinese',
+  es: 'Spanish', fr: 'French', de: 'German', it: 'Italian', pt: 'Portuguese (Brazil)',
+  th: 'Thai', vi: 'Vietnamese', id: 'Indonesian', ms: 'Malay',
+  ru: 'Russian', tr: 'Turkish', ar: 'Arabic', hi: 'Hindi',
+  nl: 'Dutch', pl: 'Polish', sv: 'Swedish',
 };
 
-const SUPPORTED_LANGS = ['ko', 'en', 'ja', 'zh-TW'];
+// Accept any language code — Gemini handles all major languages
+const SUPPORTED_LANGS: string[] | null = null; // null = accept any
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   const corsHeaders = {
@@ -46,8 +49,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     if (texts.length > 20) {
       return Response.json({ error: 'Maximum 20 texts per request' }, { status: 400, headers: corsHeaders });
     }
-    if (!targetLang || !SUPPORTED_LANGS.includes(targetLang)) {
-      return Response.json({ error: `targetLang must be one of: ${SUPPORTED_LANGS.join(', ')}` }, { status: 400, headers: corsHeaders });
+    if (!targetLang) {
+      return Response.json({ error: 'targetLang is required' }, { status: 400, headers: corsHeaders });
     }
 
     const apiKey = context.env.GEMINI_API_KEY;
