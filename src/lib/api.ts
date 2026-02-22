@@ -345,7 +345,7 @@ export const assistantAPI = {
     planId: number;
     photos: Array<{ tempId: string; fileName: string; datetime?: string | null; lat?: number | null; lng?: number | null }>;
   }) => {
-    return apiRequest<{ assignments: Array<{ tempId: string; scheduleIds: number[]; confidence: number; reason: string }> }>(
+    return apiRequest<{ assignments: Array<{ tempId: string; scheduleIds: number[]; confidence: number; reason: string }>; planBUpdates?: Array<{ scheduleId: number; note: string }> }>(
       '/api/assistant/classify-photos',
       {
         method: 'POST',

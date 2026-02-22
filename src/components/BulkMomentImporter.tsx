@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { assistantAPI } from '../lib/api';
+import { assistantAPI, schedulesAPI } from '../lib/api';
 import { offlineMomentsAPI } from '../lib/offlineAPI';
 import { compressImage, dataUrlToFile, validateImageFile } from '../lib/imageUtils';
 import { extractExif } from '../lib/exif';
@@ -77,6 +77,17 @@ export default function BulkMomentImporter({ planId, schedules, onDone }: Props)
         photos: prepared.map((p) => p.meta),
       });
 
+      // time-overlap but location-mismatch hints -> update schedule plan B
+      if (classify.planBUpdates?.length) {
+        for (const u of classify.planBUpdates) {
+          const s = schedules.find((x) => x.id === u.scheduleId);
+          if (!s) continue;
+          const prev = s.plan_b || '';
+          const next = prev ? `${prev}\n• ${u.note}` : `• ${u.note}`;
+          await schedulesAPI.update(s.id, { plan_b: next });
+        }
+      }
+
       for (const item of prepared) {
         const assigned = classify.assignments.find((a) => a.tempId === item.meta.tempId);
         const scheduleIds = assigned?.scheduleIds?.length ? assigned.scheduleIds : [schedules[0]?.id].filter(Boolean) as number[];
@@ -112,11 +123,11 @@ export default function BulkMomentImporter({ planId, schedules, onDone }: Props)
         <div className="flex items-center justify-between gap-2">
           <div>
             <div className="font-semibold text-sm">AI 사진 일괄 분류</div>
-            <div className="text-xs text-base-content/60">최대 10장 · 메타기반 자동 분류 · 업로드 후 일정 이동으로 수정 가능</div>
+            <div className="text-xs text-base-content/60">최대 10장까지 선택 가능 · 메타기반 자동 분류 · 업로드 후 일정 이동으로 수정 가능</div>
             <div className="text-xs text-base-content/50 mt-1">원본 저장은 멤버십 전용(추후 오픈 예정)</div>
           </div>
           <button className="btn btn-primary btn-sm" disabled={loading} onClick={() => ref.current?.click()}>
-            {loading ? '처리 중...' : '사진 10장 업로드'}
+            {loading ? '처리 중...' : '사진 업로드'}
           </button>
         </div>
         {msg && <div className="text-xs mt-2 text-base-content/80">{msg}</div>}
