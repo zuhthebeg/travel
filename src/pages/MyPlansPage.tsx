@@ -188,65 +188,57 @@ export function MyPlansPage() {
           </div>
 
           {currentUser && allPlans.length > 0 && (
-            <div className="space-y-2">
-              {/* ?占쎄컙 ?占쏀꽣 */}
-              <div className="flex flex-wrap gap-1.5">
-                {([
-                  { key: 'all', label: t('myPlans.filterAll'), count: allPlans.length },
-                  { key: 'ongoing', label: t('myPlans.filterOngoing'), count: ongoingCount },
-                  { key: 'upcoming', label: t('myPlans.filterUpcoming'), count: upcomingCount },
-                  { key: 'past', label: t('myPlans.filterPast'), count: pastCount },
-                ] as const).map(f => f.count > 0 || f.key === 'all' ? (
-                  <button
-                    key={f.key}
-                    className={`btn btn-xs ${timeFilter === f.key ? 'btn-primary' : 'btn-ghost'}`}
-                    onClick={() => setTimeFilter(f.key)}
-                  >
-                    {f.label} {f.count > 0 && <span className="badge badge-xs ml-0.5">{f.count}</span>}
-                  </button>
-                ) : null)}
-              </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                className="select select-sm select-bordered"
+                value={timeFilter}
+                onChange={e => setTimeFilter(e.target.value as TimeFilter)}
+              >
+                <option value="all">{t('myPlans.filterAll')} ({allPlans.length})</option>
+                <option value="ongoing">{t('myPlans.filterOngoing')} ({ongoingCount})</option>
+                <option value="upcoming">{t('myPlans.filterUpcoming')} ({upcomingCount})</option>
+                <option value="past">{t('myPlans.filterPast')} ({pastCount})</option>
+              </select>
 
-              {/* ?占쎌쑀/吏???占쎈젹 */}
-              <div className="flex flex-wrap gap-1.5 items-center">
-                {sharedCount > 0 && (
-                  <select
-                    className="select select-xs select-bordered"
-                    value={ownerFilter}
-                    onChange={e => setOwnerFilter(e.target.value as OwnerFilter)}
-                  >
-                    <option value="all">{t('myPlans.ownerAll', { count: allPlans.length })}</option>
-                    <option value="mine">{t('myPlans.ownerMine', { count: myCount })}</option>
-                    <option value="shared">{t('myPlans.ownerShared', { count: sharedCount })}</option>
-                  </select>
-                )}
+              {sharedCount > 0 && (
                 <select
-                  className="select select-xs select-bordered"
-                  value={regionFilter}
-                  onChange={e => setRegionFilter(e.target.value as RegionFilter)}
+                  className="select select-sm select-bordered"
+                  value={ownerFilter}
+                  onChange={e => setOwnerFilter(e.target.value as OwnerFilter)}
                 >
-                  <option value="all">{t('myPlans.regionAll')}</option>
-                  <option value="domestic">{t('myPlans.regionDomestic')}</option>
-                  <option value="international">{t('myPlans.regionInternational')}</option>
+                  <option value="all">{t('myPlans.ownerAll', { count: allPlans.length })}</option>
+                  <option value="mine">{t('myPlans.ownerMine', { count: myCount })}</option>
+                  <option value="shared">{t('myPlans.ownerShared', { count: sharedCount })}</option>
                 </select>
-                <select
-                  className="select select-xs select-bordered"
-                  value={sortOrder}
-                  onChange={e => setSortOrder(e.target.value as 'newest' | 'oldest' | 'upcoming')}
-                >
-                  <option value="newest">{t('myPlans.sortNewest')}</option>
-                  <option value="oldest">{t('myPlans.sortOldest')}</option>
-                  <option value="upcoming">{t('myPlans.sortUpcoming')}</option>
-                </select>
-              </div>
+              )}
+
+              <select
+                className="select select-sm select-bordered"
+                value={regionFilter}
+                onChange={e => setRegionFilter(e.target.value as RegionFilter)}
+              >
+                <option value="all">{t('myPlans.regionAll')}</option>
+                <option value="domestic">{t('myPlans.regionDomestic')}</option>
+                <option value="international">{t('myPlans.regionInternational')}</option>
+              </select>
+
+              <select
+                className="select select-sm select-bordered"
+                value={sortOrder}
+                onChange={e => setSortOrder(e.target.value as 'newest' | 'oldest' | 'upcoming')}
+              >
+                <option value="newest">{t('myPlans.sortNewest')}</option>
+                <option value="oldest">{t('myPlans.sortOldest')}</option>
+                <option value="upcoming">{t('myPlans.sortUpcoming')}</option>
+              </select>
             </div>
           )}
         </div>
 
         {currentUser && (
           <div className="tabs tabs-boxed mb-4 w-fit">
-            <a className={`tab ${mainTab === 'trips' ? 'tab-active' : ''}`} onClick={() => setMainTab('trips')}>占쏙옙占쏙옙 占쏙옙</a>
-            <a className={`tab ${mainTab === 'album' ? 'tab-active' : ''}`} onClick={() => setMainTab('album')}>占쌕뱄옙 占쏙옙</a>
+            <a className={`tab ${mainTab === 'trips' ? 'tab-active' : ''}`} onClick={() => setMainTab('trips')}>Trips</a>
+            <a className={`tab ${mainTab === 'album' ? 'tab-active' : ''}`} onClick={() => setMainTab('album')}>Album</a>
           </div>
         )}
 
