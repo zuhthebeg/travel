@@ -31,6 +31,7 @@ export function MyPlansPage() {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
   const [regionFilter, setRegionFilter] = useState<RegionFilter>('all');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'upcoming'>('newest');
+  const [mainTab, setMainTab] = useState<'trips' | 'album'>('trips');
   const domesticRegionKeywords = useMemo(
     () => [
       t('myPlans.regionKeywords.korea', { lng: 'ko' }),
@@ -206,6 +207,13 @@ export function MyPlansPage() {
           )}
         </div>
 
+        {currentUser && (
+          <div className="tabs tabs-boxed mb-4 w-fit">
+            <a className={`tab ${mainTab === 'trips' ? 'tab-active' : ''}`} onClick={() => setMainTab('trips')}>여행 탭</a>
+            <a className={`tab ${mainTab === 'album' ? 'tab-active' : ''}`} onClick={() => setMainTab('album')}>앨범 탭</a>
+          </div>
+        )}
+
         {!currentUser ? (
           <div className="card bg-base-100 shadow-xl p-12 text-center">
             <div className="card-body items-center text-center">
@@ -236,6 +244,10 @@ export function MyPlansPage() {
                 {t('myPlans.retry')}
               </Button>
             </div>
+          </div>
+        ) : mainTab === 'album' ? (
+          <div className="card bg-base-100 shadow-sm p-4">
+            <AlbumTimeline pastPlanIds={pastPlanIds} />
           </div>
         ) : filteredPlans.length === 0 ? (
           <div className="card bg-base-100 shadow-xl p-12 text-center">
@@ -270,13 +282,6 @@ export function MyPlansPage() {
                 </div>
               );
             })}
-          </div>
-        )}
-        {currentUser && pastPlanIds.size > 0 && (
-          <div className="mt-8">
-            <div className="card bg-base-100 shadow-sm p-4">
-              <AlbumTimeline pastPlanIds={pastPlanIds} />
-            </div>
           </div>
         )}
 

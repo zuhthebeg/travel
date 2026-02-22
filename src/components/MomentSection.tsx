@@ -38,13 +38,29 @@ const REVISIT_OPTIONS = [
 
 interface MomentSectionProps {
   scheduleId: number;
+  schedules?: Array<{ id: number; title: string; date: string }>;
 }
 
-export default function MomentSection({ scheduleId }: MomentSectionProps) {
+function parseMetaFromNote(note?: string | null): { cleanNote: string; meta: any | null } {
+  if (!note) return { cleanNote: '', meta: null };
+  const m = note.match(/\[\[meta:(.*)\]\]/s);
+  if (!m) return { cleanNote: note, meta: null };
+  try {
+    const meta = JSON.parse(m[1]);
+    const cleanNote = note.replace(m[0], '').trim();
+    return { cleanNote, meta };
+  } catch {
+    return { cleanNote: note, meta: null };
+  }
+}
+
+export default function MomentSection({ scheduleId, schedules = [] }: MomentSectionProps) {
   const { t } = useTranslation();
   const { currentUser } = useStore();
   const [moments, setMoments] = useState<Moment[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedMoment, setSelectedMoment] = useState<Moment | null>(null);
+  const [moveTargetById, setMoveTargetById] = useState<Record<number, number>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -176,6 +192,24 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
     } catch (e) {
       console.error('Delete failed:', e);
     }
+  };
+
+  const handleCopyToSchedule = async (m: Moment, targetScheduleId: number) => {
+    if (!targetScheduleId || targetScheduleId === m.schedule_id) return;
+    await offlineMomentsAPI.create(targetScheduleId, {
+      photo_data: m.photo_data || undefined,
+      note: m.note || undefined,
+      mood: m.mood || undefined,
+      revisit: m.revisit || undefined,
+      rating: m.rating || undefined,
+    } as any);
+  };
+
+  const handleMoveToSchedule = async (m: Moment, targetScheduleId: number) => {
+    if (!targetScheduleId || targetScheduleId === m.schedule_id) return;
+    await handleCopyToSchedule(m, targetScheduleId);
+    await offlineMomentsAPI.delete(m.id);
+    setMoments((prev) => prev.filter((x) => x.id !== m.id));
   };
 
   const startEdit = (m: Moment) => {
@@ -396,7 +430,9 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
         </p>
       ) : (
         <div className="space-y-3">
-          {moments.map(m => (
+          {moments.map(m => {
+            const parsed = parseMetaFromNote(m.note);
+            return (
             <div key={m.id} className="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-100 dark:border-gray-700 space-y-2">
               {/* 상단: 유저 + 날짜 */}
               <div className="flex items-center justify-between">
@@ -433,8 +469,25 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
                   src={m.photo_data}
                   alt="moment"
                   className="w-full rounded-xl object-contain max-h-96 bg-gray-50 dark:bg-gray-900 cursor-pointer"
-                  onClick={() => setSelectedImage(m.photo_data)}
+                  onClick={() => { setSelectedImage(m.photo_data); setSelectedMoment(m); }}
                 />
+              )}
+
+              {schedules.length > 1 && isMyMoment(m) && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <select
+                    className="select select-xs select-bordered"
+                    value={moveTargetById[m.id] || ''}
+                    onChange={(e) => setMoveTargetById((prev) => ({ ...prev, [m.id]: Number(e.target.value) }))}
+                  >
+                    <option value="">이동/복사할 일정 선택</option>
+                    {schedules.filter((s) => s.id !== m.schedule_id).map((s) => (
+                      <option key={s.id} value={s.id}>{s.date} · {s.title}</option>
+                    ))}
+                  </select>
+                  <button className="btn btn-xs" onClick={() => moveTargetById[m.id] && handleCopyToSchedule(m, moveTargetById[m.id])}>복사</button>
+                  <button className="btn btn-xs btn-primary" onClick={() => moveTargetById[m.id] && handleMoveToSchedule(m, moveTargetById[m.id])}>이동</button>
+                </div>
               )}
 
               {/* 별점 + 기분 + 재방문 */}
@@ -463,11 +516,11 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
               </div>
 
               {/* 메모 */}
-              {m.note && (
-                <p className="text-sm text-gray-700 dark:text-gray-300"><AutoTranslate text={m.note} /></p>
+              {parsed.cleanNote && (
+                <p className="text-sm text-gray-700 dark:text-gray-300"><AutoTranslate text={parsed.cleanNote} /></p>
               )}
             </div>
-          ))}
+          );})}
         </div>
       )}
 
@@ -475,13 +528,28 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
       {selectedImage && (
         <div
           className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
-          onClick={() => setSelectedImage(null)}
+          onClick={() => { setSelectedImage(null); setSelectedMoment(null); }}
         >
-          <img
-            src={selectedImage}
-            alt={t('moment.zoomedImage')}
-            className="max-w-full max-h-[85vh] rounded-xl shadow-2xl"
-          />
+          <div className="max-w-full" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={selectedImage}
+              alt={t('moment.zoomedImage')}
+              className="max-w-full max-h-[70vh] rounded-xl shadow-2xl"
+            />
+            {selectedMoment && (() => {
+              const parsed = parseMetaFromNote(selectedMoment.note);
+              const meta = parsed.meta || {};
+              return (
+                <div className="mt-2 bg-base-100/95 rounded-lg p-3 text-xs space-y-1">
+                  <div>파일: {meta.fileName || '-'}</div>
+                  <div>촬영시각: {meta.datetime || '-'}</div>
+                  <div>좌표: {meta.lat && meta.lng ? `${Number(meta.lat).toFixed(5)}, ${Number(meta.lng).toFixed(5)}` : '-'}</div>
+                  <div>AI 신뢰도: {typeof meta.confidence === 'number' ? `${Math.round(meta.confidence * 100)}%` : '-'}</div>
+                  <div>AI 근거: {meta.reason || '-'}</div>
+                </div>
+              );
+            })()}
+          </div>
         </div>
       )}
     </div>

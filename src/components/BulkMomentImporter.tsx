@@ -23,6 +23,8 @@ export default function BulkMomentImporter({ planId, schedules, onDone }: Props)
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
   const [tipIdx, setTipIdx] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [progressLabel, setProgressLabel] = useState('준비 중...');
 
   useEffect(() => {
     if (!loading) return;
@@ -51,6 +53,8 @@ export default function BulkMomentImporter({ planId, schedules, onDone }: Props)
     }
 
     setLoading(true);
+    setProgress(3);
+    setProgressLabel('사진 메타정보 추출 중...');
     setMsg('메타 추출/AI 분류 중...');
 
     try {
@@ -72,10 +76,16 @@ export default function BulkMomentImporter({ planId, schedules, onDone }: Props)
         };
       }));
 
+      setProgress(22);
+      setProgressLabel('AI 분류 요청 중...');
+
       const classify = await assistantAPI.classifyPhotos({
         planId,
         photos: prepared.map((p) => p.meta),
       });
+
+      setProgress(40);
+      setProgressLabel('분류 결과 반영 중...');
 
       // time-overlap but location-mismatch hints -> update schedule plan B
       if (classify.planBUpdates?.length) {
@@ -88,7 +98,11 @@ export default function BulkMomentImporter({ planId, schedules, onDone }: Props)
         }
       }
 
-      for (const item of prepared) {
+      for (let idx = 0; idx < prepared.length; idx++) {
+        const item = prepared[idx];
+        const percent = 45 + Math.round(((idx + 1) / prepared.length) * 50);
+        setProgress(percent);
+        setProgressLabel(`업로드/저장 중... (${idx + 1}/${prepared.length})`);
         const assigned = classify.assignments.find((a) => a.tempId === item.meta.tempId);
         const scheduleIds = assigned?.scheduleIds?.length ? assigned.scheduleIds : [schedules[0]?.id].filter(Boolean) as number[];
         if (scheduleIds.length === 0) continue;
@@ -108,14 +122,27 @@ export default function BulkMomentImporter({ planId, schedules, onDone }: Props)
           }
         }
 
+        const metaPayload = {
+          fileName: item.meta.fileName,
+          datetime: item.meta.datetime || null,
+          lat: item.meta.lat ?? null,
+          lng: item.meta.lng ?? null,
+          confidence: assigned?.confidence ?? null,
+          reason: assigned?.reason || null,
+        };
+        const metaTag = `\n[[meta:${JSON.stringify(metaPayload)}]]`;
+
         for (const sid of scheduleIds) {
+          const baseNote = assigned?.confidence && assigned.confidence < 0.6 ? `자동분류(낮은 신뢰): ${assigned.reason || ''}` : '';
           await offlineMomentsAPI.create(sid, {
             photo_data: photoValue,
-            note: assigned?.confidence && assigned.confidence < 0.6 ? `자동분류(낮은 신뢰): ${assigned.reason || ''}` : undefined,
+            note: `${baseNote}${metaTag}`,
           });
         }
       }
 
+      setProgress(100);
+      setProgressLabel('완료!');
       setMsg('자동 분류 업로드 완료! 필요하면 일정 간 이동해서 수정해줘.');
       onDone();
     } catch (err: any) {
@@ -152,6 +179,13 @@ export default function BulkMomentImporter({ planId, schedules, onDone }: Props)
               <div className="font-semibold">사진 분류/업로드 진행 중...</div>
             </div>
             <p className="text-sm text-base-content/70 min-h-[40px] transition-all duration-300">{LOADING_TIPS[tipIdx]}</p>
+            <div className="mt-2">
+              <div className="flex items-center justify-between text-xs text-base-content/60 mb-1">
+                <span>{progressLabel}</span>
+                <span>{progress}%</span>
+              </div>
+              <progress className="progress progress-primary w-full" value={progress} max={100} />
+            </div>
             <div className="text-xs text-base-content/50 mt-2">창 닫지 말고 잠깐만 기다려줘 🙏</div>
           </div>
         </div>
