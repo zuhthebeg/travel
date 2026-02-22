@@ -400,7 +400,7 @@ export function MainPage() {
                           </span>
                         </div>
                         <p className="text-sm text-base-content/60">
-                          {plan.region && <span className="mr-2">?뱧 <AutoTranslate text={plan.region} /></span>}
+                          {plan.region && <span className="mr-2">📍 <AutoTranslate text={plan.region} /></span>}
                           {plan.start_date} ~ {plan.end_date}
                         </p>
                       </div>
