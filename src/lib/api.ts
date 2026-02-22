@@ -340,6 +340,22 @@ export const momentsAPI = {
 };
 
 // Members API
+export const assistantAPI = {
+  classifyPhotos: async (data: {
+    planId: number;
+    photos: Array<{ tempId: string; fileName: string; datetime?: string | null; lat?: number | null; lng?: number | null }>;
+  }) => {
+    return apiRequest<{ assignments: Array<{ tempId: string; scheduleIds: number[]; confidence: number; reason: string }> }>(
+      '/api/assistant/classify-photos',
+      {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data),
+      },
+    );
+  },
+};
+
 export const membersAPI = {
   // 플랜 멤버 목록
   getByPlanId: async (planId: number): Promise<PlanMembersResponse> => {

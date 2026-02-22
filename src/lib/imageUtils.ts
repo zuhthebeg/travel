@@ -79,6 +79,15 @@ export async function createThumbnail(
  * @param maxSizeMB - Maximum file size in MB (default: 10MB)
  * @returns Validation result
  */
+export function dataUrlToFile(dataUrl: string, filename: string): File {
+  const [meta, data] = dataUrl.split(',');
+  const mime = meta.match(/data:(.*?);base64/)?.[1] || 'image/webp';
+  const bytes = atob(data);
+  const arr = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  return new File([arr], filename, { type: mime });
+}
+
 export function validateImageFile(
   file: File,
   maxSizeMB: number = 10

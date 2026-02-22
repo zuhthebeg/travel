@@ -28,6 +28,7 @@ import ForkButton from '../components/ForkButton';
 import GoogleLoginButton from '../components/GoogleLoginButton';
 import GuestLoginButton from '../components/GuestLoginButton';
 import { TravelMemoList } from '../components/travel/TravelMemoList';
+import BulkMomentImporter from '../components/BulkMomentImporter';
 import type { Schedule, Plan, Comment } from '../store/types';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import useBrowserNotifications from '../hooks/useBrowserNotifications'; // Import the new hook
@@ -1172,6 +1173,7 @@ export function PlanDetailPage() {
         {/* 앨범 탭 */}
         {mainTab === 'album' && selectedPlan && schedules.length > 0 && (
           <div className="space-y-8">
+            <BulkMomentImporter planId={selectedPlan.id} schedules={schedules} onDone={() => loadPlanDetail(selectedPlan.id, true)} />
             <div className="flex justify-end">
               <Button variant="ghost" outline size="sm" onClick={handleCopyShareLink}>
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
