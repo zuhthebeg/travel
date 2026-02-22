@@ -337,7 +337,17 @@
     "badge": "뱃지",
     "nextLevel": "다음 레벨까지",
     "badgeCollection": "뱃지 컬렉션",
-    "earned": "획득!"
+    "earned": "획득!",
+    "titles": {
+      "level_1": "여행 새싹",
+      "level_2": "초보 여행자",
+      "level_3": "길 위의 탐험가",
+      "level_5": "프리퀀트 트래블러",
+      "level_7": "숙련 여행자",
+      "level_10": "월드 트래블러",
+      "level_15": "여행 마스터",
+      "level_20": "레전드 트래블러"
+    }
   },
   "memo": {
     "edit": "수정",

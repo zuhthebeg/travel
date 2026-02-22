@@ -18,24 +18,24 @@ export function calcLevel(xp: number): number {
   return 1;
 }
 
-const LEVEL_TITLES: Record<number, { title: string; emoji: string }> = {
-  1: { title: '여행 새싹', emoji: '🐣' },
-  2: { title: '초보 여행자', emoji: '🎒' },
-  3: { title: '길 위의 탐험가', emoji: '🧭' },
-  5: { title: '프리퀀트 트래블러', emoji: '✈️' },
-  7: { title: '숙련 여행자', emoji: '🗺️' },
-  10: { title: '월드 트래블러', emoji: '🌍' },
-  15: { title: '여행 마스터', emoji: '🏆' },
-  20: { title: '레전드 트래블러', emoji: '👑' },
+const LEVEL_TITLES: Record<number, { titleKey: string; title: string; emoji: string }> = {
+  1: { titleKey: 'level_1', title: '여행 새싹', emoji: '🐣' },
+  2: { titleKey: 'level_2', title: '초보 여행자', emoji: '🎒' },
+  3: { titleKey: 'level_3', title: '길 위의 탐험가', emoji: '🧭' },
+  5: { titleKey: 'level_5', title: '프리퀀트 트래블러', emoji: '✈️' },
+  7: { titleKey: 'level_7', title: '숙련 여행자', emoji: '🗺️' },
+  10: { titleKey: 'level_10', title: '월드 트래블러', emoji: '🌍' },
+  15: { titleKey: 'level_15', title: '여행 마스터', emoji: '🏆' },
+  20: { titleKey: 'level_20', title: '레전드 트래블러', emoji: '👑' },
 };
 
 export function getLevelInfo(level: number) {
   // 정의된 레벨 중 가장 가까운 하위 레벨 찾기
   const defined = Object.keys(LEVEL_TITLES).map(Number).sort((a, b) => b - a);
   for (const lv of defined) {
-    if (level >= lv) return { level, ...LEVEL_TITLES[lv] };
+    if (level >= lv) return { level, titleKey: LEVEL_TITLES[lv].titleKey, title: LEVEL_TITLES[lv].title, ...LEVEL_TITLES[lv] };
   }
-  return { level, title: '여행 새싹', emoji: '🐣' };
+  return { level, titleKey: 'level_1', title: '여행 새싹', emoji: '🐣' };
 }
 
 export function getNextLevelXP(currentXP: number): number | null {

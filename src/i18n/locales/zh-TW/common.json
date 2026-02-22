@@ -315,7 +315,7 @@
   "schedule": { "flightInfo": "查看 {{flightCode}} 航班資訊", "noCoords": "無座標 — 不會顯示在地圖上", "alternativePlan": "備用計畫" },
   "place": { "unknown": "未知地點", "placeholder": "搜尋地點...", "noResults": "找不到結果" },
   "map": { "loadFailed": "無法載入地圖。" },
-  "level": { "country": "國家", "city": "城市", "badge": "徽章", "nextLevel": "距離下一等級", "badgeCollection": "徽章收藏", "earned": "已獲得！" },
+  "level": { "country": "國家", "city": "城市", "badge": "徽章", "nextLevel": "距離下一等級", "badgeCollection": "徽章收藏", "earned": "已獲得！", "titles": { "level_1": "旅行新芽", "level_2": "初級旅人", "level_3": "路上探險家", "level_5": "常旅客", "level_7": "資深旅人", "level_10": "世界旅人", "level_15": "旅行大師", "level_20": "傳奇旅人" } },
   "memo": {
     "edit": "編輯", "delete": "刪除", "collapse": "收合", "more": "更多",
     "category": { "visa": "簽證/入境", "timezone": "時差", "weather": "天氣", "currency": "匯率/貨幣", "emergency": "緊急聯絡", "accommodation": "住宿", "transportation": "交通", "custom": "其他" },

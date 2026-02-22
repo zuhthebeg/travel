@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { Trophy, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import AutoTranslate from './AutoTranslate';
 
 interface LevelData {
   xp: number;
   level: number;
   title: string;
+  titleKey: string;
   emoji: string;
   nextLevelXP: number | null;
   progress: number;
@@ -66,7 +68,7 @@ export default function LevelCard() {
           <div className="flex items-center gap-2">
             <span className="text-2xl">{data.emoji}</span>
             <div>
-              <p className="font-bold text-sm">Lv.{data.level} {data.title}</p>
+              <p className="font-bold text-sm">Lv.{data.level} {t(`level.titles.${data.titleKey}`, { defaultValue: data.title })}</p>
               <p className="text-[11px] text-white/70">{data.xp} XP</p>
             </div>
           </div>
@@ -129,7 +131,7 @@ export default function LevelCard() {
               }`}
             >
               <span className="text-xl block mb-1">{badge.emoji}</span>
-              <p className="text-[10px] font-medium leading-tight">{badge.name}</p>
+              <p className="text-[10px] font-medium leading-tight"><AutoTranslate text={badge.name} /></p>
               {badge.earned && (
                 <p className="text-[8px] text-orange-500 mt-0.5">{t('level.earned')}</p>
               )}

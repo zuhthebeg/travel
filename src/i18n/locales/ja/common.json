@@ -315,7 +315,7 @@
   "schedule": { "flightInfo": "{{flightCode}} の便情報を見る", "noCoords": "座標なし — 地図に表示されません", "alternativePlan": "代替プラン" },
   "place": { "unknown": "不明な場所", "placeholder": "場所を検索...", "noResults": "検索結果がありません" },
   "map": { "loadFailed": "地図を読み込めません。" },
-  "level": { "country": "国", "city": "都市", "badge": "バッジ", "nextLevel": "次のレベルまで", "badgeCollection": "バッジコレクション", "earned": "獲得！" },
+  "level": { "country": "国", "city": "都市", "badge": "バッジ", "nextLevel": "次のレベルまで", "badgeCollection": "バッジコレクション", "earned": "獲得！", "titles": { "level_1": "旅のたまご", "level_2": "初心者トラベラー", "level_3": "道の探検家", "level_5": "フリークエントトラベラー", "level_7": "熟練トラベラー", "level_10": "ワールドトラベラー", "level_15": "旅マスター", "level_20": "レジェンドトラベラー" } },
   "memo": {
     "edit": "修正", "delete": "削除", "collapse": "折りたたむ", "more": "もっと見る",
     "category": { "visa": "ビザ/入国", "timezone": "時差", "weather": "天気", "currency": "為替/通貨", "emergency": "緊急連絡先", "accommodation": "宿泊", "transportation": "交通", "custom": "その他" },

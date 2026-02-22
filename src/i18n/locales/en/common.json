@@ -337,7 +337,17 @@
     "badge": "Badge",
     "nextLevel": "Until next level",
     "badgeCollection": "Badge Collection",
-    "earned": "Earned!"
+    "earned": "Earned!",
+    "titles": {
+      "level_1": "Travel Sprout",
+      "level_2": "Beginner Traveler",
+      "level_3": "Road Explorer",
+      "level_5": "Frequent Traveler",
+      "level_7": "Seasoned Traveler",
+      "level_10": "World Traveler",
+      "level_15": "Travel Master",
+      "level_20": "Legendary Traveler"
+    }
   },
   "memo": {
     "edit": "Edit",
