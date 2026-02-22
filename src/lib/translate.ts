@@ -1,6 +1,7 @@
 /**
  * Client-side translation service
- * Uses /api/translate (Gemini Flash-Lite) with localStorage caching
+ * Uses /api/translate (Gemini 2.5 Flash) with localStorage caching
+ * and automatic request batching (debounce 100ms).
  */
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:8788' : '';
@@ -12,6 +13,62 @@ interface CacheEntry {
   lang: string;
   translated: string;
   ts: number;
+}
+
+// --- Batching ---
+interface PendingRequest {
+  text: string;
+  lang: string;
+  resolve: (value: string) => void;
+  reject: (reason: any) => void;
+}
+
+let pendingBatch: PendingRequest[] = [];
+let batchTimer: ReturnType<typeof setTimeout> | null = null;
+
+function flushBatch() {
+  if (pendingBatch.length === 0) return;
+
+  // Group by language
+  const byLang = new Map<string, PendingRequest[]>();
+  for (const req of pendingBatch) {
+    const arr = byLang.get(req.lang) || [];
+    arr.push(req);
+    byLang.set(req.lang, arr);
+  }
+  pendingBatch = [];
+
+  // Process each language group
+  for (const [lang, requests] of byLang) {
+    const texts = requests.map(r => r.text);
+    translateTexts(texts, lang)
+      .then((translated) => {
+        for (let i = 0; i < requests.length; i++) {
+          requests[i].resolve(translated[i]);
+        }
+      })
+      .catch(() => {
+        for (const req of requests) {
+          req.resolve(req.text); // Fallback to original on error
+        }
+      });
+  }
+}
+
+/**
+ * Queue a single text for batched translation.
+ * Requests are batched within 100ms and sent together.
+ */
+export function translateTextBatched(text: string, targetLang: string): Promise<string> {
+  // Check cache immediately
+  const cached = getCached(text, targetLang);
+  if (cached) return Promise.resolve(cached);
+
+  return new Promise((resolve, reject) => {
+    pendingBatch.push({ text, lang: targetLang, resolve, reject });
+    if (batchTimer) clearTimeout(batchTimer);
+    batchTimer = setTimeout(flushBatch, 100);
+  });
 }
 
 function getCache(): CacheEntry[] {
