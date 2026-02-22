@@ -26,6 +26,9 @@ i18n
     },
     defaultNS: 'common',
     fallbackLng: 'ko',
+    supportedLngs: ['ko', 'en', 'ja', 'zh-TW'],
+    nonExplicitSupportedLngs: false,
+    load: 'currentOnly',
     interpolation: {
       escapeValue: false,
     },
@@ -33,7 +36,20 @@ i18n
       order: ['localStorage', 'navigator'],
       caches: ['localStorage'],
       lookupLocalStorage: 'i18nextLng',
+      convertDetectedLanguage: (lng: string) => {
+        // zh-TW, zh-Hant → zh-TW
+        if (lng.startsWith('zh-TW') || lng.startsWith('zh-Hant')) return 'zh-TW';
+        // zh-anything → fallback to zh-TW (繁體)
+        if (lng.startsWith('zh')) return 'zh-TW';
+        // ko-KR → ko, en-US → en, ja-JP → ja
+        return lng.split('-')[0];
+      },
     },
   });
+
+// Update <html lang> on language change
+i18n.on('languageChanged', (lng: string) => {
+  document.documentElement.lang = lng;
+});
 
 export default i18n;
