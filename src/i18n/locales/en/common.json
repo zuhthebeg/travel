@@ -1,0 +1,19 @@
+{
+  "nav": {
+    "home": "Home",
+    "myTrips": "My Trips",
+    "createTrip": "Create Trip",
+    "myProfile": "My Profile",
+    "newTrip": "New Trip",
+    "logout": "Log Out",
+    "menu": "Menu",
+    "offline": "Offline",
+    "offlineSettings": "Go to offline mode settings"
+  },
+  "online": {
+    "detected": "Internet Connection Detected",
+    "switchPrompt": "WiFi connection detected.\nSwitch to online mode and sync your changes?",
+    "later": "Later",
+    "switchOnline": "Go Online"
+  }
+}

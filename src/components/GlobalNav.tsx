@@ -1,18 +1,25 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useStore } from '../store/useStore';
 import GoogleLoginButton from './GoogleLoginButton';
 import GuestLoginButton from './GuestLoginButton';
-import { Map, ClipboardList, Plane, LogOut, User } from 'lucide-react';
+import { Map, ClipboardList, Plane, LogOut, User, Globe } from 'lucide-react';
 import { runSync } from '../lib/offline/syncEngine';
 
 export function GlobalNav() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t, i18n } = useTranslation();
   const { currentUser, setCurrentUser } = useStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isOfflineMode, setIsOfflineMode] = useState(() => localStorage.getItem('offline_mode') === 'true');
   const [showOnlinePrompt, setShowOnlinePrompt] = useState(false);
+
+  const toggleLanguage = () => {
+    const next = i18n.language?.startsWith('ko') ? 'en' : 'ko';
+    i18n.changeLanguage(next);
+  };
 
   // Listen for offline mode changes (from ProfilePage toggle)
   useEffect(() => {
@@ -65,9 +72,9 @@ export function GlobalNav() {
   };
 
   const navItems = [
-    { path: '/', label: '홈', icon: Map },
-    { path: '/my', label: '내 여행', icon: ClipboardList },
-    { path: '/plan/new', label: '여행 만들기', icon: Plane },
+    { path: '/', label: t('nav.home'), icon: Map },
+    { path: '/my', label: t('nav.myTrips'), icon: ClipboardList },
+    { path: '/plan/new', label: t('nav.createTrip'), icon: Plane },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -93,9 +100,9 @@ export function GlobalNav() {
             <button
               onClick={() => navigate('/profile')}
               className="badge badge-warning badge-sm font-bold gap-1 cursor-pointer hover:badge-outline transition-all ml-1"
-              title="오프라인 모드 설정으로 이동"
+              title={t('nav.offlineSettings')}
             >
-              ⚡ 오프라인
+              ⚡ {t('nav.offline')}
             </button>
           )}
         </div>
@@ -116,6 +123,15 @@ export function GlobalNav() {
             );
           })}
           
+          {/* Language toggle */}
+          <button
+            className="btn btn-ghost btn-sm btn-circle"
+            onClick={toggleLanguage}
+            title={i18n.language?.startsWith('ko') ? 'English' : '한국어'}
+          >
+            <Globe className="w-4 h-4" />
+          </button>
+
           {currentUser ? (
             <div className="dropdown dropdown-end">
               <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar">
@@ -135,10 +151,10 @@ export function GlobalNav() {
                 <li className="menu-title">
                   <span>{currentUser.username}</span>
                 </li>
-                <li><a onClick={() => navigate('/profile')} className="flex items-center gap-2"><User className="w-4 h-4" /> 내 프로필</a></li>
-                <li><a onClick={() => navigate('/my')} className="flex items-center gap-2"><ClipboardList className="w-4 h-4" /> 내 여행</a></li>
-                <li><a onClick={() => navigate('/plan/new')} className="flex items-center gap-2"><Plane className="w-4 h-4" /> 새 여행</a></li>
-                <li><a onClick={handleLogout} className="flex items-center gap-2"><LogOut className="w-4 h-4" /> 로그아웃</a></li>
+                <li><a onClick={() => navigate('/profile')} className="flex items-center gap-2"><User className="w-4 h-4" /> {t('nav.myProfile')}</a></li>
+                <li><a onClick={() => navigate('/my')} className="flex items-center gap-2"><ClipboardList className="w-4 h-4" /> {t('nav.myTrips')}</a></li>
+                <li><a onClick={() => navigate('/plan/new')} className="flex items-center gap-2"><Plane className="w-4 h-4" /> {t('nav.newTrip')}</a></li>
+                <li><a onClick={handleLogout} className="flex items-center gap-2"><LogOut className="w-4 h-4" /> {t('nav.logout')}</a></li>
               </ul>
             </div>
           ) : (
@@ -161,7 +177,7 @@ export function GlobalNav() {
           <button 
             className="btn btn-square btn-ghost btn-sm"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            aria-label="메뉴"
+            aria-label={t('nav.menu')}
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="inline-block w-5 h-5 stroke-current">
               {isMenuOpen ? (
@@ -204,7 +220,7 @@ export function GlobalNav() {
                 <li>
                   <a onClick={() => navigate('/profile')} className="flex items-center gap-3 py-3">
                     <User className="w-5 h-5" />
-                    <span className="font-medium">내 프로필</span>
+                    <span className="font-medium">{t('nav.myProfile')}</span>
                   </a>
                 </li>
                 <li>
@@ -213,7 +229,7 @@ export function GlobalNav() {
                     className="flex items-center gap-3 py-3 text-error"
                   >
                     <LogOut className="w-5 h-5" />
-                    <span className="font-medium">로그아웃</span>
+                    <span className="font-medium">{t('nav.logout')}</span>
                   </a>
                 </li>
               </>
@@ -234,23 +250,22 @@ export function GlobalNav() {
         <div className="card bg-base-100 shadow-xl max-w-sm w-full">
           <div className="card-body text-center p-5">
             <p className="text-3xl mb-1">📶</p>
-            <h3 className="font-bold text-lg">인터넷 연결 감지</h3>
-            <p className="text-sm text-base-content/70 mt-1">
-              WiFi 연결이 감지되었습니다.<br/>
-              온라인 모드로 전환하고 변경사항을 동기화할까요?
+            <h3 className="font-bold text-lg">{t('online.detected')}</h3>
+            <p className="text-sm text-base-content/70 mt-1 whitespace-pre-line">
+              {t('online.switchPrompt')}
             </p>
             <div className="flex gap-2 mt-4 justify-center">
               <button
                 className="btn btn-ghost btn-sm"
                 onClick={() => setShowOnlinePrompt(false)}
               >
-                나중에
+                {t('online.later')}
               </button>
               <button
                 className="btn btn-primary btn-sm"
                 onClick={handleSwitchOnline}
               >
-                온라인 전환
+                {t('online.switchOnline')}
               </button>
             </div>
           </div>

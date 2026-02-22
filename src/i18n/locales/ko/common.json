@@ -1,0 +1,19 @@
+{
+  "nav": {
+    "home": "홈",
+    "myTrips": "내 여행",
+    "createTrip": "여행 만들기",
+    "myProfile": "내 프로필",
+    "newTrip": "새 여행",
+    "logout": "로그아웃",
+    "menu": "메뉴",
+    "offline": "오프라인",
+    "offlineSettings": "오프라인 모드 설정으로 이동"
+  },
+  "online": {
+    "detected": "인터넷 연결 감지",
+    "switchPrompt": "WiFi 연결이 감지되었습니다.\n온라인 모드로 전환하고 변경사항을 동기화할까요?",
+    "later": "나중에",
+    "switchOnline": "온라인 전환"
+  }
+}
