@@ -6,6 +6,7 @@ import GoogleLoginButton from './GoogleLoginButton';
 import GuestLoginButton from './GuestLoginButton';
 import { Map, ClipboardList, Plane, LogOut, User, Globe } from 'lucide-react';
 import { runSync } from '../lib/offline/syncEngine';
+import { SUPPORTED_LANGUAGES } from '../i18n';
 
 export function GlobalNav() {
   const navigate = useNavigate();
@@ -16,10 +17,7 @@ export function GlobalNav() {
   const [isOfflineMode, setIsOfflineMode] = useState(() => localStorage.getItem('offline_mode') === 'true');
   const [showOnlinePrompt, setShowOnlinePrompt] = useState(false);
 
-  const toggleLanguage = () => {
-    const next = i18n.language?.startsWith('ko') ? 'en' : 'ko';
-    i18n.changeLanguage(next);
-  };
+  const currentLang = SUPPORTED_LANGUAGES.find(l => i18n.language?.startsWith(l.code)) || SUPPORTED_LANGUAGES[0];
 
   // Listen for offline mode changes (from ProfilePage toggle)
   useEffect(() => {
@@ -123,14 +121,25 @@ export function GlobalNav() {
             );
           })}
           
-          {/* Language toggle */}
-          <button
-            className="btn btn-ghost btn-sm btn-circle"
-            onClick={toggleLanguage}
-            title={i18n.language?.startsWith('ko') ? 'English' : '한국어'}
-          >
-            <Globe className="w-4 h-4" />
-          </button>
+          {/* Language selector */}
+          <div className="dropdown dropdown-end">
+            <div tabIndex={0} role="button" className="btn btn-ghost btn-sm gap-1">
+              <Globe className="w-4 h-4" />
+              <span className="text-xs">{currentLang.flag}</span>
+            </div>
+            <ul tabIndex={0} className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-40">
+              {SUPPORTED_LANGUAGES.map((lang) => (
+                <li key={lang.code}>
+                  <a
+                    className={lang.code === currentLang.code ? 'active' : ''}
+                    onClick={() => { i18n.changeLanguage(lang.code); (document.activeElement as HTMLElement)?.blur(); }}
+                  >
+                    {lang.flag} {lang.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
 
           {currentUser ? (
             <div className="dropdown dropdown-end">

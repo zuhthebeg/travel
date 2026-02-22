@@ -1,0 +1,19 @@
+{
+  "nav": {
+    "home": "首頁",
+    "myTrips": "我的旅行",
+    "createTrip": "建立旅行",
+    "myProfile": "我的檔案",
+    "newTrip": "新旅行",
+    "logout": "登出",
+    "menu": "選單",
+    "offline": "離線",
+    "offlineSettings": "前往離線模式設定"
+  },
+  "online": {
+    "detected": "偵測到網路連線",
+    "switchPrompt": "偵測到WiFi連線。\n切換至線上模式並同步變更？",
+    "later": "稍後",
+    "switchOnline": "切換至線上"
+  }
+}

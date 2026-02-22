@@ -1,0 +1,19 @@
+{
+  "nav": {
+    "home": "ホーム",
+    "myTrips": "マイ旅行",
+    "createTrip": "旅行を作成",
+    "myProfile": "マイプロフィール",
+    "newTrip": "新しい旅行",
+    "logout": "ログアウト",
+    "menu": "メニュー",
+    "offline": "オフライン",
+    "offlineSettings": "オフラインモード設定へ移動"
+  },
+  "online": {
+    "detected": "インターネット接続を検出",
+    "switchPrompt": "WiFi接続が検出されました。\nオンラインモードに切り替えて変更を同期しますか？",
+    "later": "後で",
+    "switchOnline": "オンラインに切替"
+  }
+}
