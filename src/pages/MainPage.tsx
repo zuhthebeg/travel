@@ -18,6 +18,7 @@ import { Globe, Map as MapIcon, Calendar, Clock } from 'lucide-react';
 import AlbumTimeline from '../components/AlbumTimeline';
 import LevelCard from '../components/LevelCard';
 import { useTranslation } from 'react-i18next';
+import AutoTranslate from '../components/AutoTranslate';
 
 interface PlanWithSchedules extends Plan {
   schedules?: Schedule[];
@@ -397,13 +398,13 @@ export function MainPage() {
                     >
                       <div className="card-body p-4">
                         <div className="flex items-center justify-between">
-                          <h3 className="card-title text-base">{plan.title}</h3>
+                          <h3 className="card-title text-base"><AutoTranslate text={plan.title} /></h3>
                           <span className={`badge badge-sm ${daysUntil <= 7 ? 'badge-warning' : 'badge-ghost'}`}>
                             {daysUntil <= 0 ? t('main.tripInProgressBang') : `D-${daysUntil}`}
                           </span>
                         </div>
                         <p className="text-sm text-base-content/60">
-                          {plan.region && <span className="mr-2">📍 {plan.region}</span>}
+                          {plan.region && <span className="mr-2">📍 <AutoTranslate text={plan.region} /></span>}
                           {plan.start_date} ~ {plan.end_date}
                         </p>
                       </div>

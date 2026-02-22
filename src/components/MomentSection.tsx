@@ -5,6 +5,7 @@ import { Camera, X, Edit2, Trash2, Smile, Star, MapPin, Clock } from 'lucide-rea
 import { extractExif } from '../lib/exif';
 import { offlineMomentsAPI } from '../lib/offlineAPI';
 import { useTranslation } from 'react-i18next';
+import AutoTranslate from './AutoTranslate';
 
 // Inline types (will be moved to types.ts by Spark)
 interface Moment {
@@ -463,7 +464,7 @@ export default function MomentSection({ scheduleId }: MomentSectionProps) {
 
               {/* 메모 */}
               {m.note && (
-                <p className="text-sm text-gray-700 dark:text-gray-300">{m.note}</p>
+                <p className="text-sm text-gray-700 dark:text-gray-300"><AutoTranslate text={m.note} /></p>
               )}
             </div>
           ))}

@@ -3,6 +3,7 @@ import type { Review, ReviewStats } from '../store/types';
 import { reviewsAPI } from '../lib/api';
 import { compressImage, validateImageFile } from '../lib/imageUtils';
 import { useTranslation } from 'react-i18next';
+import AutoTranslate from './AutoTranslate';
 
 interface ReviewSectionProps {
   scheduleId: number;
@@ -288,7 +289,7 @@ export default function ReviewSection({ scheduleId }: ReviewSectionProps) {
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm">{review.author_name}</span>
+                      <span className="font-semibold text-sm"><AutoTranslate text={review.author_name} /></span>
                       <span className="text-warning">
                         {'⭐'.repeat(review.rating)}
                       </span>
@@ -324,7 +325,7 @@ export default function ReviewSection({ scheduleId }: ReviewSectionProps) {
 
                 {/* Review Text */}
                 {review.review_text && (
-                  <p className="text-sm whitespace-pre-wrap mt-2">{review.review_text}</p>
+                  <p className="text-sm whitespace-pre-wrap mt-2"><AutoTranslate text={review.review_text} /></p>
                 )}
               </div>
             ))}

@@ -5,6 +5,7 @@ import { formatDateRange, getDaysDifference, getCountryFlag, extractCountryFromR
 import type { Plan } from '../store/types';
 import { MapPin, Calendar, Globe } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import AutoTranslate from './AutoTranslate';
 
 interface PlanCardProps {
   plan: Plan;
@@ -46,7 +47,7 @@ export function PlanCard({ plan, showImportButton = false, onImport }: PlanCardP
       )}
       <Card.Body>
         <Card.Title>
-          {plan.title}
+          <AutoTranslate text={plan.title} />
           {plan.visibility === 'public' && <div className="badge badge-secondary">{t('planCard.public')}</div>}
         </Card.Title>
         {plan.region && (
@@ -57,7 +58,7 @@ export function PlanCard({ plan, showImportButton = false, onImport }: PlanCardP
               <Globe className="w-4 h-4 text-base-content/50" />
             )}
             <MapPin className="w-4 h-4 text-primary" />
-            <span>{plan.region}</span>
+            <span><AutoTranslate text={plan.region} /></span>
             {countryInfo && countryInfo.name && countryInfo.name !== plan.region && (
               <span className="badge badge-ghost badge-sm">{countryInfo.name}</span>
             )}

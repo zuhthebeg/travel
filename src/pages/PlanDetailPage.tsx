@@ -35,6 +35,7 @@ import { MapPin, Calendar, Cloud, Map, Plane, Clock, FileText, Sparkles, AlertCi
 import ConflictBanner from '../components/ConflictBanner';
 import ConflictResolver from '../components/ConflictResolver';
 import type { OpLogEntry } from '../lib/offline/types';
+import AutoTranslate from '../components/AutoTranslate';
 
 type ViewMode = 'vertical' | 'horizontal' | 'calendar' | 'daily';
 type MainTab = 'schedule' | 'notes' | 'album';
@@ -727,7 +728,7 @@ export function PlanDetailPage() {
         <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-3">
           {/* 1줄: 제목 + 공개여부 + ... 설정 */}
           <div className="flex items-center gap-2">
-            <h1 className="text-base sm:text-lg font-bold truncate flex-1 min-w-0">{selectedPlan.title}</h1>
+            <h1 className="text-base sm:text-lg font-bold truncate flex-1 min-w-0"><AutoTranslate text={selectedPlan.title} /></h1>
             {localStorage.getItem('offline_mode') === 'true' && (
               <span className="badge badge-warning badge-xs font-bold flex-shrink-0 cursor-pointer" onClick={() => navigate('/profile')}>{t('planDetail.offlineBadge')}</span>
             )}
@@ -1196,9 +1197,9 @@ export function PlanDetailPage() {
                             {schedule.time}
                           </span>
                         )}
-                        <h4 className="font-semibold">{schedule.title}</h4>
+                        <h4 className="font-semibold"><AutoTranslate text={schedule.title as string} /></h4>
                         {schedule.place && (
-                          <span className="text-xs text-gray-500">📍 {schedule.place}</span>
+                          <span className="text-xs text-gray-500">📍 <AutoTranslate text={schedule.place} /></span>
                         )}
                       </div>
                       <MomentSection scheduleId={schedule.id} />
@@ -2346,7 +2347,11 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
           <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" onClick={onClose}>✕</button>
         </form>
 
-        <h3 className="font-bold text-2xl mb-6">{linkifyFlightNumbers(schedule.title as string)}</h3>
+        <h3 className="font-bold text-2xl mb-6">
+          <AutoTranslate text={schedule.title as string}>
+            {(tText) => <>{linkifyFlightNumbers(tText)}</>}
+          </AutoTranslate>
+        </h3>
 
         <div className="space-y-4">
           <div className="flex items-center gap-4">
@@ -2409,7 +2414,9 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
                   <div className="text-lg flex items-center gap-2 flex-wrap group">
                     {schedule.place ? (
                       <>
-                        {linkifyFlightNumbers(schedule.place as string)}
+                        <AutoTranslate text={schedule.place as string}>
+                          {(tText) => <>{linkifyFlightNumbers(tText)}</>}
+                        </AutoTranslate>
                         <a
                           href={(() => {
                             const place = schedule.place as string;
@@ -2465,7 +2472,9 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
             <div>
               <div className="font-semibold text-sm text-base-content/70 mb-2">{t('planDetail.memo')}</div>
               <div className="bg-base-200 p-4 rounded-lg whitespace-pre-wrap">
-                {linkifyText(schedule.memo)}
+                <AutoTranslate text={schedule.memo}>
+                  {(tText) => <>{linkifyText(tText)}</>}
+                </AutoTranslate>
               </div>
             </div>
           )}
@@ -2477,7 +2486,7 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
                 <div className="alert alert-info">
                   <div>
                     <div className="font-bold mb-1">Plan B</div>
-                    <div>{schedule.plan_b}</div>
+                    <div><AutoTranslate text={schedule.plan_b} /></div>
                   </div>
                 </div>
               )}
@@ -2485,7 +2494,7 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
                 <div className="alert alert-warning">
                   <div>
                     <div className="font-bold mb-1">Plan C</div>
-                    <div>{schedule.plan_c}</div>
+                    <div><AutoTranslate text={schedule.plan_c} /></div>
                   </div>
                 </div>
               )}
@@ -2577,7 +2586,7 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
                       <div key={comment.id} className="bg-base-200 p-3 rounded-lg">
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold text-sm">{comment.author_name}</span>
+                            <span className="font-semibold text-sm"><AutoTranslate text={comment.author_name} /></span>
                             <span className="text-xs text-base-content/50">
                               {new Date(comment.created_at).toLocaleString('ko-KR', {
                                 month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -2591,7 +2600,7 @@ function ScheduleDetailModal({ modalRef, schedule, schedules, onClose, onEdit, o
                             {t('planDetail.delete')}
                           </button>
                         </div>
-                        <p className="text-sm whitespace-pre-wrap">{comment.content}</p>
+                        <p className="text-sm whitespace-pre-wrap"><AutoTranslate text={comment.content} /></p>
                       </div>
                     ))}
                   </div>

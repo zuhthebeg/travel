@@ -2,6 +2,7 @@ import { formatDisplayDate } from '../lib/utils';
 import type { Schedule } from '../store/types';
 import { MapPin, Plane, Sunrise, Sun, Sunset, Moon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import AutoTranslate from './AutoTranslate';
 
 interface ScheduleCardProps {
   schedule: Schedule;
@@ -129,17 +130,21 @@ export function ScheduleCard({ schedule, onView, compact }: ScheduleCardProps) {
             </span>
           )}
           <span className="font-medium text-sm truncate flex-1">
-            {schedule.title ? linkifyFlightNumbers(schedule.title as string) : ''}
+            {schedule.title ? (
+              <AutoTranslate text={schedule.title as string}>
+                {(tText) => <>{linkifyFlightNumbers(tText)}</>}
+              </AutoTranslate>
+            ) : ''}
           </span>
         </div>
         {schedule.place && (
           <div className="flex items-center gap-1 mt-1 ml-0.5">
             <MapPin className={`w-3 h-3 flex-shrink-0 ${schedule.latitude && schedule.longitude ? 'text-primary' : 'text-warning'}`} />
-            <span className="text-xs text-base-content/60 truncate">{schedule.place}</span>
+            <span className="text-xs text-base-content/60 truncate"><AutoTranslate text={schedule.place} /></span>
           </div>
         )}
         {schedule.memo && (
-          <p className="text-xs text-base-content/50 mt-1 line-clamp-1 ml-0.5">{schedule.memo}</p>
+          <p className="text-xs text-base-content/50 mt-1 line-clamp-1 ml-0.5"><AutoTranslate text={schedule.memo} /></p>
         )}
       </div>
     );
@@ -165,7 +170,11 @@ export function ScheduleCard({ schedule, onView, compact }: ScheduleCardProps) {
               </div>
             </div>
             <h3 className="card-title text-xl">
-              {schedule.title ? linkifyFlightNumbers(schedule.title as string) : ''}
+              {schedule.title ? (
+                <AutoTranslate text={schedule.title as string}>
+                  {(tText) => <>{linkifyFlightNumbers(tText)}</>}
+                </AutoTranslate>
+              ) : ''}
             </h3>
           </div>
         </div>
@@ -174,7 +183,9 @@ export function ScheduleCard({ schedule, onView, compact }: ScheduleCardProps) {
           <p className="text-sm text-base-content/80 mb-2 flex items-center gap-1.5">
             <MapPin className={`w-4 h-4 flex-shrink-0 ${schedule.latitude && schedule.longitude ? 'text-primary' : 'text-warning'}`} />
             <span className="font-medium">
-              {linkifyFlightNumbers(schedule.place as string)}
+              <AutoTranslate text={schedule.place as string}>
+                {(tText) => <>{linkifyFlightNumbers(tText)}</>}
+              </AutoTranslate>
             </span>
             {schedule.place && (!schedule.latitude || !schedule.longitude) && (
               <span className="badge badge-warning badge-xs" title={t('schedule.noCoords')}>📍?</span>
@@ -184,7 +195,9 @@ export function ScheduleCard({ schedule, onView, compact }: ScheduleCardProps) {
 
         {schedule.memo && (
           <div className="text-sm text-base-content/90 mb-3 whitespace-pre-wrap bg-base-200 p-3 rounded-lg">
-            {linkifyFlightNumbers(schedule.memo)}
+            <AutoTranslate text={schedule.memo}>
+              {(tText) => <>{linkifyFlightNumbers(tText)}</>}
+            </AutoTranslate>
           </div>
         )}
 
@@ -208,14 +221,14 @@ export function ScheduleCard({ schedule, onView, compact }: ScheduleCardProps) {
         {schedule.plan_b && (
           <div className="alert alert-info shadow-sm mb-2">
             <div>
-              <span className="font-bold">Plan B:</span> {schedule.plan_b}
+              <span className="font-bold">Plan B:</span> <AutoTranslate text={schedule.plan_b} />
             </div>
           </div>
         )}
         {schedule.plan_c && (
           <div className="alert alert-warning shadow-sm">
             <div>
-              <span className="font-bold">Plan C:</span> {schedule.plan_c}
+              <span className="font-bold">Plan C:</span> <AutoTranslate text={schedule.plan_c} />
             </div>
           </div>
         )}

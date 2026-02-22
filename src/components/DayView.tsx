@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { dayNotesOffline } from '../lib/offlineAPI';
 import { ChevronLeft, ChevronRight, MapPin, FileText, Plane, StickyNote } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import AutoTranslate from './AutoTranslate';
 // 년도 없는 날짜 표시: "3월 20일 (목)"
 function formatShortDate(date: string): string {
   const d = new Date(date + 'T00:00:00');
@@ -288,7 +289,7 @@ export default function DayView({ schedules, startDate, endDate, planId, onSched
             className="px-4 py-3 text-sm whitespace-pre-wrap text-base-content/80 border-t border-base-200 cursor-pointer hover:bg-base-200/50"
             onClick={() => { setNoteContent(currentNote.content); setEditingNote(true); }}
           >
-            {currentNote.content}
+            <AutoTranslate text={currentNote.content} />
           </div>
         ) : null}
       </div>
@@ -356,7 +357,7 @@ export default function DayView({ schedules, startDate, endDate, planId, onSched
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         {isFlight && <Plane className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />}
-                        <span className="font-medium text-sm truncate">{schedule.title}</span>
+                        <span className="font-medium text-sm truncate"><AutoTranslate text={schedule.title as string} /></span>
                       </div>
                       {schedule.place && (
                         <div className="flex items-center gap-1 mt-0.5">
@@ -367,13 +368,13 @@ export default function DayView({ schedules, startDate, endDate, planId, onSched
                           ) : (
                             <MapPin className="w-3 h-3 text-base-content/40 flex-shrink-0" />
                           )}
-                          <span className="text-xs text-base-content/50 truncate">{schedule.place}</span>
+                          <span className="text-xs text-base-content/50 truncate"><AutoTranslate text={schedule.place} /></span>
                         </div>
                       )}
                       {schedule.memo && (
                         <div className="flex items-start gap-1 mt-1">
                           <FileText className="w-3 h-3 text-base-content/30 flex-shrink-0 mt-0.5" />
-                          <span className="text-xs text-base-content/40 line-clamp-1">{schedule.memo}</span>
+                          <span className="text-xs text-base-content/40 line-clamp-1"><AutoTranslate text={schedule.memo} /></span>
                         </div>
                       )}
                     </div>
