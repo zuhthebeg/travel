@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+﻿import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { plansAPI as rawPlansAPI, schedulesAPI as rawSchedulesAPI } from '../lib/api';
@@ -15,7 +15,6 @@ import { Button } from '../components/Button';
 import { Loading } from '../components/Loading';
 import type { Plan, Schedule } from '../store/types';
 import { Globe, Map as MapIcon, Calendar, Clock } from 'lucide-react';
-import AlbumTimeline from '../components/AlbumTimeline';
 import LevelCard from '../components/LevelCard';
 import { useTranslation } from 'react-i18next';
 import AutoTranslate from '../components/AutoTranslate';
@@ -47,29 +46,26 @@ export function MainPage() {
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
   const getCountryName = (code: string) => t(`main.countryNames.${code}`, { defaultValue: code });
   
-  // 시간 슬라이더 상태 (로그인 사용자용)
+  // ?쒓컙 ?щ씪?대뜑 ?곹깭 (濡쒓렇???ъ슜?먯슜)
   const [timeOffset, setTimeOffset] = useState(0);
   const TIME_RANGE = 180;
   
-  // 국가 토글 상태 (비로그인용) - Set으로 선택된 국가 코드 관리
+  // 援?? ?좉? ?곹깭 (鍮꾨줈洹몄씤?? - Set?쇰줈 ?좏깮??援?? 肄붾뱶 愿由?
   const [selectedCountries, setSelectedCountries] = useState<Set<string>>(new Set());
   
-  // 내 여행 + 공유받은 여행
+  // ???ы뻾 + 怨듭쑀諛쏆? ?ы뻾
   const [myPlans, setMyPlans] = useState<Plan[]>([]);
 
-  // 오늘 날짜 (YYYY-MM-DD)
+  // ?ㅻ뒛 ?좎쭨 (YYYY-MM-DD)
   const today = useMemo(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }, []);
 
-  // 다가오는 여행 (end_date >= today)
+  // ?ㅺ??ㅻ뒗 ?ы뻾 (end_date >= today)
   const upcomingPlans = useMemo(() => myPlans.filter(p => p.end_date >= today), [myPlans, today]);
 
-  // 끝난 여행 ID 목록 (앨범 필터용)
-  const pastPlanIds = useMemo(() => {
-    return new Set(myPlans.filter(p => p.end_date < today).map(p => p.id));
-  }, [myPlans, today]);
+  // ?앸궃 ?ы뻾 ID 紐⑸줉 (?⑤쾾 ?꾪꽣??
 
   useEffect(() => {
     setSelectedCountries(new Set());
@@ -93,7 +89,7 @@ export function MainPage() {
       const publicPlans = await plansAPI.getAll({ is_public: true });
       setPlans(publicPlans);
 
-      // 각 여행의 일정(좌표) 로드
+      // 媛??ы뻾???쇱젙(醫뚰몴) 濡쒕뱶
       const plansWithData: PlanWithSchedules[] = await Promise.all(
         publicPlans.map(async (plan) => {
           try {
@@ -114,14 +110,14 @@ export function MainPage() {
     }
   };
 
-  // 최신순 정렬 (리스트 표시용 10개 제한)
+  // 理쒖떊???뺣젹 (由ъ뒪???쒖떆??10媛??쒗븳)
   const sortedPlans = useMemo(() => {
     return [...plansWithSchedules]
       .sort((a, b) => parseDateLocal(b.start_date).getTime() - parseDateLocal(a.start_date).getTime())
       .slice(0, 10);
   }, [plansWithSchedules]);
 
-  // 지도용: 오늘 기준 앞뒤 6개월 여행 (최대 100개, 클라이언트 필터링)
+  // 吏?꾩슜: ?ㅻ뒛 湲곗? ?욌뮘 6媛쒖썡 ?ы뻾 (理쒕? 100媛? ?대씪?댁뼵???꾪꽣留?
   const mapPlans = useMemo(() => {
     const now = new Date();
     const sixMonthsAgo = new Date(now);
@@ -133,14 +129,14 @@ export function MainPage() {
       .filter(plan => {
         const start = parseDateLocal(plan.start_date);
         const end = parseDateLocal(plan.end_date);
-        // 여행 기간이 앞뒤 6개월 범위와 겹치면 포함
+        // ?ы뻾 湲곌컙???욌뮘 6媛쒖썡 踰붿쐞? 寃뱀튂硫??ы븿
         return !(end < sixMonthsAgo || start > sixMonthsLater);
       })
       .sort((a, b) => parseDateLocal(a.start_date).getTime() - parseDateLocal(b.start_date).getTime())
       .slice(0, 100);
   }, [plansWithSchedules]);
 
-  // 시간 필터링된 여행 (슬라이더 기준 ±30일 범위, 지도용 풀 데이터 기반)
+  // ?쒓컙 ?꾪꽣留곷맂 ?ы뻾 (?щ씪?대뜑 湲곗? 짹30??踰붿쐞, 吏?꾩슜 ? ?곗씠??湲곕컲)
   const filteredPlansByTime = useMemo(() => {
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + timeOffset);
@@ -157,14 +153,14 @@ export function MainPage() {
     });
   }, [mapPlans, timeOffset]);
 
-  // 지도 포인트 생성 (시간 필터링 적용)
+  // 吏???ъ씤???앹꽦 (?쒓컙 ?꾪꽣留??곸슜)
   const allMapPoints = useMemo((): MapPoint[] => {
     const points: MapPoint[] = [];
     
     filteredPlansByTime.forEach((plan) => {
       if (!plan.schedules) return;
       
-      // 선택된 여행만 표시 → 개별 스케줄 모드
+      // ?좏깮???ы뻾留??쒖떆 ??媛쒕퀎 ?ㅼ?以?紐⑤뱶
       if (selectedPlanId && plan.id === selectedPlanId) {
         plan.schedules.forEach((schedule) => {
           if (schedule.latitude && schedule.longitude) {
@@ -181,13 +177,13 @@ export function MainPage() {
         });
         return;
       }
-      if (selectedPlanId) return; // 다른 여행은 스킵
+      if (selectedPlanId) return; // ?ㅻⅨ ?ы뻾? ?ㅽ궢
       
-      // 국가 필터 적용
+      // 援?? ?꾪꽣 ?곸슜
       const countryInfo = getPlanCountry(plan, getCountryName);
       if (countryInfo && !selectedCountries.has(countryInfo.code)) return;
       
-      // 여행별 대표 좌표 1개 (첫 번째 유효 스케줄)
+      // ?ы뻾蹂????醫뚰몴 1媛?(泥?踰덉㎏ ?좏슚 ?ㅼ?以?
       const firstWithCoords = plan.schedules.find(s => s.latitude && s.longitude);
       if (firstWithCoords) {
         const startMonth = plan.start_date ? parseDateLocal(plan.start_date).getMonth() + 1 : '';
@@ -207,7 +203,7 @@ export function MainPage() {
     return points;
   }, [filteredPlansByTime, selectedPlanId, selectedCountries, t]);
 
-  // 슬라이더용 현재 타겟 날짜
+  // ?щ씪?대뜑???꾩옱 ?寃??좎쭨
   const targetDateLabel = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() + timeOffset);
@@ -216,7 +212,7 @@ export function MainPage() {
     return d.toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' });
   }, [timeOffset, i18n.language, i18n.resolvedLanguage]);
 
-  // 국가별 여행 통계 (코드 포함)
+  // 援??蹂??ы뻾 ?듦퀎 (肄붾뱶 ?ы븿)
   const countryStats = useMemo(() => {
     const stats = new Map<string, { code: string; count: number; flag: string; name: string }>();
     
@@ -237,14 +233,14 @@ export function MainPage() {
     return Array.from(stats.values()).sort((a, b) => b.count - a.count);
   }, [plansWithSchedules, t]);
 
-  // 초기 로드 시 모든 국가 선택
+  // 珥덇린 濡쒕뱶 ??紐⑤뱺 援?? ?좏깮
   useEffect(() => {
     if (countryStats.length > 0 && selectedCountries.size === 0) {
       setSelectedCountries(new Set(countryStats.map(s => s.code)));
     }
   }, [countryStats]);
 
-  // 국가 토글 핸들러
+  // 援?? ?좉? ?몃뱾??
   const toggleCountry = (code: string) => {
     setSelectedCountries(prev => {
       const newSet = new Set(prev);
@@ -257,7 +253,7 @@ export function MainPage() {
     });
   };
 
-  // 비로그인용: 지역별 대표 좌표 (여행별 첫 번째 좌표만)
+  // 鍮꾨줈洹몄씤?? 吏??퀎 ???醫뚰몴 (?ы뻾蹂?泥?踰덉㎏ 醫뚰몴留?
   const regionMapPoints = useMemo((): MapPoint[] => {
     const points: MapPoint[] = [];
     const seenRegions = new Set<string>();
@@ -266,11 +262,11 @@ export function MainPage() {
       const countryInfo = getPlanCountry(plan, getCountryName);
       if (!countryInfo || !selectedCountries.has(countryInfo.code)) return;
       
-      // 지역당 하나의 포인트만
+      // 吏??떦 ?섎굹???ъ씤?몃쭔
       const regionKey = plan.region || 'unknown';
       if (seenRegions.has(regionKey)) return;
       
-      // 첫 번째 좌표 있는 일정 찾기
+      // 泥?踰덉㎏ 醫뚰몴 ?덈뒗 ?쇱젙 李얘린
       const scheduleWithCoords = plan.schedules?.find(s => s.latitude && s.longitude);
       if (scheduleWithCoords) {
         seenRegions.add(regionKey);
@@ -353,10 +349,10 @@ export function MainPage() {
 
   const handleMapPointClick = (point: MapPoint) => {
     if (selectedPlanId) {
-      // 개별 스케줄 모드에서는 해당 여행으로 이동
+      // 媛쒕퀎 ?ㅼ?以?紐⑤뱶?먯꽌???대떦 ?ы뻾?쇰줈 ?대룞
       navigate(`/plan/${selectedPlanId}`);
     } else {
-      // 여행별 대표 마커 → point.id가 plan.id
+      // ?ы뻾蹂????留덉빱 ??point.id媛 plan.id
       navigate(`/plan/${point.id}`);
     }
   };
@@ -378,7 +374,7 @@ export function MainPage() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
-        {/* 내 여행 섹션 (로그인 시) */}
+        {/* ???ы뻾 ?뱀뀡 (濡쒓렇???? */}
         {currentUser && upcomingPlans.length > 0 && (
           <div className="mb-6">
             <h2 className="text-lg font-bold flex items-center gap-2 mb-3">
@@ -404,7 +400,7 @@ export function MainPage() {
                           </span>
                         </div>
                         <p className="text-sm text-base-content/60">
-                          {plan.region && <span className="mr-2">📍 <AutoTranslate text={plan.region} /></span>}
+                          {plan.region && <span className="mr-2">?뱧 <AutoTranslate text={plan.region} /></span>}
                           {plan.start_date} ~ {plan.end_date}
                         </p>
                       </div>
@@ -442,7 +438,7 @@ export function MainPage() {
             </Button>
           </div>
 
-          {/* Country Stats - 토글 가능 */}
+          {/* Country Stats - ?좉? 媛??*/}
           {countryStats.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-4">
               {countryStats.slice(0, 10).map((stat) => {
@@ -484,7 +480,7 @@ export function MainPage() {
             </div>
           )}
 
-          {/* Map View - 비로그인: 심플 / 로그인: 상세 */}
+          {/* Map View - 鍮꾨줈洹몄씤: ?ы뵆 / 濡쒓렇?? ?곸꽭 */}
           <div className="card bg-base-100 shadow-xl overflow-hidden">
             {isLoading ? (
               <div className="h-[400px] flex items-center justify-center">
@@ -545,30 +541,30 @@ export function MainPage() {
                   {t('main.next')}
                 </button>
               </div>
-              {/* 계절 퀵 이동 — 과거~미래 상대 정렬 */}
+              {/* 怨꾩젅 ???대룞 ??怨쇨굅~誘몃옒 ?곷? ?뺣젹 */}
               <div className="flex justify-center gap-1 mt-2">
                 {(() => {
                   const now = new Date();
-                  // 계절 중심 월: 봄3, 여름6, 가을9, 겨울0
+                  // 怨꾩젅 以묒떖 ?? 遊?, ?щ쫫6, 媛??, 寃⑥슱0
                   const seasonDefs = [
                     { label: t('main.seasonFall'), centerMonth: 9 },
                     { label: t('main.seasonWinter'), centerMonth: 0 },
                     { label: t('main.seasonSpring'), centerMonth: 3 },
                     { label: t('main.seasonSummer'), centerMonth: 6 },
                   ];
-                  // 과거 2계절 + 미래 2계절 기준으로 정렬
+                  // 怨쇨굅 2怨꾩젅 + 誘몃옒 2怨꾩젅 湲곗??쇰줈 ?뺣젹
                   const items = seasonDefs.map(s => {
-                    // 과거 방향: 현재 월보다 뒤면 작년
+                    // 怨쇨굅 諛⑺뼢: ?꾩옱 ?붾낫???ㅻ㈃ ?묐뀈
                     const pastTarget = new Date(now.getFullYear(), s.centerMonth, 15);
                     if (pastTarget > now) pastTarget.setFullYear(pastTarget.getFullYear() - 1);
                     const pastDiff = Math.round((pastTarget.getTime() - now.getTime()) / 86400000);
 
-                    // 미래 방향: 현재 월보다 앞이면 올해, 아니면 내년
+                    // 誘몃옒 諛⑺뼢: ?꾩옱 ?붾낫???욎씠硫??ы빐, ?꾨땲硫??대뀈
                     const futureTarget = new Date(now.getFullYear(), s.centerMonth, 15);
                     if (futureTarget <= now) futureTarget.setFullYear(futureTarget.getFullYear() + 1);
                     const futureDiff = Math.round((futureTarget.getTime() - now.getTime()) / 86400000);
 
-                    // 가까운 쪽 선택
+                    // 媛源뚯슫 履??좏깮
                     const diff = Math.abs(pastDiff) < Math.abs(futureDiff) ? pastDiff : futureDiff;
                     return { ...s, diff, inRange: Math.abs(diff) <= TIME_RANGE };
                   }).sort((a, b) => a.diff - b.diff);
@@ -589,7 +585,7 @@ export function MainPage() {
           </div>
         </div>
 
-        {/* Plan Filter (when a plan is selected) - 로그인 사용자만 */}
+        {/* Plan Filter (when a plan is selected) - 濡쒓렇???ъ슜?먮쭔 */}
         {currentUser && selectedPlanId && (
           <div className="alert mb-4">
             <span>{t('main.selectedPlanOnly')}</span>
@@ -602,7 +598,7 @@ export function MainPage() {
           </div>
         )}
 
-        {/* 최신 여행 카드 (가로 스크롤) */}
+        {/* 理쒖떊 ?ы뻾 移대뱶 (媛濡??ㅽ겕濡? */}
         {!isLoading && sortedPlans.length > 0 && (
           <div className="mb-8">
             <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
@@ -627,19 +623,14 @@ export function MainPage() {
           </div>
         )}
 
-        {/* 레벨 + 앨범 (로그인 사용자) */}
+        {/* ?덈꺼 (濡쒓렇???ъ슜?? */}
         {currentUser && (
-          <div className="mb-8 space-y-6">
+          <div className="mb-8">
             <LevelCard />
-            <div>
-              <div className="card bg-base-100 shadow-sm p-4">
-                <AlbumTimeline pastPlanIds={pastPlanIds} />
-              </div>
-            </div>
           </div>
         )}
 
-        {/* 비로그인: 로그인 유도 */}
+        {/* 鍮꾨줈洹몄씤: 濡쒓렇???좊룄 */}
         {!currentUser && !isLoading && (
           <div className="card bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20 mb-8">
             <div className="card-body text-center py-8">
@@ -692,10 +683,11 @@ export function MainPage() {
       <footer className="footer footer-center p-6 bg-base-100 text-base-content mt-12">
         <div>
           <p className="text-sm opacity-70">
-            © 2026 Travly - AI Travel Assistant
+            짤 2026 Travly - AI Travel Assistant
           </p>
         </div>
       </footer>
     </div>
   );
 }
+

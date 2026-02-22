@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+﻿import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { plansAPI as rawPlansAPI } from '../lib/api';
@@ -13,6 +13,7 @@ import { Button } from '../components/Button';
 import { Loading } from '../components/Loading';
 import LoginModal from '../components/LoginModal';
 import { useTranslation } from 'react-i18next';
+import AlbumTimeline from '../components/AlbumTimeline';
 
 type OwnerFilter = 'all' | 'mine' | 'shared';
 type TimeFilter = 'all' | 'upcoming' | 'past' | 'ongoing';
@@ -70,6 +71,10 @@ export function MyPlansPage() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }, []);
 
+  const pastPlanIds = useMemo(() => {
+    return new Set(allPlans.filter((p) => p.end_date < today).map((p) => p.id));
+  }, [allPlans, today]);
+
   const filteredPlans = useMemo(() => {
     let result = [...allPlans];
 
@@ -82,7 +87,7 @@ export function MyPlansPage() {
     if (timeFilter === 'ongoing') result = result.filter(p => p.start_date <= today && p.end_date >= today);
     if (timeFilter === 'past') result = result.filter(p => p.end_date < today);
 
-    // Region filter (KR = 국내)
+    // Region filter (KR = 援?궡)
     if (regionFilter === 'domestic') result = result.filter(p => {
       const r = (p.region || '').toLowerCase();
       return domesticRegionKeywords.some((keyword) => r.includes(keyword)) || r.includes('korea') || (p.country_code || '').toUpperCase() === 'KR';
@@ -147,7 +152,7 @@ export function MyPlansPage() {
 
           {currentUser && allPlans.length > 0 && (
             <div className="space-y-2">
-              {/* 시간 필터 */}
+              {/* ?쒓컙 ?꾪꽣 */}
               <div className="flex flex-wrap gap-1.5">
                 {([
                   { key: 'all', label: t('myPlans.filterAll'), count: allPlans.length },
@@ -165,7 +170,7 @@ export function MyPlansPage() {
                 ) : null)}
               </div>
 
-              {/* 소유/지역/정렬 */}
+              {/* ?뚯쑀/吏???뺣젹 */}
               <div className="flex flex-wrap gap-1.5 items-center">
                 {sharedCount > 0 && (
                   <select
@@ -267,7 +272,16 @@ export function MyPlansPage() {
             })}
           </div>
         )}
+        {currentUser && pastPlanIds.size > 0 && (
+          <div className="mt-8">
+            <div className="card bg-base-100 shadow-sm p-4">
+              <AlbumTimeline pastPlanIds={pastPlanIds} />
+            </div>
+          </div>
+        )}
+
       </main>
     </div>
   );
 }
+
