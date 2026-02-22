@@ -96,11 +96,21 @@ export default function BulkMomentImporter({ planId, schedules, onDone }: Props)
         // One optimized upload object, multi-schedule reference via URL
         const optimized = await compressImage(item.file, 1600, 0.82);
         const uploadFile = dataUrlToFile(optimized, item.file.name.replace(/\.[^.]+$/, '.webp'));
-        const url = await uploadToR2(uploadFile);
+
+        let photoValue = optimized;
+        try {
+          photoValue = await uploadToR2(uploadFile);
+        } catch (uploadErr: any) {
+          const msg = String(uploadErr?.message || '');
+          // If R2 is missing, gracefully fallback to DB/base64 mode (same as existing single upload flow)
+          if (!msg.includes('R2 binding missing') && !msg.includes('Upload storage is not configured')) {
+            throw uploadErr;
+          }
+        }
 
         for (const sid of scheduleIds) {
           await offlineMomentsAPI.create(sid, {
-            photo_data: url,
+            photo_data: photoValue,
             note: assigned?.confidence && assigned.confidence < 0.6 ? `자동분류(낮은 신뢰): ${assigned.reason || ''}` : undefined,
           });
         }
