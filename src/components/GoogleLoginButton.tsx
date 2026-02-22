@@ -2,6 +2,7 @@ import { useGoogleLogin } from '@react-oauth/google';
 import { authAPI } from '../lib/api';
 import { useStore } from '../store/useStore';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 interface GoogleLoginButtonProps {
   onSuccess?: () => void;
@@ -14,6 +15,7 @@ export default function GoogleLoginButton({
   redirectTo,
   fullWidth = false
 }: GoogleLoginButtonProps) {
+  const { t } = useTranslation();
   const { setCurrentUser } = useStore();
   const navigate = useNavigate();
 
@@ -59,12 +61,12 @@ export default function GoogleLoginButton({
         }
       } catch (error) {
         console.error('Google login failed:', error);
-        alert('로그인에 실패했습니다. 다시 시도해주세요.');
+        alert(t('login.loginFailedRetry'));
       }
     },
     onError: () => {
       console.error('Google Login Failed');
-      alert('로그인에 실패했습니다.');
+      alert(t('login.loginFailed'));
     },
   });
 
@@ -92,8 +94,8 @@ export default function GoogleLoginButton({
         />
       </svg>
       <span className="font-medium text-xs sm:text-sm">
-        <span className="hidden xs:inline">Google로 계속하기</span>
-        <span className="xs:hidden">로그인</span>
+        <span className="hidden xs:inline">{t('login.googleContinue')}</span>
+        <span className="xs:hidden">{t('login.loginShort')}</span>
       </span>
     </button>
   );

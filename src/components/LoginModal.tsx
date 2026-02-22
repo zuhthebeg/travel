@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import GoogleLoginButton from './GoogleLoginButton';
 import GuestLoginButton from './GuestLoginButton';
+import { useTranslation } from 'react-i18next';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -16,9 +17,10 @@ export default function LoginModal({
   onClose,
   onSuccess,
   redirectTo,
-  title = '로그인이 필요합니다',
-  message = '내 여행을 관리하려면 Google 계정으로 로그인해주세요.'
+  title,
+  message
 }: LoginModalProps) {
+  const { t } = useTranslation();
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -53,11 +55,11 @@ export default function LoginModal({
           </div>
 
           {/* Title */}
-          <h3 className="font-bold text-2xl mb-3">{title}</h3>
+          <h3 className="font-bold text-2xl mb-3">{title ?? t('login.modalTitle')}</h3>
 
           {/* Message */}
           <p className="text-base-content/70 mb-8">
-            {message}
+            {message ?? t('login.modalMessage')}
           </p>
 
           {/* Login Buttons */}
@@ -67,7 +69,7 @@ export default function LoginModal({
               redirectTo={redirectTo}
               fullWidth
             />
-            <div className="divider my-0 text-xs">또는</div>
+            <div className="divider my-0 text-xs">{t('login.or')}</div>
             <GuestLoginButton
               onSuccess={handleSuccess}
               fullWidth
@@ -76,8 +78,8 @@ export default function LoginModal({
 
           {/* Info */}
           <div className="mt-6 text-xs text-base-content/60">
-            <p>로그인하면 Travly의 <a href="#" className="link">이용약관</a> 및</p>
-            <p><a href="#" className="link">개인정보 처리방침</a>에 동의하게 됩니다.</p>
+            <p>{t('login.termsPrefix')} <a href="#" className="link">{t('login.termsOfService')}</a> {t('login.and')}</p>
+            <p><a href="#" className="link">{t('login.privacyPolicy')}</a>{t('login.agreeSuffix')}</p>
           </div>
         </div>
       </div>

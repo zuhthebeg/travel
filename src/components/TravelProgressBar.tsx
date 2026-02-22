@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Flag, Trophy, Moon, PersonStanding } from 'lucide-react';
 import { parseDateLocal } from '../lib/utils';
+import { useTranslation } from 'react-i18next';
 
 interface TravelProgressBarProps {
   startDate: string; // YYYY-MM-DD format
@@ -8,6 +9,7 @@ interface TravelProgressBarProps {
 }
 
 export function TravelProgressBar({ startDate, endDate }: TravelProgressBarProps) {
+  const { t } = useTranslation();
   const [progress, setProgress] = useState(0);
   const [isSleepingTime, setIsSleepingTime] = useState(false);
 
@@ -52,15 +54,15 @@ export function TravelProgressBar({ startDate, endDate }: TravelProgressBarProps
   }, [startDate, endDate]);
 
   const getStatusText = () => {
-    if (progress === 0) return '여행 시작 전';
-    if (progress === 100) return '여행 완료';
-    return '여행 중';
+    if (progress === 0) return t('travelProgress.beforeStart');
+    if (progress === 100) return t('travelProgress.completed');
+    return t('travelProgress.inProgress');
   };
 
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-base font-bold">여행 진행도</h3>
+        <h3 className="text-base font-bold">{t('travelProgress.title')}</h3>
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium">{getStatusText()}</span>
           <span className="text-xs text-base-content/70">{progress.toFixed(1)}%</span>

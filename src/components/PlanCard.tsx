@@ -4,6 +4,7 @@ import { Button } from './Button';
 import { formatDateRange, getDaysDifference, getCountryFlag, extractCountryFromRegion } from '../lib/utils';
 import type { Plan } from '../store/types';
 import { MapPin, Calendar, Globe } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface PlanCardProps {
   plan: Plan;
@@ -12,6 +13,7 @@ interface PlanCardProps {
 }
 
 export function PlanCard({ plan, showImportButton = false, onImport }: PlanCardProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const days = getDaysDifference(plan.start_date, plan.end_date);
   
@@ -45,7 +47,7 @@ export function PlanCard({ plan, showImportButton = false, onImport }: PlanCardP
       <Card.Body>
         <Card.Title>
           {plan.title}
-          {plan.visibility === 'public' && <div className="badge badge-secondary">공개</div>}
+          {plan.visibility === 'public' && <div className="badge badge-secondary">{t('planCard.public')}</div>}
         </Card.Title>
         {plan.region && (
           <p className="text-base-content/70 flex items-center gap-1.5">
@@ -68,7 +70,7 @@ export function PlanCard({ plan, showImportButton = false, onImport }: PlanCardP
               <Calendar className="w-3.5 h-3.5" />
               {formatDateRange(plan.start_date, plan.end_date)}
             </span>
-            <span className="font-medium text-xs sm:text-sm">{days}일</span>
+            <span className="font-medium text-xs sm:text-sm">{t('planCard.days', { days })}</span>
           </div>
           {showImportButton && (
             <Button
@@ -77,8 +79,8 @@ export function PlanCard({ plan, showImportButton = false, onImport }: PlanCardP
               onClick={handleImportClick}
               className="flex-shrink-0"
             >
-              <span className="hidden sm:inline">내 여행으로</span>
-              <span className="sm:hidden">가져오기</span>
+              <span className="hidden sm:inline">{t('planCard.importFull')}</span>
+              <span className="sm:hidden">{t('planCard.importShort')}</span>
             </Button>
           )}
         </Card.Actions>

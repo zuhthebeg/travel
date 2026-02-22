@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from './Button';
 import { forkAPI } from '../lib/api';
+import { useTranslation } from 'react-i18next';
 
 interface ForkButtonProps {
   planId: number;
@@ -8,12 +9,13 @@ interface ForkButtonProps {
 }
 
 export default function ForkButton({ planId, onForked }: ForkButtonProps) {
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleFork = async () => {
     if (isLoading) return;
 
-    const confirmed = window.confirm('이 여행 계획을 복제해서 내 플랜으로 만들까요?');
+    const confirmed = window.confirm(t('forkButton.confirm'));
     if (!confirmed) return;
 
     try {
@@ -21,7 +23,7 @@ export default function ForkButton({ planId, onForked }: ForkButtonProps) {
       const result = await forkAPI.fork(planId);
       onForked(result.plan);
     } catch (error) {
-      alert(error instanceof Error ? error.message : '플랜 복제에 실패했습니다.');
+      alert(error instanceof Error ? error.message : t('forkButton.failed'));
     } finally {
       setIsLoading(false);
     }
@@ -38,7 +40,7 @@ export default function ForkButton({ planId, onForked }: ForkButtonProps) {
       {isLoading ? (
         <span className="loading loading-spinner loading-xs" />
       ) : (
-        '📋 내 여행으로 가져오기'
+        t('forkButton.cta')
       )}
     </Button>
   );

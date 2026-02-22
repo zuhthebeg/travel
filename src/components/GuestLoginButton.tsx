@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { authAPI } from '../lib/api';
 import { useStore } from '../store/useStore';
+import { useTranslation } from 'react-i18next';
 
 interface GuestLoginButtonProps {
   onSuccess?: () => void;
@@ -8,6 +9,7 @@ interface GuestLoginButtonProps {
 }
 
 export default function GuestLoginButton({ onSuccess, fullWidth = false }: GuestLoginButtonProps) {
+  const { t } = useTranslation();
   const { setCurrentUser } = useStore();
   const [showInput, setShowInput] = useState(false);
   const [nickname, setNickname] = useState('');
@@ -16,7 +18,7 @@ export default function GuestLoginButton({ onSuccess, fullWidth = false }: Guest
 
   const handleSubmit = async () => {
     if (!nickname.trim() || nickname.trim().length < 2) {
-      setError('2자 이상 입력해주세요');
+      setError(t('login.nicknameMinError'));
       return;
     }
     setLoading(true);
@@ -29,7 +31,7 @@ export default function GuestLoginButton({ onSuccess, fullWidth = false }: Guest
       localStorage.setItem('X-Auth-Credential', credential);
       if (onSuccess) onSuccess();
     } catch (e: any) {
-      setError(e?.message || '로그인 실패');
+      setError(e?.message || t('login.guestLoginFailed'));
     } finally {
       setLoading(false);
     }
@@ -42,7 +44,7 @@ export default function GuestLoginButton({ onSuccess, fullWidth = false }: Guest
         className={`btn btn-outline btn-sm gap-1 ${fullWidth ? 'w-full' : ''} hover:bg-base-200 border-base-300`}
       >
         <span className="text-base">👤</span>
-        <span className="font-medium text-xs sm:text-sm">게스트 로그인</span>
+        <span className="font-medium text-xs sm:text-sm">{t('login.guestLogin')}</span>
       </button>
     );
   }
@@ -55,7 +57,7 @@ export default function GuestLoginButton({ onSuccess, fullWidth = false }: Guest
           value={nickname}
           onChange={(e) => { setNickname(e.target.value); setError(''); }}
           onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-          placeholder="닉네임 (2~20자)"
+          placeholder={t('login.nicknamePlaceholder')}
           maxLength={20}
           className="input input-sm input-bordered flex-1 min-w-0"
           autoFocus
@@ -66,7 +68,7 @@ export default function GuestLoginButton({ onSuccess, fullWidth = false }: Guest
           disabled={loading || nickname.trim().length < 2}
           className="btn btn-sm btn-primary"
         >
-          {loading ? '...' : '확인'}
+          {loading ? '...' : t('login.confirm')}
         </button>
         <button onClick={() => { setShowInput(false); setError(''); }} className="btn btn-sm btn-ghost">✕</button>
       </div>

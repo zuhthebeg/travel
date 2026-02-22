@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+
 export function Loading() {
   return (
     <div className="flex items-center justify-center min-h-[200px]">
@@ -7,11 +9,13 @@ export function Loading() {
 }
 
 export function LoadingOverlay() {
+  const { t } = useTranslation();
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6">
         <Loading />
-        <p className="mt-4 text-gray-600 text-center">처리 중...</p>
+        <p className="mt-4 text-gray-600 text-center">{t('loading.processing')}</p>
       </div>
     </div>
   );

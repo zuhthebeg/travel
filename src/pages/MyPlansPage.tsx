@@ -12,12 +12,14 @@ import { GlobalNav } from '../components/GlobalNav';
 import { Button } from '../components/Button';
 import { Loading } from '../components/Loading';
 import LoginModal from '../components/LoginModal';
+import { useTranslation } from 'react-i18next';
 
 type OwnerFilter = 'all' | 'mine' | 'shared';
 type TimeFilter = 'all' | 'upcoming' | 'past' | 'ongoing';
 type RegionFilter = 'all' | 'domestic' | 'international';
 
 export function MyPlansPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentUser } = useStore();
   const [allPlans, setAllPlans] = useState<Plan[]>([]);
@@ -28,6 +30,17 @@ export function MyPlansPage() {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
   const [regionFilter, setRegionFilter] = useState<RegionFilter>('all');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'upcoming'>('newest');
+  const domesticRegionKeywords = useMemo(
+    () => [
+      t('myPlans.regionKeywords.korea', { lng: 'ko' }),
+      t('myPlans.regionKeywords.seoul', { lng: 'ko' }),
+      t('myPlans.regionKeywords.busan', { lng: 'ko' }),
+      t('myPlans.regionKeywords.jeju', { lng: 'ko' }),
+      t('myPlans.regionKeywords.daegu', { lng: 'ko' }),
+      t('myPlans.regionKeywords.incheon', { lng: 'ko' }),
+    ].map((keyword) => keyword.toLowerCase()),
+    [t]
+  );
 
   useEffect(() => {
     if (!currentUser) {
@@ -45,7 +58,7 @@ export function MyPlansPage() {
       const plans = await plansAPI.getAll({ mine: true });
       setAllPlans(plans);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '내 여행을 불러오는데 실패했습니다.');
+      setError(err instanceof Error ? err.message : t('myPlans.loadFailed'));
       console.error('Failed to load my plans:', err);
     } finally {
       setIsLoading(false);
@@ -72,11 +85,11 @@ export function MyPlansPage() {
     // Region filter (KR = 국내)
     if (regionFilter === 'domestic') result = result.filter(p => {
       const r = (p.region || '').toLowerCase();
-      return r.includes('한국') || r.includes('korea') || r.includes('서울') || r.includes('부산') || r.includes('제주') || r.includes('대구') || r.includes('인천') || (p.country_code || '').toUpperCase() === 'KR';
+      return domesticRegionKeywords.some((keyword) => r.includes(keyword)) || r.includes('korea') || (p.country_code || '').toUpperCase() === 'KR';
     });
     if (regionFilter === 'international') result = result.filter(p => {
       const r = (p.region || '').toLowerCase();
-      const isKR = r.includes('한국') || r.includes('korea') || r.includes('서울') || r.includes('부산') || r.includes('제주') || r.includes('대구') || r.includes('인천') || (p.country_code || '').toUpperCase() === 'KR';
+      const isKR = domesticRegionKeywords.some((keyword) => r.includes(keyword)) || r.includes('korea') || (p.country_code || '').toUpperCase() === 'KR';
       return !isKR;
     });
 
@@ -90,7 +103,7 @@ export function MyPlansPage() {
     });
 
     return result;
-  }, [allPlans, ownerFilter, timeFilter, regionFilter, sortOrder, today]);
+  }, [allPlans, ownerFilter, timeFilter, regionFilter, sortOrder, today, domesticRegionKeywords]);
 
   const sharedCount = allPlans.filter(p => p.access_type === 'shared').length;
   const myCount = allPlans.length - sharedCount;
@@ -116,8 +129,8 @@ export function MyPlansPage() {
           navigate('/');
         }}
         onSuccess={handleLoginSuccess}
-        title="로그인이 필요합니다"
-        message="내 여행을 관리하려면 Google 계정으로 로그인해주세요."
+        title={t('login.modalTitle')}
+        message={t('login.modalMessage')}
       />
 
       {/* Main Content */}
@@ -126,10 +139,10 @@ export function MyPlansPage() {
         <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h2 className="text-xl font-bold">📋 내 여행</h2>
-              <p className="text-sm text-base-content/60">{filteredPlans.length}개 여행</p>
+              <h2 className="text-xl font-bold">{t('myPlans.pageTitle')}</h2>
+              <p className="text-sm text-base-content/60">{t('myPlans.tripCount', { count: filteredPlans.length })}</p>
             </div>
-            <Button variant="primary" size="sm" onClick={() => navigate('/plan/new')}>+ 새 여행</Button>
+            <Button variant="primary" size="sm" onClick={() => navigate('/plan/new')}>{t('myPlans.newTrip')}</Button>
           </div>
 
           {currentUser && allPlans.length > 0 && (
@@ -137,10 +150,10 @@ export function MyPlansPage() {
               {/* 시간 필터 */}
               <div className="flex flex-wrap gap-1.5">
                 {([
-                  { key: 'all', label: '전체', count: allPlans.length },
-                  { key: 'ongoing', label: '🟢 여행 중', count: ongoingCount },
-                  { key: 'upcoming', label: '📅 다가오는', count: upcomingCount },
-                  { key: 'past', label: '✅ 다녀온', count: pastCount },
+                  { key: 'all', label: t('myPlans.filterAll'), count: allPlans.length },
+                  { key: 'ongoing', label: t('myPlans.filterOngoing'), count: ongoingCount },
+                  { key: 'upcoming', label: t('myPlans.filterUpcoming'), count: upcomingCount },
+                  { key: 'past', label: t('myPlans.filterPast'), count: pastCount },
                 ] as const).map(f => f.count > 0 || f.key === 'all' ? (
                   <button
                     key={f.key}
@@ -160,9 +173,9 @@ export function MyPlansPage() {
                     value={ownerFilter}
                     onChange={e => setOwnerFilter(e.target.value as OwnerFilter)}
                   >
-                    <option value="all">전체 ({allPlans.length})</option>
-                    <option value="mine">내 여행 ({myCount})</option>
-                    <option value="shared">공유받음 ({sharedCount})</option>
+                    <option value="all">{t('myPlans.ownerAll', { count: allPlans.length })}</option>
+                    <option value="mine">{t('myPlans.ownerMine', { count: myCount })}</option>
+                    <option value="shared">{t('myPlans.ownerShared', { count: sharedCount })}</option>
                   </select>
                 )}
                 <select
@@ -170,18 +183,18 @@ export function MyPlansPage() {
                   value={regionFilter}
                   onChange={e => setRegionFilter(e.target.value as RegionFilter)}
                 >
-                  <option value="all">🌍 전체</option>
-                  <option value="domestic">🇰🇷 국내</option>
-                  <option value="international">✈️ 해외</option>
+                  <option value="all">{t('myPlans.regionAll')}</option>
+                  <option value="domestic">{t('myPlans.regionDomestic')}</option>
+                  <option value="international">{t('myPlans.regionInternational')}</option>
                 </select>
                 <select
                   className="select select-xs select-bordered"
                   value={sortOrder}
                   onChange={e => setSortOrder(e.target.value as 'newest' | 'oldest' | 'upcoming')}
                 >
-                  <option value="newest">최신순</option>
-                  <option value="oldest">오래된순</option>
-                  <option value="upcoming">임박순</option>
+                  <option value="newest">{t('myPlans.sortNewest')}</option>
+                  <option value="oldest">{t('myPlans.sortOldest')}</option>
+                  <option value="upcoming">{t('myPlans.sortUpcoming')}</option>
                 </select>
               </div>
             </div>
@@ -196,12 +209,12 @@ export function MyPlansPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-bold mb-3">로그인이 필요합니다</h2>
+              <h2 className="text-2xl font-bold mb-3">{t('myPlans.loginRequiredTitle')}</h2>
               <p className="text-base-content/70 mb-6">
-                내 여행을 관리하려면 Google 계정으로 로그인해주세요.
+                {t('myPlans.loginRequiredMessage')}
               </p>
               <Button variant="primary" onClick={() => setShowLoginModal(true)}>
-                로그인하기
+                {t('myPlans.login')}
               </Button>
             </div>
           </div>
@@ -215,7 +228,7 @@ export function MyPlansPage() {
             </div>
             <div className="flex-none">
               <Button variant="ghost" size="sm" onClick={loadMyPlans}>
-                다시 시도
+                {t('myPlans.retry')}
               </Button>
             </div>
           </div>
@@ -223,14 +236,14 @@ export function MyPlansPage() {
           <div className="card bg-base-100 shadow-xl p-12 text-center">
             <div className="card-body items-center text-center">
               <p className="text-lg mb-4">
-                아직 여행 계획이 없습니다
+                {t('myPlans.noPlans')}
               </p>
               <p className="text-base-content/70 mb-6">
-                새로운 여행을 만들어보세요!
+                {t('myPlans.createNewPrompt')}
               </p>
               <div className="card-actions">
                 <Button variant="primary" onClick={() => navigate('/plan/new')}>
-                  여행 만들기
+                  {t('myPlans.createTrip')}
                 </Button>
               </div>
             </div>
@@ -244,8 +257,8 @@ export function MyPlansPage() {
               return (
                 <div key={plan.id} className={`relative ${isPast ? 'opacity-70' : ''}`}>
                   <div className="absolute top-2 right-2 z-10 flex gap-1">
-                    {plan.access_type === 'shared' && <span className="badge badge-info badge-sm">공유</span>}
-                    {isOngoing && <span className="badge badge-success badge-sm">여행 중</span>}
+                    {plan.access_type === 'shared' && <span className="badge badge-info badge-sm">{t('myPlans.badgeShared')}</span>}
+                    {isOngoing && <span className="badge badge-success badge-sm">{t('myPlans.badgeOngoing')}</span>}
                     {!isPast && !isOngoing && daysUntil <= 30 && <span className="badge badge-warning badge-sm">D-{daysUntil}</span>}
                   </div>
                   <PlanCard plan={plan} />

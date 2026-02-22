@@ -17,29 +17,26 @@ import type { Plan, Schedule } from '../store/types';
 import { Globe, Map as MapIcon, Calendar, Clock } from 'lucide-react';
 import AlbumTimeline from '../components/AlbumTimeline';
 import LevelCard from '../components/LevelCard';
+import { useTranslation } from 'react-i18next';
 
 interface PlanWithSchedules extends Plan {
   schedules?: Schedule[];
   _countryCode?: string | null;
 }
 
-const COUNTRY_NAMES: Record<string, string> = {
-  KR: '\uD55C\uAD6D', JP: '\uC77C\uBCF8', US: '\uBBF8\uAD6D', FR: '\uD504\uB791\uC2A4', GB: '\uC601\uAD6D',
-  IT: '\uC774\uD0C8\uB9AC\uC544', ES: '\uC2A4\uD398\uC778', DE: '\uB3C5\uC77C', CH: '\uC2A4\uC704\uC2A4',
-  TH: '\uD0DC\uAD6D', SG: '\uC2F1\uAC00\uD3EC\uB974', VN: '\uBCA0\uD2B8\uB0A8', HK: '\uD64D\uCF69', TW: '\uB300\uB9CC',
-  ID: '\uC778\uB3C4\uB124\uC2DC\uC544', AU: '\uD638\uC8FC', NZ: '\uB274\uC9C8\uB79C\uB4DC', CN: '\uC911\uAD6D',
-  MY: '\uB9D0\uB808\uC774\uC2DC\uC544', PH: '\uD544\uB9AC\uD540', IN: '\uC778\uB3C4', TR: '\uD130\uD0A4', GR: '\uADF8\uB9AC\uC2A4', PT: '\uD3EC\uB974\uD22C\uAC08',
-};
-
-function getPlanCountry(plan: PlanWithSchedules): { code: string; name: string } | null {
+function getPlanCountry(
+  plan: PlanWithSchedules,
+  getCountryName: (code: string) => string
+): { code: string; name: string } | null {
   if (plan._countryCode) {
     const code = plan._countryCode.toUpperCase();
-    return { code, name: COUNTRY_NAMES[code] || code };
+    return { code, name: getCountryName(code) };
   }
   return extractCountryFromRegion(plan.region);
 }
 
 export function MainPage() {
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { plans, setPlans, currentUser } = useStore();
   const [isLoading, setIsLoading] = useState(true);
@@ -47,6 +44,7 @@ export function MainPage() {
   const [isImporting, setIsImporting] = useState(false);
   const [plansWithSchedules, setPlansWithSchedules] = useState<PlanWithSchedules[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
+  const getCountryName = (code: string) => t(`main.countryNames.${code}`, { defaultValue: code });
   
   // 시간 슬라이더 상태 (로그인 사용자용)
   const [timeOffset, setTimeOffset] = useState(0);
@@ -108,7 +106,7 @@ export function MainPage() {
       );
       setPlansWithSchedules(plansWithData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '여행 목록을 불러오는데 실패했습니다.');
+      setError(err instanceof Error ? err.message : t('main.loadPlansFailed'));
       console.error('Failed to load plans:', err);
     } finally {
       setIsLoading(false);
@@ -185,7 +183,7 @@ export function MainPage() {
       if (selectedPlanId) return; // 다른 여행은 스킵
       
       // 국가 필터 적용
-      const countryInfo = getPlanCountry(plan);
+      const countryInfo = getPlanCountry(plan, getCountryName);
       if (countryInfo && !selectedCountries.has(countryInfo.code)) return;
       
       // 여행별 대표 좌표 1개 (첫 번째 유효 스케줄)
@@ -206,21 +204,23 @@ export function MainPage() {
     });
     
     return points;
-  }, [filteredPlansByTime, selectedPlanId, selectedCountries]);
+  }, [filteredPlansByTime, selectedPlanId, selectedCountries, t]);
 
   // 슬라이더용 현재 타겟 날짜
   const targetDateLabel = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() + timeOffset);
-    return d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' });
-  }, [timeOffset]);
+    const lang = i18n.resolvedLanguage || i18n.language;
+    const locale = lang === 'ja' ? 'ja-JP' : lang === 'en' ? 'en-US' : lang === 'zh-TW' ? 'zh-TW' : 'ko-KR';
+    return d.toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' });
+  }, [timeOffset, i18n.language, i18n.resolvedLanguage]);
 
   // 국가별 여행 통계 (코드 포함)
   const countryStats = useMemo(() => {
     const stats = new Map<string, { code: string; count: number; flag: string; name: string }>();
     
     plansWithSchedules.forEach((plan) => {
-      const countryInfo = getPlanCountry(plan);
+      const countryInfo = getPlanCountry(plan, getCountryName);
       if (countryInfo) {
         const existing = stats.get(countryInfo.code) || { 
           code: countryInfo.code,
@@ -234,7 +234,7 @@ export function MainPage() {
     });
     
     return Array.from(stats.values()).sort((a, b) => b.count - a.count);
-  }, [plansWithSchedules]);
+  }, [plansWithSchedules, t]);
 
   // 초기 로드 시 모든 국가 선택
   useEffect(() => {
@@ -262,7 +262,7 @@ export function MainPage() {
     const seenRegions = new Set<string>();
     
     filteredPlansByTime.forEach((plan) => {
-      const countryInfo = getPlanCountry(plan);
+      const countryInfo = getPlanCountry(plan, getCountryName);
       if (!countryInfo || !selectedCountries.has(countryInfo.code)) return;
       
       // 지역당 하나의 포인트만
@@ -288,11 +288,11 @@ export function MainPage() {
     });
     
     return points;
-  }, [filteredPlansByTime, selectedCountries]);
+  }, [filteredPlansByTime, selectedCountries, t]);
 
   const handleImportPlan = async (plan: Plan) => {
     if (!currentUser) {
-      alert('로그인이 필요합니다.');
+      alert(t('main.loginRequired'));
       return;
     }
 
@@ -311,7 +311,7 @@ export function MainPage() {
       const newEndDate = formatDate(new Date(oneWeekLater.getTime() + tripDuration));
 
       const newPlan = await plansAPI.create({
-        title: `${plan.title} (복사본)`,
+        title: t('main.copyTitle', { title: plan.title }),
         region: plan.region || undefined,
         start_date: newStartDate,
         end_date: newEndDate,
@@ -340,11 +340,11 @@ export function MainPage() {
         });
       }
 
-      alert('여행이 성공적으로 가져와졌습니다!');
+      alert(t('main.importSuccess'));
       navigate('/my');
     } catch (err) {
       console.error('Failed to import plan:', err);
-      alert('여행을 가져오는데 실패했습니다. 다시 시도해주세요.');
+      alert(t('main.importFailed'));
     } finally {
       setIsImporting(false);
     }
@@ -370,7 +370,7 @@ export function MainPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-base-100 p-8 rounded-lg shadow-xl flex flex-col items-center gap-4">
             <Loading />
-            <p className="text-lg font-medium">여행을 가져오는 중...</p>
+            <p className="text-lg font-medium">{t('main.importing')}</p>
           </div>
         </div>
       )}
@@ -381,7 +381,7 @@ export function MainPage() {
         {currentUser && upcomingPlans.length > 0 && (
           <div className="mb-6">
             <h2 className="text-lg font-bold flex items-center gap-2 mb-3">
-              ✈️ 다가오는 여행
+              {t('main.upcomingTripsTitle')}
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {upcomingPlans
@@ -399,7 +399,7 @@ export function MainPage() {
                         <div className="flex items-center justify-between">
                           <h3 className="card-title text-base">{plan.title}</h3>
                           <span className={`badge badge-sm ${daysUntil <= 7 ? 'badge-warning' : 'badge-ghost'}`}>
-                            {daysUntil <= 0 ? '여행 중!' : `D-${daysUntil}`}
+                            {daysUntil <= 0 ? t('main.tripInProgressBang') : `D-${daysUntil}`}
                           </span>
                         </div>
                         <p className="text-sm text-base-content/60">
@@ -414,7 +414,7 @@ export function MainPage() {
             {upcomingPlans.length > 2 && (
               <div className="text-center mt-2">
                 <button className="btn btn-ghost btn-xs text-primary" onClick={() => navigate('/my')}>
-                  +{upcomingPlans.length - 2}개 더보기 →
+                  {t('main.moreCount', { count: upcomingPlans.length - 2 })}
                 </button>
               </div>
             )}
@@ -426,18 +426,18 @@ export function MainPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
             <div>
               <h2 className="text-2xl font-bold flex items-center gap-2">
-                <Globe className="w-6 h-6" /> 세계의 여행
+                <Globe className="w-6 h-6" /> {t('main.worldTripsTitle')}
               </h2>
               <p className="text-base-content/70">
                 {currentUser 
-                  ? `최신 ${sortedPlans.length}개 | ${filteredPlansByTime.length}개 표시 중`
-                  : `${countryStats.length}개 국가 | ${plansWithSchedules.length}개 여행`
+                  ? t('main.summaryLoggedIn', { latest: sortedPlans.length, shown: filteredPlansByTime.length })
+                  : t('main.summaryGuest', { countries: countryStats.length, plans: plansWithSchedules.length })
                 }
               </p>
             </div>
             
             <Button variant="primary" size="sm" onClick={() => navigate('/plan/new')}>
-              + 새 여행
+              {t('main.newTrip')}
             </Button>
           </div>
 
@@ -469,7 +469,7 @@ export function MainPage() {
                   className="btn btn-xs btn-ghost"
                   onClick={() => setSelectedCountries(new Set(countryStats.map(s => s.code)))}
                 >
-                  전체 선택
+                  {t('main.selectAllCountries')}
                 </button>
               )}
               {selectedCountries.size > 0 && selectedCountries.size === countryStats.length && (
@@ -477,7 +477,7 @@ export function MainPage() {
                   className="btn btn-xs btn-ghost"
                   onClick={() => setSelectedCountries(new Set())}
                 >
-                  전체 해제
+                  {t('main.clearAllCountries')}
                 </button>
               )}
             </div>
@@ -500,8 +500,8 @@ export function MainPage() {
             ) : (
               <div className="h-[300px] flex flex-col items-center justify-center text-base-content/50">
                 <MapIcon className="w-16 h-16 mb-4" />
-                <p>{selectedCountries.size === 0 ? '국가를 선택해주세요' : '선택한 국가에 여행이 없습니다'}</p>
-                <p className="text-sm mt-2">위의 국기를 클릭해서 토글하세요</p>
+                <p>{selectedCountries.size === 0 ? t('main.selectCountryPrompt') : t('main.noTripsInSelectedCountries')}</p>
+                <p className="text-sm mt-2">{t('main.toggleHint')}</p>
               </div>
             )}
 
@@ -509,14 +509,14 @@ export function MainPage() {
             <div className="px-4 py-3 bg-base-200 border-t">
               <div className="flex items-center gap-2 mb-2">
                 <Clock className="w-4 h-4 text-primary" />
-                <span className="font-medium text-sm">시간 여행</span>
+                <span className="font-medium text-sm">{t('main.timeTravel')}</span>
                 <span className="badge badge-primary badge-sm">{targetDateLabel}</span>
                 {timeOffset !== 0 && (
                   <button 
                     className="btn btn-xs btn-ghost"
                     onClick={() => setTimeOffset(0)}
                   >
-                    오늘로
+                    {t('main.goToday')}
                   </button>
                 )}
               </div>
@@ -526,7 +526,7 @@ export function MainPage() {
                   onClick={() => setTimeOffset(Math.max(-TIME_RANGE, timeOffset - 30))}
                   disabled={timeOffset <= -TIME_RANGE}
                 >
-                  ◀
+                  {t('main.prev')}
                 </button>
                 <input
                   type="range"
@@ -541,7 +541,7 @@ export function MainPage() {
                   onClick={() => setTimeOffset(Math.min(TIME_RANGE, timeOffset + 30))}
                   disabled={timeOffset >= TIME_RANGE}
                 >
-                  ▶
+                  {t('main.next')}
                 </button>
               </div>
               {/* 계절 퀵 이동 — 과거~미래 상대 정렬 */}
@@ -550,10 +550,10 @@ export function MainPage() {
                   const now = new Date();
                   // 계절 중심 월: 봄3, 여름6, 가을9, 겨울0
                   const seasonDefs = [
-                    { label: '🍂 가을', centerMonth: 9 },
-                    { label: '❄️ 겨울', centerMonth: 0 },
-                    { label: '🌸 봄', centerMonth: 3 },
-                    { label: '☀️ 여름', centerMonth: 6 },
+                    { label: t('main.seasonFall'), centerMonth: 9 },
+                    { label: t('main.seasonWinter'), centerMonth: 0 },
+                    { label: t('main.seasonSpring'), centerMonth: 3 },
+                    { label: t('main.seasonSummer'), centerMonth: 6 },
                   ];
                   // 과거 2계절 + 미래 2계절 기준으로 정렬
                   const items = seasonDefs.map(s => {
@@ -591,12 +591,12 @@ export function MainPage() {
         {/* Plan Filter (when a plan is selected) - 로그인 사용자만 */}
         {currentUser && selectedPlanId && (
           <div className="alert mb-4">
-            <span>선택된 여행만 표시 중</span>
+            <span>{t('main.selectedPlanOnly')}</span>
             <button 
               className="btn btn-sm btn-ghost"
               onClick={() => setSelectedPlanId(null)}
             >
-              전체 보기
+              {t('main.viewAll')}
             </button>
           </div>
         )}
@@ -605,7 +605,7 @@ export function MainPage() {
         {!isLoading && sortedPlans.length > 0 && (
           <div className="mb-8">
             <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
-              <Calendar className="w-5 h-5" /> 최신 여행
+              <Calendar className="w-5 h-5" /> {t('main.latestTrips')}
             </h3>
             <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 snap-x snap-mandatory">
               {sortedPlans.map((plan) => (
@@ -642,13 +642,13 @@ export function MainPage() {
         {!currentUser && !isLoading && (
           <div className="card bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20 mb-8">
             <div className="card-body text-center py-8">
-              <h3 className="text-lg font-bold mb-2">여행 기록을 시작하세요 ✈️</h3>
+              <h3 className="text-lg font-bold mb-2">{t('main.startRecordingTitle')}</h3>
               <p className="text-base-content/70 mb-4">
-                로그인하면 시간 슬라이더, 상세 일정, 내 여행 관리 기능을 사용할 수 있어요
+                {t('main.startRecordingDesc')}
               </p>
               <div className="flex justify-center gap-2">
                 <Button variant="primary" onClick={() => navigate('/plan/new')}>
-                  여행 만들기
+                  {t('main.createTrip')}
                 </Button>
               </div>
             </div>
@@ -664,7 +664,7 @@ export function MainPage() {
             </div>
             <div className="flex-none">
               <Button variant="ghost" size="sm" onClick={loadPublicPlans}>
-                다시 시도
+                {t('main.retry')}
               </Button>
             </div>
           </div>
@@ -675,11 +675,11 @@ export function MainPage() {
           <div className="card bg-base-100 shadow-xl p-12 text-center">
             <div className="card-body items-center text-center">
               <p className="text-lg mb-4">
-                아직 공개된 여행 계획이 없습니다
+                {t('main.noPublicPlans')}
               </p>
               <div className="card-actions">
                 <Button variant="primary" onClick={() => navigate('/plan/new')}>
-                  첫 번째 여행 만들기
+                  {t('main.createFirstTrip')}
                 </Button>
               </div>
             </div>
