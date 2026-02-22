@@ -148,80 +148,110 @@ export default function AlbumTimeline({ pastPlanIds }: AlbumTimelineProps) {
         </div>
       </div>
 
-      {/* === Photos Only View === */}
+      {/* === Photos Only View (grouped by trip) === */}
       {view === 'photos' && (
         allPhotos.length === 0 ? (
           <p className="text-center text-base-content/40 py-8 text-sm">{t('album.noPhotos')}</p>
         ) : (
-          <div className="grid grid-cols-3 gap-1.5">
-            {allPhotos.map(m => (
-              <div key={m.id} className="relative group">
-                <img
-                  src={m.photo_data!}
-                  alt=""
-                  className="w-full aspect-square object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                  onClick={() => setSelectedImage(m.photo_data)}
-                />
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-1.5 rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                  <p className="text-[10px] text-white truncate">{m.schedule_title}</p>
+          <div className="space-y-4">
+            {Object.values(grouped).map(({ plan, moments: planMoments }) => {
+              const planPhotos = planMoments.filter((m) => m.photo_data);
+              if (planPhotos.length === 0) return null;
+              return (
+                <div key={plan.id} className="space-y-2">
+                  <button
+                    onClick={() => navigate(`/plans/${plan.id}`)}
+                    className="flex items-center gap-2 hover:text-orange-600 transition-colors group"
+                  >
+                    <h3 className="font-semibold text-sm group-hover:underline">{plan.title}</h3>
+                    <span className="text-xs text-base-content/40">({planPhotos.length})</span>
+                  </button>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {planPhotos.map(m => (
+                      <div key={m.id} className="relative group">
+                        <img
+                          src={m.photo_data!}
+                          alt=""
+                          className="w-full aspect-square object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                          onClick={() => setSelectedImage(m.photo_data)}
+                        />
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-1.5 rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                          <p className="text-[10px] text-white truncate">{m.schedule_title}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )
       )}
 
-      {/* === Grid View === */}
+      {/* === Grid View (grouped by trip) === */}
       {view === 'grid' && (
-        <div className="grid grid-cols-2 gap-3">
-          {moments.map(m => (
-            <div
-              key={m.id}
-              className="bg-base-100 rounded-xl border border-base-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => navigate(`/plans/${m.plan_id}`)}
-            >
-              {m.photo_data ? (
-                <img
-                  src={m.photo_data}
-                  alt=""
-                  className="w-full h-28 object-cover"
-                  onClick={e => { e.stopPropagation(); setSelectedImage(m.photo_data); }}
-                />
-              ) : (
-                <div className="w-full h-16 bg-gradient-to-br from-orange-100 to-amber-50 dark:from-gray-800 dark:to-gray-700 flex items-center justify-center">
-                  {m.mood ? <span className="text-2xl">{MOOD_MAP[m.mood]}</span> : <span className="text-xl">📝</span>}
-                </div>
-              )}
-              <div className="p-2.5 space-y-1">
-                <p className="text-sm font-medium truncate">{m.schedule_title}</p>
-                <div className="flex items-center gap-1.5 text-[10px] text-base-content/50">
-                  <Calendar className="w-3 h-3" />
-                  <span>{m.schedule_date}</span>
-                  {m.schedule_place && (
-                    <>
-                      <span>·</span>
-                      <span className="truncate">📍{m.schedule_place}</span>
-                    </>
-                  )}
-                </div>
-                <div className="flex items-center gap-1.5">
-                  {m.rating && (
-                    <div className="flex gap-px">
-                      {[1, 2, 3, 4, 5].map(v => (
-                        <Star key={v} className={`w-3 h-3 ${v <= m.rating! ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
-                      ))}
+        <div className="space-y-4">
+          {Object.values(grouped).map(({ plan, moments: planMoments }) => (
+            <div key={plan.id} className="space-y-2">
+              <button
+                onClick={() => navigate(`/plans/${plan.id}`)}
+                className="flex items-center gap-2 hover:text-orange-600 transition-colors group"
+              >
+                <h3 className="font-semibold text-sm group-hover:underline">{plan.title}</h3>
+                <span className="text-xs text-base-content/40">({planMoments.length})</span>
+              </button>
+              <div className="grid grid-cols-2 gap-3">
+                {planMoments.map(m => (
+                  <div
+                    key={m.id}
+                    className="bg-base-100 rounded-xl border border-base-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => navigate(`/plans/${m.plan_id}`)}
+                  >
+                    {m.photo_data ? (
+                      <img
+                        src={m.photo_data}
+                        alt=""
+                        className="w-full h-28 object-cover"
+                        onClick={e => { e.stopPropagation(); setSelectedImage(m.photo_data); }}
+                      />
+                    ) : (
+                      <div className="w-full h-16 bg-gradient-to-br from-orange-100 to-amber-50 dark:from-gray-800 dark:to-gray-700 flex items-center justify-center">
+                        {m.mood ? <span className="text-2xl">{MOOD_MAP[m.mood]}</span> : <span className="text-xl">📝</span>}
+                      </div>
+                    )}
+                    <div className="p-2.5 space-y-1">
+                      <p className="text-sm font-medium truncate">{m.schedule_title}</p>
+                      <div className="flex items-center gap-1.5 text-[10px] text-base-content/50">
+                        <Calendar className="w-3 h-3" />
+                        <span>{m.schedule_date}</span>
+                        {m.schedule_place && (
+                          <>
+                            <span>·</span>
+                            <span className="truncate">📍{m.schedule_place}</span>
+                          </>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {m.rating && (
+                          <div className="flex gap-px">
+                            {[1, 2, 3, 4, 5].map(v => (
+                              <Star key={v} className={`w-3 h-3 ${v <= m.rating! ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
+                            ))}
+                          </div>
+                        )}
+                        {m.mood && <span className="text-sm">{MOOD_MAP[m.mood]}</span>}
+                        {m.revisit && (
+                          <span className={`text-[9px] px-1 py-px rounded-full ${
+                            m.revisit === 'yes' ? 'bg-green-100 text-green-600' :
+                            m.revisit === 'maybe' ? 'bg-yellow-100 text-yellow-600' :
+                            'bg-gray-100 text-gray-500'
+                          }`}>{t(`album.revisit.${REVISIT_MAP[m.revisit]}`)}</span>
+                        )}
+                      </div>
+                      {m.note && <p className="text-xs text-base-content/60 line-clamp-2">{m.note}</p>}
                     </div>
-                  )}
-                  {m.mood && <span className="text-sm">{MOOD_MAP[m.mood]}</span>}
-                  {m.revisit && (
-                    <span className={`text-[9px] px-1 py-px rounded-full ${
-                      m.revisit === 'yes' ? 'bg-green-100 text-green-600' :
-                      m.revisit === 'maybe' ? 'bg-yellow-100 text-yellow-600' :
-                      'bg-gray-100 text-gray-500'
-                    }`}>{t(`album.revisit.${REVISIT_MAP[m.revisit]}`)}</span>
-                  )}
-                </div>
-                {m.note && <p className="text-xs text-base-content/60 line-clamp-2">{m.note}</p>}
+                  </div>
+                ))}
               </div>
             </div>
           ))}
