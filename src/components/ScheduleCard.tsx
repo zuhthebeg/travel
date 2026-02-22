@@ -13,7 +13,7 @@ interface ScheduleCardProps {
 }
 
 // Helper function to detect and linkify flight numbers
-function linkifyFlightNumbers(text: string) {
+function linkifyFlightNumbers(text: string, t: (key: string, options?: Record<string, unknown>) => string) {
   // Pattern: 2-3 uppercase letters followed by 1-4 digits
   // Matches: KE123, OZ456, AA1234, CAL161, etc.
   const flightPattern = /\b([A-Z]{2,3})(\d{1,4})\b/g;
@@ -132,7 +132,7 @@ export function ScheduleCard({ schedule, onView, compact }: ScheduleCardProps) {
           <span className="font-medium text-sm truncate flex-1">
             {schedule.title ? (
               <AutoTranslate text={schedule.title as string}>
-                {(tText) => <>{linkifyFlightNumbers(tText)}</>}
+                {(tText) => <>{linkifyFlightNumbers(tText, t)}</>}
               </AutoTranslate>
             ) : ''}
           </span>
@@ -172,7 +172,7 @@ export function ScheduleCard({ schedule, onView, compact }: ScheduleCardProps) {
             <h3 className="card-title text-xl">
               {schedule.title ? (
                 <AutoTranslate text={schedule.title as string}>
-                  {(tText) => <>{linkifyFlightNumbers(tText)}</>}
+                  {(tText) => <>{linkifyFlightNumbers(tText, t)}</>}
                 </AutoTranslate>
               ) : ''}
             </h3>
@@ -184,7 +184,7 @@ export function ScheduleCard({ schedule, onView, compact }: ScheduleCardProps) {
             <MapPin className={`w-4 h-4 flex-shrink-0 ${schedule.latitude && schedule.longitude ? 'text-primary' : 'text-warning'}`} />
             <span className="font-medium">
               <AutoTranslate text={schedule.place as string}>
-                {(tText) => <>{linkifyFlightNumbers(tText)}</>}
+                {(tText) => <>{linkifyFlightNumbers(tText, t)}</>}
               </AutoTranslate>
             </span>
             {schedule.place && (!schedule.latitude || !schedule.longitude) && (
@@ -196,7 +196,7 @@ export function ScheduleCard({ schedule, onView, compact }: ScheduleCardProps) {
         {schedule.memo && (
           <div className="text-sm text-base-content/90 mb-3 whitespace-pre-wrap bg-base-200 p-3 rounded-lg">
             <AutoTranslate text={schedule.memo}>
-              {(tText) => <>{linkifyFlightNumbers(tText)}</>}
+              {(tText) => <>{linkifyFlightNumbers(tText, t)}</>}
             </AutoTranslate>
           </div>
         )}
@@ -236,3 +236,4 @@ export function ScheduleCard({ schedule, onView, compact }: ScheduleCardProps) {
     </div>
   );
 }
+
